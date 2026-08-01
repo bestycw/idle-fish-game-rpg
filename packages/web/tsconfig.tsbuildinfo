@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/adapters/localsave.ts","./src/features/battle/battlescreen.tsx","./src/features/hub/hubscreen.tsx","./src/features/inventory/inventorypanel.tsx","./src/features/result/resultscreen.tsx","./src/features/shared/battlelog.tsx","./src/features/shared/unitviews.tsx"],"version":"5.9.3"}

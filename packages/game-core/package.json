@@ -1,0 +1,22 @@
+{
+  "name": "@moyu/game-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test dist/combat/combat.test.js dist/character/growth.test.js dist/dungeon/tower.test.js dist/dungeon/dungeon.test.js dist/dungeon/hubExtras.test.js dist/gacha/gacha.test.js dist/stamina/stamina.test.js dist/chapter/chapter.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^5.8.3"
+  }
+}

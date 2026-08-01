@@ -1,0 +1,15 @@
+{
+  "name": "moyu-xiuxian",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @moyu/web dev",
+    "build": "pnpm --filter @moyu/game-core build && pnpm --filter @moyu/web build",
+    "test": "pnpm --filter @moyu/game-core test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
