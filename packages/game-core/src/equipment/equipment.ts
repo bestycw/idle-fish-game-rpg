@@ -1,6 +1,8 @@
-import { AFFIX_DEFS, SLOT_NAMES } from './affixes.js';
+import { AFFIX_DEFS, SLOT_AFFIX_BIAS, SLOT_NAMES } from './affixes.js';
+import { applyActiveSetBonuses, countEquippedSets } from './sets.js';
 import { UNLOCKED_EQUIP_SLOTS } from '../shared/types.js';
 import type {
+  AffixDef,
   Equipment,
   EquipSlot,
   PlayerState,
@@ -58,6 +60,18 @@ function pickWeightedSetId(rng: Rng, weights: { id: string; weight: number }[]):
   return weights[0]?.id;
 }
 
+function pickAffixFromPool(rng: Rng, pool: AffixDef[], slot: EquipSlot): AffixDef {
+  const bias = SLOT_AFFIX_BIAS[slot] ?? {};
+  const weights = pool.map((d) => Math.max(1, bias[d.id] ?? 1));
+  const total = weights.reduce((s, w) => s + w, 0);
+  let roll = rng.int(1, total);
+  for (let i = 0; i < pool.length; i += 1) {
+    roll -= weights[i]!;
+    if (roll <= 0) return pool[i]!;
+  }
+  return pool[0]!;
+}
+
 export function generateEquipment(
   rng: Rng,
   slot?: EquipSlot,
@@ -68,8 +82,9 @@ export function generateEquipment(
   const pool = [...AFFIX_DEFS];
   const affixes = [];
   for (let i = 0; i < affixCount && pool.length > 0; i += 1) {
-    const idx = rng.int(0, pool.length - 1);
-    const def = pool.splice(idx, 1)[0]!;
+    const def = pickAffixFromPool(rng, pool, chosenSlot);
+    const idx = pool.findIndex((d) => d.id === def.id);
+    if (idx >= 0) pool.splice(idx, 1);
     const raw = rng.int(def.min, def.max);
     affixes.push({
       defId: def.id,
@@ -81,8 +96,9 @@ export function generateEquipment(
   const rarityLabel = rarity === 'epic' ? '史诗' : rarity === 'rare' ? '稀有' : '普通';
   const setIdChance = opts?.setIdChance ?? 0.25;
   const setIdWeights = opts?.setIdWeights ?? [
-    { id: 'set_demo_1', weight: 1 },
-    { id: 'set_demo_2', weight: 1 },
+    { id: 'set_pojun', weight: 1 },
+    { id: 'set_tiebi', weight: 1 },
+    { id: 'set_jishi', weight: 1 },
   ];
   const setId = rng.next() < setIdChance ? pickWeightedSetId(rng, setIdWeights) : undefined;
   return {
@@ -152,14 +168,17 @@ function applyAffixStat(bonus: EquipmentBonuses, stat: StatKey, value: number): 
 
 export function sumEquipmentBonuses(state: PlayerState): EquipmentBonuses {
   const bonus = emptyBonuses();
+  const equippedSetIds: (string | undefined)[] = [];
   for (const id of Object.values(state.equipped)) {
     if (!id) continue;
     const item = state.inventory.find((e) => e.id === id);
     if (!item) continue;
+    equippedSetIds.push(item.setId);
     for (const a of item.affixes) {
       applyAffixStat(bonus, a.stat, a.value);
     }
   }
+  applyActiveSetBonuses(bonus, countEquippedSets(equippedSetIds));
   return bonus;
 }
 

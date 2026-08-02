@@ -126,11 +126,6 @@ export function BattleScreen({
             onSelect: () => onSubmitHeroAction('skill'),
           },
           {
-            id: 'def',
-            label: '防御',
-            onSelect: () => onSubmitHeroAction('defend'),
-          },
-          {
             id: 'auto',
             label: '改为自动',
             onSelect: onHeroManualAuto,

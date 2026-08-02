@@ -1,23 +1,34 @@
 import type { PlayerState } from '../shared/types.js';
 import {
   breakthroughCost,
+  CULTIVATION_NODES_PER_TIER,
+  cultivationNodeCost,
   expToNextLevel,
   getProgress,
   isOwned,
   LEVEL_CAP_BY_TIER,
   levelCapForTier,
+  MAX_STAR,
+  nextBreakthroughPerk,
   resolveStarNode,
-  SHARED_STAR_NODES,
-  starCost,
+  starShardCost,
   tryBreakthrough,
+  tryCultivateNode,
   tryLevelUp,
   tryStarUp,
   type GrowthActionResult,
 } from './growth.js';
+import { STARDUST_ASSIST_STAR_CAP, STARDUST_PER_SHARD } from './stardustExchange.js';
 import { breakthroughLabel, nextBreakthroughLabel } from './breakthroughDisplay.js';
 
 /** 成长轴 id；awaken/bond 预留，本阶段不注册为 enabled */
-export type GrowthTrackId = 'level' | 'breakthrough' | 'star' | 'awaken' | 'bond';
+export type GrowthTrackId =
+  | 'level'
+  | 'cultivate'
+  | 'breakthrough'
+  | 'star'
+  | 'awaken'
+  | 'bond';
 
 export interface GrowthTrackPreview {
   /** 消耗摘要，如「经验 12/42」 */
@@ -58,7 +69,7 @@ function levelTrack(): GrowthTrackDef {
       return {
         costLine: atCap ? `已达上限 Lv${cap}` : `经验 ${progress.exp}/${need}`,
         effectLine: atCap
-          ? `先破境至「${nextBreakthroughLabel(progress.breakthroughTier) ?? '下一境'}」`
+          ? `等级已满；用修为点小节点/破境`
           : `Lv ${progress.level} → ${progress.level + 1}`,
         current: progress.exp,
         need,
@@ -66,6 +77,51 @@ function levelTrack(): GrowthTrackDef {
       };
     },
     apply: tryLevelUp,
+  };
+}
+
+function cultivateTrack(): GrowthTrackDef {
+  return {
+    id: 'cultivate',
+    label: '修炼',
+    order: 15,
+    enabled: true,
+    canApply(state, templateId) {
+      return tryCultivateNode(state, templateId).ok;
+    },
+    preview(state, templateId) {
+      const progress = getProgress(state, templateId);
+      const nodes = progress.cultivationNodes ?? 0;
+      const xiuwei = state.currencies?.xiuwei ?? 0;
+      const atMaxTier = progress.breakthroughTier >= LEVEL_CAP_BY_TIER.length - 1;
+      if (atMaxTier) {
+        return {
+          costLine: '已达最高境界',
+          effectLine: breakthroughLabel(progress.breakthroughTier),
+          current: 1,
+          need: 1,
+          ready: false,
+        };
+      }
+      if (nodes >= CULTIVATION_NODES_PER_TIER) {
+        return {
+          costLine: '小节点已满',
+          effectLine: `请破境 → ${nextBreakthroughLabel(progress.breakthroughTier) ?? '下一境'}`,
+          current: nodes,
+          need: CULTIVATION_NODES_PER_TIER,
+          ready: false,
+        };
+      }
+      const need = cultivationNodeCost(progress.breakthroughTier, nodes);
+      return {
+        costLine: `修为 ${xiuwei}/${need}（仅塔）`,
+        effectLine: `${breakthroughLabel(progress.breakthroughTier)} 小节点 ${nodes}/${CULTIVATION_NODES_PER_TIER} · 主属性微幅`,
+        current: xiuwei,
+        need,
+        ready: xiuwei >= need,
+      };
+    },
+    apply: tryCultivateNode,
   };
 }
 
@@ -85,18 +141,21 @@ function breakthroughTrack(): GrowthTrackDef {
       const maxTier = LEVEL_CAP_BY_TIER.length - 1;
       const atMax = progress.breakthroughTier >= maxTier;
       const nextName = nextBreakthroughLabel(progress.breakthroughTier);
-      const needLevel = levelCapForTier(progress.breakthroughTier);
-      const levelOk = progress.level >= needLevel;
+      const nodes = progress.cultivationNodes ?? 0;
+      const nodesOk = nodes >= CULTIVATION_NODES_PER_TIER;
+      const perk = nextBreakthroughPerk(templateId, progress.breakthroughTier);
       return {
         costLine: atMax
           ? '已达最高境界'
-          : `修为 ${xiuwei}/${need}${levelOk ? '' : ` · 需 Lv${needLevel}`}`,
+          : `修为 ${xiuwei}/${need}${nodesOk ? '' : ` · 节点 ${nodes}/${CULTIVATION_NODES_PER_TIER}`}`,
         effectLine: atMax
           ? breakthroughLabel(progress.breakthroughTier)
-          : `${breakthroughLabel(progress.breakthroughTier)} → ${nextName ?? '下一境'}（上限 Lv${levelCapForTier(progress.breakthroughTier + 1)}）`,
+          : `${breakthroughLabel(progress.breakthroughTier)} → ${nextName ?? '下一境'}` +
+            `（上限 Lv${levelCapForTier(progress.breakthroughTier + 1)}）` +
+            (perk ? ` · ${perk.label}` : ''),
         current: xiuwei,
         need,
-        ready: !atMax && levelOk && xiuwei >= need,
+        ready: !atMax && nodesOk && xiuwei >= need,
       };
     },
     apply: tryBreakthrough,
@@ -114,11 +173,9 @@ function starTrack(): GrowthTrackDef {
     },
     preview(state, templateId) {
       const progress = getProgress(state, templateId);
-      const maxStar = Math.max(...SHARED_STAR_NODES.map((n) => n.star));
-      const atMax = progress.star >= maxStar;
+      const atMax = progress.star >= MAX_STAR;
       const shards = progress.cardShards ?? 0;
-      const dustNeed = starCost(progress.star);
-      const stardust = state.currencies?.stardust ?? 0;
+      const shardNeed = starShardCost(progress.star);
       const next = resolveStarNode(templateId, progress.star + 1);
       const owned = isOwned(state, templateId);
       if (!owned) {
@@ -139,17 +196,19 @@ function starTrack(): GrowthTrackDef {
           ready: false,
         };
       }
-      const useShard = shards >= 1;
+      const useShard = shards >= shardNeed;
+      const dustHint =
+        progress.star < STARDUST_ASSIST_STAR_CAP
+          ? ` · 可兑碎片(${STARDUST_PER_SHARD}尘/日1)`
+          : ' · ★5+需抽卡';
       return {
-        costLine: useShard
-          ? `碎片 ${shards}/1`
-          : `碎片 0 · 星尘 ${stardust}/${dustNeed}`,
+        costLine: `碎片 ${shards}/${shardNeed}${useShard ? '' : dustHint}`,
         effectLine: next
           ? `★${progress.star} → ★${next.star}「${next.label}」`
           : `★${progress.star} → ★${progress.star + 1}`,
-        current: useShard ? shards : stardust,
-        need: useShard ? 1 : dustNeed,
-        ready: useShard || stardust >= dustNeed,
+        current: shards,
+        need: shardNeed,
+        ready: useShard,
       };
     },
     apply: tryStarUp,
@@ -177,6 +236,7 @@ function reservedTrack(id: 'awaken' | 'bond', label: string, order: number): Gro
 
 const GROWTH_TRACK_REGISTRY: GrowthTrackDef[] = [
   levelTrack(),
+  cultivateTrack(),
   breakthroughTrack(),
   starTrack(),
   reservedTrack('awaken', '觉醒', 40),

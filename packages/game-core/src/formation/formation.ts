@@ -2,6 +2,7 @@ import { createUnitFromTemplate } from '../character/factory.js';
 import { isOwned } from '../character/growth.js';
 import { UNIT_TEMPLATES, getTemplate } from '../character/templates.js';
 import { applyBonusesToUnit, sumEquipmentBonuses } from '../equipment/equipment.js';
+import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
 import { MAX_PARTY_SIZE, type GridSlot, type PlayerState, type UnitRuntime } from '../shared/types.js';
 
 /** 默认上阵 5：主角 / 张飞 / 赵云 / 孙悟空 / 华佗 */
@@ -49,6 +50,7 @@ export function normalizeFormation(
 
 export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
   const bonus = sumEquipmentBonuses(state);
+  const composeCtx = { extraModifiers: listEquipmentSkillModifiers(state) };
   const formation = normalizeFormation(state.formation);
   const units: UnitRuntime[] = [];
 
@@ -56,7 +58,7 @@ export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
     const slot = formation[t.id];
     if (slot == null) continue;
     const progress = state.roster?.[t.id];
-    const unit = createUnitFromTemplate(t, slot, progress);
+    const unit = createUnitFromTemplate(t, slot, progress, composeCtx);
     units.push(applyBonusesToUnit(unit, bonus));
   }
   return units;

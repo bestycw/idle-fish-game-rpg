@@ -11,7 +11,7 @@ import { STAMINA_MAX, syncStamina } from '../stamina/stamina.js';
 
 type LegacySave = Omit<Partial<PlayerState>, 'version'> & { version?: number };
 
-const SAVE_VERSION = 9 as const;
+const SAVE_VERSION = 10 as const;
 
 /** 旧占位卡 id；迁移时从 roster/formation 剔除 */
 const REMOVED_TEMPLATE_IDS = new Set([
@@ -62,7 +62,7 @@ export function createInitialPlayer(seed = Date.now() % 1_000_000): PlayerState 
     wins: 0,
     seed,
     encounterIndex: 0,
-    currencies: { ...defaultCurrencies(), xiuwei: 80, stardust: 40, ticket: 12 },
+    currencies: { ...defaultCurrencies(), xiuwei: 36, stardust: 20, ticket: 12 },
     roster: {},
     towerFloor: 1,
     gachaPity: 0,

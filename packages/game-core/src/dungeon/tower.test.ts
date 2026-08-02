@@ -21,4 +21,14 @@ describe('tower thin shell', () => {
     assert.equal(r2.gainedXiuwei, xiuweiForFloor(2));
     assert.equal(getTowerFloor(r2.state), 3);
   });
+
+  it('grants stardust on milestone floors', () => {
+    let state = createInitialPlayer(2);
+    state = { ...state, towerFloor: 5 };
+    const beforeDust = state.currencies.stardust ?? 0;
+    const r = climbTower(state);
+    assert.equal(r.milestone, true);
+    assert.ok(r.gainedStardust > 0);
+    assert.equal(r.state.currencies.stardust, beforeDust + r.gainedStardust);
+  });
 });

@@ -44,12 +44,17 @@ export const START_UNLOCKS: ContentUnlock[] = [
   { kind: 'dungeon', id: 'stardust_realm' },
   { kind: 'encounter', id: 'wall' },
   { kind: 'encounter', id: 'archers' },
+  { kind: 'encounter', id: 'spirit_wall' },
   { kind: 'gacha_unit', id: 'zhangfei' },
   { kind: 'gacha_unit', id: 'zhaoyun' },
   { kind: 'gacha_unit', id: 'wukong' },
   { kind: 'gacha_unit', id: 'huatuo' },
   { kind: 'gacha_unit', id: 'houyi' },
   { kind: 'gacha_unit', id: 'heracles' },
+  { kind: 'gacha_unit', id: 'guanyu' },
+  { kind: 'gacha_unit', id: 'robin' },
+  { kind: 'gacha_unit', id: 'dianwei' },
+  { kind: 'gacha_unit', id: 'beowulf' },
 ];
 
 /**
@@ -83,7 +88,10 @@ export const CHAPTERS: ChapterDef[] = [
         blurb: '占位：初战结束；速攻遭遇将解锁。',
       },
     ],
-    unlocksOnClear: [{ kind: 'encounter', id: 'raiders' }],
+    unlocksOnClear: [
+      { kind: 'encounter', id: 'raiders' },
+      { kind: 'gacha_unit', id: 'nezha' },
+    ],
   },
   {
     id: 'ch2',
@@ -105,7 +113,12 @@ export const CHAPTERS: ChapterDef[] = [
         encounterId: 'raiders',
       },
     ],
-    unlocksOnClear: [{ kind: 'gacha_unit', id: 'baigujing' }],
+    unlocksOnClear: [
+      { kind: 'gacha_unit', id: 'baigujing' },
+      { kind: 'dungeon', id: 'abyss_mirror' },
+      { kind: 'encounter', id: 'chaos_rite' },
+      { kind: 'gacha_unit', id: 'daji' },
+    ],
   },
   {
     id: 'ch3',
@@ -121,7 +134,12 @@ export const CHAPTERS: ChapterDef[] = [
         encounterId: 'archers',
       },
     ],
-    unlocksOnClear: [{ kind: 'gacha_unit', id: 'medusa' }],
+    unlocksOnClear: [
+      { kind: 'gacha_unit', id: 'medusa' },
+      { kind: 'encounter', id: 'boss_warden' },
+      { kind: 'gacha_unit', id: 'yangjian' },
+      { kind: 'gacha_unit', id: 'xishi' },
+    ],
   },
   {
     id: 'ch4',
@@ -143,7 +161,11 @@ export const CHAPTERS: ChapterDef[] = [
         encounterId: 'wall',
       },
     ],
-    unlocksOnClear: [{ kind: 'gacha_unit', id: 'zhuge' }],
+    unlocksOnClear: [
+      { kind: 'gacha_unit', id: 'zhuge' },
+      { kind: 'gacha_unit', id: 'change' },
+      { kind: 'gacha_unit', id: 'arthur' },
+    ],
   },
   {
     id: 'ch5',
@@ -159,7 +181,11 @@ export const CHAPTERS: ChapterDef[] = [
         encounterId: 'raiders',
       },
     ],
-    unlocksOnClear: [{ kind: 'gacha_unit', id: 'athena' }],
+    unlocksOnClear: [
+      { kind: 'gacha_unit', id: 'athena' },
+      { kind: 'gacha_unit', id: 'lvbu' },
+      { kind: 'gacha_unit', id: 'thor' },
+    ],
   },
   {
     id: 'ch6',
@@ -178,10 +204,10 @@ export const CHAPTERS: ChapterDef[] = [
         kind: 'battle',
         title: '终阵',
         blurb: '占位：最后一场。',
-        encounterId: 'archers',
+        encounterId: 'boss_warden',
       },
     ],
-    unlocksOnClear: [],
+    unlocksOnClear: [{ kind: 'gacha_unit', id: 'sunbin' }],
   },
 ];
 

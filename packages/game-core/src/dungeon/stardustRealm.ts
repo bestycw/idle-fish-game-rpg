@@ -2,8 +2,8 @@ import { grantCurrency } from '../character/growth.js';
 import { createRng } from '../shared/rng.js';
 import type { PlayerState } from '../shared/types.js';
 
-/** 单次星尘产出区间（可后调） */
-export const STARDUST_REALM_RANGE: [number, number] = [8, 14];
+/** 单次星尘产出区间（控产：约日 2 次 ≈ 20 尘级） */
+export const STARDUST_REALM_RANGE: [number, number] = [8, 12];
 
 export type StardustRealmResult = {
   ok: true;

@@ -1,4 +1,10 @@
-import { wearLoot, type Equipment, type PlayerState } from '@moyu/game-core';
+import {
+  listEquippedSetProgress,
+  setDisplayName,
+  wearLoot,
+  type Equipment,
+  type PlayerState,
+} from '@moyu/game-core';
 import { useMemo } from 'react';
 import { ChoiceList } from '@/components/game/ChoiceList';
 import { Narrative } from '@/components/game/Narrative';
@@ -13,12 +19,13 @@ type InventoryPanelProps = {
 };
 
 function ItemLine({ item }: { item: Equipment }) {
+  const setName = setDisplayName(item.setId);
   return (
     <div className={cn('border-l-2 pl-3 py-1.5', rarityTone(item.rarity))}>
       <div className="text-sm text-foreground">{item.name}</div>
       <div className="font-mono text-[11px] text-muted-foreground">
         {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
-        {item.setId ? ` · ${item.setId}` : ''}
+        {setName ? ` · [${setName}]` : ''}
       </div>
     </div>
   );
@@ -31,12 +38,22 @@ export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: Invent
       .filter(Boolean) as Equipment[];
   }, [player]);
 
+  const setProgress = useMemo(
+    () => listEquippedSetProgress(equippedItems.map((i) => i.setId)),
+    [equippedItems],
+  );
+
   const recent = [...player.inventory].slice(-10).reverse();
 
   const wearChoices = recent.slice(0, 6).map((item) => ({
     id: item.id,
     label: `穿戴 ${item.name}`,
-    hint: item.affixes.map((a) => `${a.name}+${a.value}`).join(' · '),
+    hint: [
+      item.affixes.map((a) => `${a.name}+${a.value}`).join(' · '),
+      setDisplayName(item.setId),
+    ]
+      .filter(Boolean)
+      .join(' · '),
     onSelect: () => {
       setPlayer((p) => wearLoot(p, item.id));
       pushNotice(`已穿戴 ${item.name}`);
@@ -50,7 +67,7 @@ export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: Invent
           eyebrow="行囊"
           title="共用衣柜"
           paragraphs={[
-            'V1 全队共用一套装备。猎装试炼掉落会进这里；穿上立刻改全队风格。',
+            'V1 全队共用一套装备。猎装试炼掉落会进这里；凑齐套装 2/4 件改全队风格。',
           ]}
         />
         <button
@@ -70,6 +87,24 @@ export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: Invent
           equippedItems.map((item) => <ItemLine key={item.id} item={item} />)
         )}
       </section>
+
+      {setProgress.length > 0 ? (
+        <section className="space-y-2">
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">套装</p>
+          {setProgress.map((s) => (
+            <div key={s.id} className="border-l-2 border-primary/40 pl-3 py-1">
+              <div className="text-sm text-foreground">
+                {s.name} · {s.count}/4
+              </div>
+              <div className="font-mono text-[11px] text-muted-foreground">
+                {s.activeLabels.length > 0
+                  ? s.activeLabels.join(' · ')
+                  : `${s.blurb}（再凑 ${Math.max(0, 2 - s.count)} 件激活 2 件）`}
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       <section className="space-y-2">
         <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">

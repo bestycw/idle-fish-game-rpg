@@ -15,18 +15,18 @@ describe('dungeon defs', () => {
   it('ships gear trial (battle) and tower (instant)', () => {
     assert.equal(getDungeon('gear_trial').runMode, 'battle');
     assert.equal(getDungeon('tower').runMode, 'instant');
-    assert.equal(listBattleDungeons().length, 1);
+    assert.equal(listBattleDungeons().length, 2);
     assert.ok(getDungeon('gear_trial').encounterPool.includes('wall'));
+    assert.ok(getDungeon('abyss_mirror').encounterPool.includes('boss_warden'));
   });
 
   it('pickEncounterIndex rotates pool by cursor', () => {
+    const poolLen = getDungeon('gear_trial').encounterPool.length;
     const a = pickEncounterIndex('gear_trial', 0);
     const b = pickEncounterIndex('gear_trial', 1);
-    const c = pickEncounterIndex('gear_trial', 2);
-    const d = pickEncounterIndex('gear_trial', 3);
+    const wrap = pickEncounterIndex('gear_trial', poolLen);
     assert.notEqual(a, b);
-    assert.equal(a, d);
-    assert.ok([a, b, c].every((i) => i >= 0));
+    assert.equal(a, wrap);
   });
 });
 

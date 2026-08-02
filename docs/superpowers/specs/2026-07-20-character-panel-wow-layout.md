@@ -1,6 +1,6 @@
 # 人物面板布局（魔兽纸娃娃 · 2026-07-20）
 
-> **地位：** 已拍板的 UI 布局规格（成长数值仍见 [2026-07-20-character-growth-draft.md](./2026-07-20-character-growth-draft.md)，成长本身**不冻结**）。  
+> **地位：** 现行 UI 布局规格。成长数值/规则认 [character.md](./systems/character.md)（growth-draft 已归档）。  
 > 本文件冻结的是**面板骨架与槽位露出**，避免实现时来回改结构。
 
 ## 1. 目标

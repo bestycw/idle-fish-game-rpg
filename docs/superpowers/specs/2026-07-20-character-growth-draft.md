@@ -1,8 +1,7 @@
 # 人物成长与面板（工作草案 · 2026-07-20）
 
-> **地位：** 工作假设，**非冻结**（不同于战斗 §4.14）。  
-> 可改数值、层数、文案与后加轴；改结构时优先走本文「扩展口」，避免掀主循环。  
-> 归属：[character.md](./systems/character.md) 成长子模块；爬塔薄壳已挂 [dungeon.md](./systems/dungeon.md)；抽卡碎片升星与 `followUp` 已接（B5 雏形）。
+> **地位：归档（2026-08-02）。** 默认不信；成长权威认 [character.md](./systems/character.md)，当前管道见 [character-foundation](./2026-08-02-character-foundation-design.md) / [skill-design-spec](./2026-08-02-skill-design-spec.md)。  
+> 下文保留决策追溯；C1 已落地后结构以代码 + character 为准。
 
 ## 1. 目标（本阶段）
 

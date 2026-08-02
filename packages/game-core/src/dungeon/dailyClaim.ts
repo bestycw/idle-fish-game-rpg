@@ -6,6 +6,8 @@ import type { PlayerState } from '../shared/types.js';
 export const DAILY_CLAIM_STAMINA = 20;
 /** 摸鱼补给 · 召唤券 */
 export const DAILY_CLAIM_TICKET = 1;
+/** 摸鱼补给 · 星尘（薄补，控产） */
+export const DAILY_CLAIM_STARDUST = 6;
 
 export function localDayKey(now = Date.now()): string {
   const d = new Date(now);
@@ -43,10 +45,11 @@ export function tryClaimDaily(state: PlayerState, now = Date.now()): DailyClaimR
     staminaUpdatedAt: now,
   };
   next = grantCurrency(next, 'ticket', DAILY_CLAIM_TICKET);
+  next = grantCurrency(next, 'stardust', DAILY_CLAIM_STARDUST);
   const staminaGot = (next.stamina ?? 0) - before;
   return {
     ok: true,
     state: next,
-    message: `摸鱼补给：体力 +${staminaGot} · 券 +${DAILY_CLAIM_TICKET}`,
+    message: `摸鱼补给：体力 +${staminaGot} · 券 +${DAILY_CLAIM_TICKET} · 星尘 +${DAILY_CLAIM_STARDUST}`,
   };
 }

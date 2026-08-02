@@ -1,5 +1,6 @@
 import {
   MAX_PARTY_SIZE,
+  STAMINA_COST_ABYSS,
   STAMINA_COST_GEAR,
   STAMINA_COST_STARDUST,
   STAMINA_COST_TOWER,
@@ -10,6 +11,7 @@ import {
   getChapterView,
   getTowerFloor,
   isContentUnlocked,
+  isTowerMilestone,
   runStardustRealm,
   tryClaimDaily,
   trySpendStamina,
@@ -22,6 +24,7 @@ type HubScreenProps = {
   player: PlayerState;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   onStartGearTrial: () => void;
+  onStartAbyssMirror: () => void;
   onStartChapterBattle: () => void;
   onOpenFormation: () => void;
   pushNotice: (msg: string) => void;
@@ -42,12 +45,14 @@ export function HubScreen({
   player,
   setPlayer,
   onStartGearTrial,
+  onStartAbyssMirror,
   onStartChapterBattle,
   onOpenFormation,
   pushNotice,
 }: HubScreenProps) {
   const chapter = getChapterView(player);
   const gearUnlocked = isContentUnlocked(player, 'dungeon', 'gear_trial');
+  const abyssUnlocked = isContentUnlocked(player, 'dungeon', 'abyss_mirror');
   const towerUnlocked = isContentUnlocked(player, 'dungeon', 'tower');
   const stardustUnlocked = isContentUnlocked(player, 'dungeon', 'stardust_realm');
   const formationCount = Object.keys(player.formation).length;
@@ -109,7 +114,9 @@ export function HubScreen({
     }
     const result = climbTower(spend.state);
     setPlayer(result.state);
-    pushNotice(`通关第 ${result.clearedFloor} 层，修为 +${result.gainedXiuwei}`);
+    const dustBit =
+      result.gainedStardust > 0 ? `，里程碑星尘 +${result.gainedStardust}` : '';
+    pushNotice(`通关第 ${result.clearedFloor} 层，修为 +${result.gainedXiuwei}${dustBit}`);
   };
 
   const storyPanel = (
@@ -181,10 +188,24 @@ export function HubScreen({
             wide
           />
           <EntryCard
+            title="镜渊试炼"
+            subtitle={
+              abyssUnlocked
+                ? `高压 · 经验向 · 体力 ${STAMINA_COST_ABYSS}`
+                : '通关第二章解锁'
+            }
+            mark="渊"
+            accent="rose"
+            disabled={!abyssUnlocked}
+            onClick={onStartAbyssMirror}
+            wide
+          />
+          <EntryCard
             title="修炼塔"
             subtitle={
               towerUnlocked
-                ? `第 ${getTowerFloor(player)} 层 · +${xiuweiForFloor(getTowerFloor(player))} 修为`
+                ? `第 ${getTowerFloor(player)} 层 · +${xiuweiForFloor(getTowerFloor(player))} 修为` +
+                  (isTowerMilestone(getTowerFloor(player)) ? ' · 里程碑' : '')
                 : '未解锁'
             }
             mark="塔"

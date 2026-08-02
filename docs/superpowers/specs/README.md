@@ -1,77 +1,94 @@
 # 规格文档地图
 
-> **唯一入口。** 规则按系统拆分；改玩法改对应文件，改进度改 `tracking.md`。  
-> **文档写什么：** 只落**定调与指导开发**的关键——产品身份、系统边界、已拍板规则、当前实现状态、下一刀。不写流水账 UI 细节；旧草案过时以系统分册 + tracking 为准。
+> **唯一入口。** 改玩法改对应 `systems/*`，改进度改 `tracking.md`，调参记 `balance-changelog.md`。  
+> **文档写什么：** 只落定调与指导开发的关键。流水账 UI、已落地实现史 → 见下方「归档」。
+
+## 依赖层级（冲突时按此）
+
+| 优先级 | 文档 | 用途 |
+|--------|------|------|
+| 1 | 本文 | 找入口，不乱翻 |
+| 2 | [tracking.md](./tracking.md) | 下一刀 / 已决 / 进度（**进度只认它**） |
+| 3 | `systems/<name>.md` | **玩法权威** |
+| 4 | 下方「现行切片」 | 尚未并入系统册的工作设计 / 内容规范 |
+| 5 | [balance-changelog.md](./balance-changelog.md) | 调参记录，不当需求源 |
+| 6 | 「归档」与 `plans/` | 实现史；默认不信，有冲突以 2–3 为准 |
+
+**写回约定：** 对话拍板 → 写入对应系统册（或现行切片）+ 必要时更新 tracking；不另造「第三真相」。
 
 ## 怎么用
 
-1. 先看 [systems-overview.md](./systems-overview.md) 知道骨架与**信息架构定调**。  
-2. 做哪个系统就打开 `systems/<name>.md`。  
-3. 产品定位 / 体验 / 内容量 → [product.md](./product.md)。  
-4. 当前下一刀 / 待决 / 决策摘要 → [tracking.md](./tracking.md)。  
+1. [systems-overview.md](./systems-overview.md) — 骨架与信息架构。  
+2. 做哪个系统 → `systems/<name>.md`。  
+3. 产品定位 → [product.md](./product.md)。  
+4. 下一刀 / 待决 → [tracking.md](./tracking.md)。  
 5. 技术栈 → [tech.md](./tech.md)。  
-6. 对话里达成一致的方案，**必须写入对应系统文档**后才算确定。
+6. 新卡技能/星章 → [skill-design-spec](./2026-08-02-skill-design-spec.md)。  
+7. Agent 多轮自治 → [autonomous-polish-charter](./2026-08-01-autonomous-polish-charter.md)（**不自行 commit**）。
 
 ## 写规格 / 写实现时（扩展约定）
 
 - **尽量不写死配置**：新 Buff、形状、焦点、效果、卡、遭遇 → 表或 `register*`，禁止战斗主循环按具体 id 无限 `if`。
-- **钩子先留**：生命周期 / `effects` / 事件总线 / status·shape·focus 注册表；清单见 [combat §4.15.2](./systems/combat.md)。
-- **系统完工标准：** 玩法闭环 + 扩展口；做透一个再换下一个（[tech §7.2.1](./tech.md)）。人物范例：[character-module-complete-design](./2026-07-29-character-module-complete-design.md)。
-- **宜冻结的别乱改**：管道阶段顺序、双轴字段、event code 名、存档字段名。
-- 进度只认 [tracking.md](./tracking.md)。
+- **钩子先留**：清单见 [combat §4.15.2](./systems/combat.md)。
+- **系统完工：** 玩法闭环 + 扩展口（[tech §7.2.1](./tech.md)）。
+- **宜冻结的别乱改：** 管道阶段顺序、双轴字段、event code、存档字段名。
+
+---
 
 ## 核心系统（主循环）
 
 | 系统 | 文件 | 备注 |
 |------|------|------|
-| 骨架总览 | [systems-overview.md](./systems-overview.md) | 主循环 + 核心系统 + **§3.7 扩展登记** |
+| 骨架总览 | [systems-overview.md](./systems-overview.md) | 主循环 + §3.7 扩展登记 |
 | 战斗 | [systems/combat.md](./systems/combat.md) | **纯战斗**；刀一/刀二不含套装 |
 | 布阵 | [systems/formation.md](./systems/formation.md) | 九宫、出战≤5 |
-| 人物/卡池 | [systems/character.md](./systems/character.md) | 产品语**伙伴**；role/job/卡表；升级=成长子模块 |
-| 装备 | [systems/equipment.md](./systems/equipment.md) | 槽位、词缀；**套装子模块**（绑副本推进） |
-| 抽卡 | [systems/gacha.md](./systems/gacha.md) | **B1 已落地**；新人 + 重复卡升星 |
-| 副本/遭遇 | [systems/dungeon.md](./systems/dungeon.md) | 猎装 + 塔 + **星尘秘境**；摸鱼补给见 stamina |
-| 体力 | [systems/stamina.md](./systems/stamina.md) | **B2** + 每日补给 |
-| 章节进度 | [systems/chapter-progress.md](./systems/chapter-progress.md) | **B4 框架**；改表 `chapter/defs.ts` |
+| 人物/卡池 | [systems/character.md](./systems/character.md) | 伙伴；role/job；**24 卡**；名单以代码为准 |
+| 装备 | [systems/equipment.md](./systems/equipment.md) | 槽位、词缀；套装子模块 |
+| 抽卡 | [systems/gacha.md](./systems/gacha.md) | B1 已落地 |
+| 副本/遭遇 | [systems/dungeon.md](./systems/dungeon.md) | 猎装 + 塔 + 星尘 + 镜渊 |
+| 体力 | [systems/stamina.md](./systems/stamina.md) | B2 + 摸鱼补给 |
+| 章节进度 | [systems/chapter-progress.md](./systems/chapter-progress.md) | B4 框架 |
 | 经济/付费 | [systems/economy.md](./systems/economy.md) | |
 | 故事皮/词表 | [systems/skin.md](./systems/skin.md) | |
-| 存档/会话 | [systems/save.md](./systems/save.md) | **v9** |
-| Web 格局 | [2026-07-21-web-ui-foundation.md](./2026-07-21-web-ui-foundation.md) | 底栏/冒险战斗向/伙伴全池 |
+| 存档/会话 | [systems/save.md](./systems/save.md) | **v10** |
 
 ## 扩展模块（登记 · 暂不做）
 
-见骨架 **§3.7**。分册：
+见骨架 **§3.7**。分册：quest / codex / achievement / shop / mail / inventory-items / tutorial / settings / ops-config / social；[pvp](./systems/pvp.md) **不做**。
 
-| 系统 | 文件 | 状态 |
-|------|------|------|
-| 任务/日常 | [systems/quest.md](./systems/quest.md) | 登记 |
-| 图鉴/收集 | [systems/codex.md](./systems/codex.md) | 登记 |
-| 成就/通行证 | [systems/achievement.md](./systems/achievement.md) | 登记 |
-| 商店 | [systems/shop.md](./systems/shop.md) | 登记 |
-| 邮件 | [systems/mail.md](./systems/mail.md) | 登记 |
-| 道具背包 | [systems/inventory-items.md](./systems/inventory-items.md) | 登记 |
-| 新手引导 | [systems/tutorial.md](./systems/tutorial.md) | 登记 |
-| 设置 | [systems/settings.md](./systems/settings.md) | 登记 |
-| 公告/热更 | [systems/ops-config.md](./systems/ops-config.md) | 登记 |
-| 社交 | [systems/social.md](./systems/social.md) | 好友/排行极后置；公会不做 |
-| PVP | [systems/pvp.md](./systems/pvp.md) | **不做** |
+---
 
-## 日期切片（已拍板 / 工作草案）
+## 现行切片（仍指导开发）
 
 | 切片 | 文件 | 地位 |
 |------|------|------|
-| 人物成长三轴 | [2026-07-20-character-growth-draft.md](./2026-07-20-character-growth-draft.md) | 工作草案（非冻结） |
-| 人物模块做透 C1 | [2026-07-29-character-module-complete-design.md](./2026-07-29-character-module-complete-design.md) | **已落地**；GrowthTrack + 体验 |
-| 公版卡池换代 | [2026-08-01-public-domain-roster-design.md](./2026-08-01-public-domain-roster-design.md) | **已落地**；去旧占位 +10 |
+| 技能设计规范 | [2026-08-02-skill-design-spec.md](./2026-08-02-skill-design-spec.md) | **内容规范**：母题→招牌→六星章 |
+| 能力池总表 | [2026-08-02-ability-pool-catalog.md](./2026-08-02-ability-pool-catalog.md) | **≥100 原子**；星章/装形态从池拼装 |
+| 修为/境界盘 | [2026-08-02-xiuwei-cultivation-design.md](./2026-08-02-xiuwei-cultivation-design.md) | 小节点×4 + 破境；修为仅塔 |
+| 人物系统地基 | [2026-08-02-character-foundation-design.md](./2026-08-02-character-foundation-design.md) | **F1–F5 已落地**：compose + Bundle + 血刃示范 |
+| 构筑双核愿景 | [2026-07-21-build-dual-core-design.md](./2026-07-21-build-dual-core-design.md) | 愿景（非 combat 级冻结） |
+| 自治完善约定 | [2026-08-01-autonomous-polish-charter.md](./2026-08-01-autonomous-polish-charter.md) | Agent loop；不自行 commit |
+| 成长/副本加深 | [2026-08-01-growth-dungeon-expand-design.md](./2026-08-01-growth-dungeon-expand-design.md) | 自治轮次方向（部分已落地） |
+| 数值变更记录 | [balance-changelog.md](./balance-changelog.md) | 调参必记 |
 | 人物面板布局 | [2026-07-20-character-panel-wow-layout.md](./2026-07-20-character-panel-wow-layout.md) | 已拍板 UI 骨架 |
 | 战斗 UI | [2026-07-20-battle-ui-design.md](./2026-07-20-battle-ui-design.md) | 已拍板 |
-| Web UI 地基 | [2026-07-21-web-ui-foundation.md](./2026-07-21-web-ui-foundation.md) | Tailwind + shadcn；迁移已完成 |
-| 构筑双核愿景 | [2026-07-21-build-dual-core-design.md](./2026-07-21-build-dual-core-design.md) | 人解法 × 装风格；抽卡=人/星/技能；非实现冻结 |
+| Web UI 地基 | [2026-07-21-web-ui-foundation.md](./2026-07-21-web-ui-foundation.md) | 迁移完成；格局仍认 |
 
-## 历史单体文件
+## 归档（实现史 · 默认不信）
 
-旧版单体 [`2026-07-19-moyu-xiuxian-design.md`](./2026-07-19-moyu-xiuxian-design.md) 仅作入口跳转；**新改动写分册**。
+> 规则已并入 `systems/*` 或已被更新切片替代。留作决策追溯；**勿当当前需求源**。
+
+| 切片 | 文件 | 说明 |
+|------|------|------|
+| 旧单体规格 | [2026-07-19-moyu-xiuxian-design.md](./2026-07-19-moyu-xiuxian-design.md) | 仅跳转入口 |
+| 人物成长草案 | [2026-07-20-character-growth-draft.md](./2026-07-20-character-growth-draft.md) | 被 C1 + character 吸收 |
+| 人物 C1 做透 | [2026-07-29-character-module-complete-design.md](./2026-07-29-character-module-complete-design.md) | 已落地；细则认 character |
+| 公版卡池换代 | [2026-08-01-public-domain-roster-design.md](./2026-08-01-public-domain-roster-design.md) | 已落地（v9 换代）；现池 **24** 认代码 |
+| Plan：竖切里程碑 | [../plans/2026-07-19-vertical-slice.md](../plans/2026-07-19-vertical-slice.md) | 索引；进度认 tracking |
+| Plan：刀一 attrs/qi | [../plans/2026-07-19-attrs-and-qi.md](../plans/2026-07-19-attrs-and-qi.md) | 已完成归档 |
+
+**落地后并回：** `character-foundation` 实现完成后，compose 规则应写入 `character.md`（及必要 combat 节），本切片降为归档。
 
 ## Plan 目录
 
-实现计划在 `docs/superpowers/plans/`，须引用本目录系统文档。
+`docs/superpowers/plans/` 仅里程碑/历史实现计划；有冲突先改系统分册与 tracking。

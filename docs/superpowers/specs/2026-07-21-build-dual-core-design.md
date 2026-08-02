@@ -3,7 +3,7 @@
 > **地位：** 产品构筑与循环**愿景**（工作草案，**非战斗 §4.14 级冻结**）。  
 > **可玩性基调（产品宪法）：** 见 [product.md §2.0](./product.md)——**丰富选择 + 双核凿深 + 反四不像**。本文是基调在构筑上的展开。  
 > **已拍板方向：** 路线 **C · 双核正交**；单机以「刷 → 想办法过 Boss/关」为可玩性核心。  
-> **权威落点：** 细节分别写入 [equipment](./systems/equipment.md) / [gacha](./systems/gacha.md) / [character-growth-draft](./2026-07-20-character-growth-draft.md) / [dungeon](./systems/dungeon.md)；本文管总图与原则，避免分册各说各话。  
+> **权威落点：** 细节分别写入 [equipment](./systems/equipment.md) / [gacha](./systems/gacha.md) / [character](./systems/character.md) / [dungeon](./systems/dungeon.md)；技能内容 [skill-design-spec](./2026-08-02-skill-design-spec.md)；本文管总图与原则。  
 > **实现门禁：** 战斗手感验收 **已通过（2026-07-21）**。按 tracking：副本结构化 → 力灵双轴 → 套装 → 抽卡。
 
 ## 0. 基调落在构筑上（防四不像）
@@ -125,7 +125,7 @@
 | 破境 | 爬塔修为等 | 抬等级上限 + 小跳点 |
 | **升星** | **抽卡重复卡优先**；星尘兜底 | 属性 + **关键星技能/被动质变**（紧张感与付费点） |
 
-升星节点优先挂已有钩子：`followUp` / `effects` / `applyStatus` / `focusPolicy` 等，见 [growth-draft](./2026-07-20-character-growth-draft.md)。
+升星节点优先挂已有钩子：`followUp` / `effects` / `applyStatus` / `focusPolicy` 等；管道见 [character-foundation](./2026-08-02-character-foundation-design.md)，内容见 [skill-design-spec](./2026-08-02-skill-design-spec.md)。
 
 ### 5.3 抽卡（付费与刺激）
 

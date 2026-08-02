@@ -218,7 +218,6 @@ function computeDamage(
   let afterDef = Math.max(1, raw - effDef * 0.35);
 
   let middle = afterDef * (1 - versPct);
-  if (target.defending) middle *= 0.5;
   middle *= tankDamageTakenMult(target);
 
   let final = Math.max(1, Math.floor(middle * (1 + finalPct) * outputMasteryMult(actor, opts)));
@@ -562,13 +561,11 @@ function chooseAiAction(
     if (roll < skill.aiWeight) return 'skill';
   }
 
-  if (unit.role === 'tank' && unit.hp / unit.maxHp < 0.35 && rng.next() < 0.35) return 'defend';
   return 'attack';
 }
 
 function labelAction(kind: ActionKind, skill?: SkillDef): string {
   if (kind === 'skill') return `技能·${skill?.name ?? ''}`;
-  if (kind === 'defend') return '防御';
   return '普攻';
 }
 
@@ -698,18 +695,12 @@ function applyAction(
   allUnits: UnitRuntime[],
   rng: Rng,
 ): void {
-  actor.defending = false;
   if (!isLiving(actor)) return;
 
   let resolved = kind;
   if (unitHasStatusFlag(actor, 'forceBasicAttack')) resolved = 'attack';
 
   emit(state, 'action', { actor: actor.name, action: labelAction(resolved, actor.skill) });
-
-  if (resolved === 'defend') {
-    actor.defending = true;
-    return;
-  }
 
   if (resolved === 'attack') {
     applyAttack(state, actor, foes, allUnits, rng);
@@ -739,13 +730,32 @@ export function buildDefeatHint(state: BattleState): string {
   const avgEnemySpd = foes.reduce((s, u) => s + u.spd, 0) / Math.max(1, foes.length);
   const avgAllySpd = allies.reduce((s, u) => s + u.spd, 0) / Math.max(1, allies.length);
 
-  if (state.encounterId === 'wall' || highDefFront) {
+  // 已知遭遇优先，避免「后排有人倒」盖过速攻/盾墙套路提示
+  if (state.encounterId === 'wall') {
     return '战败提示：敌方前排很肉，试试群体攻击或终伤磨盾，术士沉默掐禁疗。';
   }
-  if (state.encounterId === 'archers' || hadPierceDeath) {
+  if (state.encounterId === 'archers') {
     return '战败提示：后排被点爆了。可上刺客穿透反打，或加强前排尽快撕开口子。';
   }
-  if (state.encounterId === 'raiders' || avgEnemySpd > avgAllySpd + 2) {
+  if (state.encounterId === 'raiders') {
+    return '战败提示：敌方身法太快且有控制/混乱。给坦克开护盾，或调整站位优先秒脆皮。';
+  }
+  if (state.encounterId === 'spirit_wall') {
+    return '战败提示：灵防极高。带灵伤破甲或力系穿透绕开，别纯灵轰。';
+  }
+  if (state.encounterId === 'chaos_rite') {
+    return '战败提示：敌方群乱心。优先斩祭师，上净化治疗或护盾稳住阵脚。';
+  }
+  if (state.encounterId === 'boss_warden') {
+    return '战败提示：首领肉且会控。破甲/流血磨血，先清侧卫再集火首领。';
+  }
+  if (highDefFront) {
+    return '战败提示：敌方前排很肉，试试群体攻击或终伤磨盾，术士沉默掐禁疗。';
+  }
+  if (hadPierceDeath) {
+    return '战败提示：后排被点爆了。可上刺客穿透反打，或加强前排尽快撕开口子。';
+  }
+  if (avgEnemySpd > avgAllySpd + 2) {
     return '战败提示：敌方身法太快且有控制/混乱。给坦克开护盾，或调整站位优先秒脆皮。';
   }
   if (lowHeal) {
@@ -808,7 +818,6 @@ function enemyFromSpec(spec: EnemySpec, index: number): UnitRuntime {
     qi: BATTLE_START_QI,
     maxQi: 100,
     skill: getSkill(spec.skillId),
-    defending: false,
     shield: 0,
     statuses: [],
     rank: spec.rank ?? 'normal',
@@ -830,7 +839,6 @@ export function createBattle(
     player: {
       units: playerUnits.map((u) => ({
         ...cloneUnit(u),
-        defending: false,
         shield: 0,
         qi: BATTLE_START_QI,
         dead: false,

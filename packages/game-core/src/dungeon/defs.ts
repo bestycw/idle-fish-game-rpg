@@ -23,6 +23,8 @@ export interface DungeonDef {
   encounterPool: string[];
   lootTableId: string;
   blurb: string;
+  /** 开战体力；缺省由 stamina 按 kind 回落 */
+  staminaCost: number;
 }
 
 export const DUNGEONS: DungeonDef[] = [
@@ -31,9 +33,20 @@ export const DUNGEONS: DungeonDef[] = [
     name: '猎装试炼',
     kind: 'gear',
     runMode: 'battle',
-    encounterPool: ['wall', 'archers', 'raiders'],
+    encounterPool: ['wall', 'archers', 'raiders', 'spirit_wall'],
     lootTableId: 'loot_gear_trial',
     blurb: '刷装备；套装碎片倾向更高',
+    staminaCost: 10,
+  },
+  {
+    id: 'abyss_mirror',
+    name: '镜渊试炼',
+    kind: 'material',
+    runMode: 'battle',
+    encounterPool: ['chaos_rite', 'spirit_wall', 'boss_warden'],
+    lootTableId: 'loot_abyss_mirror',
+    blurb: '高压遭遇；经验向（修为仅塔）',
+    staminaCost: 12,
   },
   {
     id: 'tower',
@@ -42,7 +55,8 @@ export const DUNGEONS: DungeonDef[] = [
     runMode: 'instant',
     encounterPool: [],
     lootTableId: 'loot_tower',
-    blurb: '刷修为破境（本刀点一下）',
+    blurb: '修为唯一产口：小节点与破境',
+    staminaCost: 5,
   },
   {
     id: 'stardust_realm',
@@ -51,7 +65,8 @@ export const DUNGEONS: DungeonDef[] = [
     runMode: 'instant',
     encounterPool: [],
     lootTableId: 'loot_stardust_realm',
-    blurb: '刷星尘升星（instant 薄壳）',
+    blurb: '刷星尘兑碎片（慢补；★5+仍靠抽卡）',
+    staminaCost: 8,
   },
 ];
 
@@ -69,6 +84,10 @@ export function listDungeons(): DungeonDef[] {
 
 export function listBattleDungeons(): DungeonDef[] {
   return DUNGEONS.filter((d) => d.runMode === 'battle');
+}
+
+export function staminaCostForDungeon(dungeonId: DungeonId): number {
+  return getDungeon(dungeonId).staminaCost;
 }
 
 /** 按本种遭遇池 + 游标，解析到 ENCOUNTERS 下标 */

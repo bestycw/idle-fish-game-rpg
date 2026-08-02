@@ -1,8 +1,7 @@
 # 里程碑总览（跟规格走）
 
-> 规格入口：`docs/superpowers/specs/README.md`  
-> 进度权威：`docs/superpowers/specs/tracking.md`  
-> 有冲突时先改对应系统分册，再改 plan / 代码。  
+> **地位：归档索引。** 进度权威：[tracking.md](../specs/tracking.md)；规格入口：[specs/README.md](../specs/README.md)。  
+> 有冲突时先改系统分册与 tracking，再改本 plan / 代码。  
 > 本文件只做**里程碑索引**；具体任务以 tracking §13–14 为准。
 
 ## 里程碑跟踪

@@ -12,6 +12,8 @@ export interface LootTable {
   id: string;
   /** 是否必出一件装备 */
   guaranteeEquipment: boolean;
+  /** 非必出时仍可能掉装的概率；缺省 0 */
+  equipmentChance?: number;
   setIdChance: number;
   setIdWeights: { id: string; weight: number }[];
   gold: [number, number];
@@ -27,13 +29,30 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     guaranteeEquipment: true,
     setIdChance: 0.55,
     setIdWeights: [
-      { id: 'set_demo_1', weight: 1 },
-      { id: 'set_demo_2', weight: 1 },
+      { id: 'set_pojun', weight: 2 },
+      { id: 'set_tiebi', weight: 2 },
+      { id: 'set_jishi', weight: 1 },
     ],
     gold: [5, 15],
-    xiuwei: [0, 1],
+    xiuwei: [0, 0],
     stardust: [0, 2],
     characterExp: [18, 32],
+  },
+  /** 镜渊：经验向；修为仅塔产 */
+  loot_abyss_mirror: {
+    id: 'loot_abyss_mirror',
+    guaranteeEquipment: false,
+    equipmentChance: 0.4,
+    setIdChance: 0.35,
+    setIdWeights: [
+      { id: 'set_pojun', weight: 1 },
+      { id: 'set_tiebi', weight: 1 },
+      { id: 'set_jishi', weight: 2 },
+    ],
+    gold: [8, 18],
+    xiuwei: [0, 0],
+    stardust: [1, 4],
+    characterExp: [36, 55],
   },
   /** 塔奖励由 climbTower 结算；表仅占位说明 */
   loot_tower: {
@@ -98,7 +117,9 @@ export function grantDungeonReward(
   };
 
   let loot: Equipment | null = null;
-  if (table.guaranteeEquipment) {
+  const rollEquip =
+    table.guaranteeEquipment || rng.next() < (table.equipmentChance ?? 0);
+  if (rollEquip) {
     loot = generateEquipment(rng, undefined, equipOpts);
   }
 

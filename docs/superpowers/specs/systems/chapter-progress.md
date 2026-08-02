@@ -36,7 +36,7 @@ getChapterView / advanceStoryNode / completeChapterBattle
 pickUnlockedEncounterIndex  // 刷本用已解锁遭遇
 ```
 
-存档：`chapterCleared` + `chapterNodeIndex`（存档总版本见 [save.md](./save.md)，当前 **v9**）。
+存档：`chapterCleared` + `chapterNodeIndex`（存档总版本见 [save.md](./save.md)，当前 **v10**）。
 
 ## V1 骨架（已写入 defs）
 

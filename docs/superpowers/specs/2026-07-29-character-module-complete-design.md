@@ -1,9 +1,8 @@
 # 人物模块做透设计（C1 · 扩展口 + 体验）
 
-> **地位：** 已拍板实现设计（2026-07-29）。  
-> **范围：** 人物/卡池本阶段完工（含成长扩展口 + 伙伴体验）；不含正式图鉴、扩池 16+、觉醒/好感可玩内容。  
-> **权威细则仍归：** [character.md](./systems/character.md)、[growth-draft](./2026-07-20-character-growth-draft.md)。  
-> **全项目原则：** 每系统完工 = 玩法闭环 + 可扩展架构口（见 [tech.md §7.2](./tech.md)、[systems-overview](./systems-overview.md)）。
+> **地位：归档（已落地 · 2026-08-02 标档）。** 默认不信；细则认 [character.md](./systems/character.md)。  
+> **范围（当时）：** GrowthTrack + 伙伴体验；不含正式图鉴、觉醒/好感可玩。  
+> **其后：** 卡池已至 24；下一层管道见 [character-foundation](./2026-08-02-character-foundation-design.md)。
 
 ## 1. 目标
 

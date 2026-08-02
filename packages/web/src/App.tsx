@@ -9,7 +9,7 @@ import {
   loadOrCreatePlayer,
   persistPlayer,
   pickUnlockedEncounterIndex,
-  STAMINA_COST_GEAR,
+  staminaCostForDungeon,
   stepBattle,
   syncStamina,
   trySpendStamina,
@@ -175,7 +175,7 @@ export default function App() {
     stopPlayback();
     const dungeon = getDungeon(dungeonId);
     if (dungeon.runMode !== 'battle') return;
-    const spend = trySpendStamina(player, STAMINA_COST_GEAR);
+    const spend = trySpendStamina(player, staminaCostForDungeon(dungeonId));
     if (!spend.ok) {
       pushNotice(spend.message);
       setPlayer(spend.state);
@@ -361,6 +361,7 @@ export default function App() {
           player={player}
           setPlayer={setPlayer}
           onStartGearTrial={() => startBattle('gear_trial')}
+          onStartAbyssMirror={() => startBattle('abyss_mirror')}
           onStartChapterBattle={startChapterBattle}
           onOpenFormation={() => openFormation('hub')}
           pushNotice={pushNotice}

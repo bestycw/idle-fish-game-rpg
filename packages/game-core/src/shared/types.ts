@@ -95,7 +95,8 @@ export const PAPER_DOLL_RIGHT: EquipSlot[] = [
 
 export const PAPER_DOLL_HANDS: EquipSlot[] = ['mainHand', 'offHand'];
 
-export type ActionKind = 'attack' | 'skill' | 'defend';
+/** 战中可选行动：普攻 + 招牌技能（无通用防御；承伤由坦克技能/站位负责） */
+export type ActionKind = 'attack' | 'skill';
 
 /** 力系 / 灵系（仙剑向双轴；显示名随皮） */
 export type DamageSchool = 'phys' | 'spirit';
@@ -213,6 +214,8 @@ export interface Equipment {
   rarity: Rarity;
   affixes: AffixInstance[];
   setId?: string;
+  /** 形态特技 id（III 档）；见 equipment/morphs.ts；互斥 1 条 */
+  morphId?: string;
 }
 
 export interface StatusInstance {
@@ -285,7 +288,6 @@ export interface UnitRuntime {
   qi: number;
   maxQi: number;
   skill: SkillDef;
-  defending: boolean;
   shield: number;
   statuses: StatusInstance[];
   rank: UnitRank;
@@ -346,6 +348,11 @@ export interface CharacterProgress {
   /** 角色当前经验（升级消耗） */
   exp: number;
   breakthroughTier: number;
+  /**
+   * 当前境界内已点小节点数（0～CULTIVATION_NODES_PER_TIER）。
+   * 破境后归零；累计战力按 tier×每境节点数+本字段折算。缺省按 0。
+   */
+  cultivationNodes?: number;
   star: number;
   /** 是否已拥有（抽卡解锁；未拥有不可上阵） */
   owned: boolean;
@@ -364,7 +371,7 @@ export interface PlayerCurrencies {
 }
 
 export interface PlayerState {
-  version: 9;
+  version: number;
   gold: number;
   inventory: Equipment[];
   equipped: Partial<Record<EquipSlot, string>>;
@@ -390,6 +397,10 @@ export interface PlayerState {
   chapterNodeIndex: number;
   /** 上次领取摸鱼补给的本地日 YYYY-MM-DD；未领过为 undefined */
   lastDailyClaimDay?: string;
+  /** 星尘兑碎片：上次兑换的本地日 */
+  stardustExchangeDay?: string;
+  /** 当日已兑次数（与 stardustExchangeDay 配对） */
+  stardustExchangesToday?: number;
 }
 
 export interface SaveAdapter {

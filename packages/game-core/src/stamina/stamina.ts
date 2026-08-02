@@ -6,7 +6,7 @@ export const STAMINA_MAX = 100;
 /** 恢复 1 点间隔（毫秒）· 6 分钟 */
 export const STAMINA_REGEN_MS = 6 * 60 * 1000;
 
-/** 猎装试炼开战消耗 */
+/** 猎装试炼开战消耗（与 DungeonDef.staminaCost 对齐；保留常量兼容 UI） */
 export const STAMINA_COST_GEAR = 10;
 
 /** 修炼塔爬一层消耗 */
@@ -14,6 +14,9 @@ export const STAMINA_COST_TOWER = 5;
 
 /** 星尘秘境单次消耗 */
 export const STAMINA_COST_STARDUST = 8;
+
+/** 镜渊试炼 */
+export const STAMINA_COST_ABYSS = 12;
 
 export type StaminaView = {
   current: number;

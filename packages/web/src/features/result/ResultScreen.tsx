@@ -1,4 +1,10 @@
-import { wearLoot, type BattleState, type Equipment, type PlayerState } from '@moyu/game-core';
+import {
+  setDisplayName,
+  wearLoot,
+  type BattleState,
+  type Equipment,
+  type PlayerState,
+} from '@moyu/game-core';
 import { BattleLog } from '../shared/battleLog';
 import { cn } from '@/lib/utils';
 import { rarityTone } from '@/lib/tones';
@@ -60,7 +66,9 @@ export function ResultScreen({
           <div className="font-display mt-1 text-xl">{lastLoot.name}</div>
           <p className="mt-2 text-sm text-muted-foreground">
             {lastLoot.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
-            {lastLoot.setId ? ` · ${lastLoot.setId}` : ''}
+            {lastLoot.setId
+              ? ` · [${setDisplayName(lastLoot.setId) ?? lastLoot.setId}]`
+              : ''}
           </p>
           <button
             type="button"

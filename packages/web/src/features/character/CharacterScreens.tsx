@@ -20,14 +20,18 @@ import {
   itemsForSlot,
   jobLabel,
   levelCapForTier,
+  listBreakthroughPerkRows,
   listGrowthTracks,
+  listStarTrackRows,
+  MAX_STAR,
   previewStarUp,
+  previewStardustExchange,
   ratingToPct,
   roleLabel,
   skillDisplayFor,
   sumEquipmentBonuses,
+  tryExchangeStardustForShard,
   unequipSlot,
-  unlockedStarNodes,
   type EquipSlot,
   type Equipment,
   type GrowthTrackId,
@@ -41,11 +45,9 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { rarityFrame, rarityFrameLocked, rarityTone } from '@/lib/tones';
 
-const MAX_STAR_DISPLAY = 5;
-
 type SheetTab = 'stats' | 'skill' | 'gear';
 
-function StarRow({ star, max = MAX_STAR_DISPLAY }: { star: number; max?: number }) {
+function StarRow({ star, max = MAX_STAR }: { star: number; max?: number }) {
   return (
     <span className="inline-flex gap-0.5 text-sm leading-none" aria-label={`星级 ${star}`}>
       {Array.from({ length: max }, (_, i) => (
@@ -98,6 +100,18 @@ export function CharacterSheet({
     () => (template ? previewStarUp(player, templateId) : null),
     [player, template, templateId],
   );
+  const dustExchange = useMemo(
+    () => (template ? previewStardustExchange(player, templateId) : null),
+    [player, template, templateId],
+  );
+  const starTrackRows = useMemo(
+    () => listStarTrackRows(templateId, progress?.star ?? 0),
+    [templateId, progress?.star],
+  );
+  const btRows = useMemo(
+    () => listBreakthroughPerkRows(templateId, progress?.breakthroughTier ?? 0),
+    [templateId, progress?.breakthroughTier],
+  );
   const skillInfo = useMemo(
     () => (template ? skillDisplayFor(templateId, player) : null),
     [player, template, templateId],
@@ -118,7 +132,6 @@ export function CharacterSheet({
   const baseSkill = getSkill(template.skillId);
   const spec = baseSkill ? skillSpecialty(baseSkill) : null;
   const cap = levelCapForTier(progress.breakthroughTier);
-  const unlocked = unlockedStarNodes(templateId, progress.star);
   const realm = breakthroughLabel(progress.breakthroughTier);
   const onField = player.formation[templateId] != null;
 
@@ -444,6 +457,40 @@ export function CharacterSheet({
                   );
                 })
               )}
+              {owned && dustExchange ? (
+                <button
+                  type="button"
+                  disabled={!dustExchange.ready}
+                  onClick={() => {
+                    setPlayer((p) => {
+                      const r = tryExchangeStardustForShard(p, templateId);
+                      notice(r.message);
+                      return r.ok ? r.state : p;
+                    });
+                  }}
+                  className={cn(
+                    'w-full rounded-xl border px-3 py-2 text-left transition',
+                    dustExchange.ready
+                      ? 'border-amber-500/40 bg-amber-500/10 hover:brightness-110'
+                      : 'cursor-not-allowed border-border/50 bg-card/30 opacity-70',
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="font-display text-base text-amber-200/90">
+                      星尘兑碎片
+                    </strong>
+                    <span className="font-mono text-[11px] text-amber-200/70">
+                      {dustExchange.dustHave}/{dustExchange.dustNeed} · 今日{' '}
+                      {dustExchange.exchangesToday}/{dustExchange.dailyLimit}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {dustExchange.ready
+                      ? `200 星尘 → 1 同名碎片（最多助到 ★${dustExchange.assistCap}）`
+                      : dustExchange.blockedReason}
+                  </p>
+                </button>
+              ) : null}
               {owned ? (
               <details className="rounded-lg border border-border/50 bg-card/20 px-2 py-1">
                 <summary className="cursor-pointer font-mono text-[10px] text-muted-foreground">
@@ -511,38 +558,87 @@ export function CharacterSheet({
                 · 倍率 {skill.multiplier}
                 {skill.statusLine ? ` · ${skill.statusLine}` : ''}
               </p>
+              {skill.effectsLine ? (
+                <p className="mt-1 text-sm text-muted-foreground">{skill.effectsLine}</p>
+              ) : null}
+              {skill.growthModLine ? (
+                <p className="mt-1.5 text-sm text-primary/90">养成修正 · {skill.growthModLine}</p>
+              ) : null}
+              {skill.morphLine ? (
+                <p className="mt-1 text-sm text-primary/90">装形态 · {skill.morphLine}</p>
+              ) : null}
               {skill.followUpLine ? (
-                <p className="mt-1.5 text-sm text-primary/90">成长 · {skill.followUpLine}</p>
+                <p className="mt-1 text-sm text-primary/90">连击 · {skill.followUpLine}</p>
               ) : (
-                <p className="mt-1.5 text-xs text-muted-foreground">成长 · 尚未点亮连击</p>
+                <p className="mt-1 text-xs text-muted-foreground">连击 · 尚未点亮</p>
               )}
-              {skill.nextFollowUpLine ? (
+              {skill.nextStarDiffLine ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">{skill.nextStarDiffLine}</p>
+              ) : skill.nextFollowUpLine ? (
                 <p className="mt-0.5 text-xs text-muted-foreground">{skill.nextFollowUpLine}</p>
               ) : null}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-border/70 bg-card/40 p-3">
-              <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
-                已点亮升星
-              </p>
-              {unlocked.length > 0 ? (
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain rounded-xl border border-border/70 bg-card/40 p-3">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
+                  升星轨 · ★{progress.star}/{MAX_STAR}
+                </p>
                 <ul className="mt-2 space-y-1.5 text-sm">
-                  {unlocked.map((n) => (
-                    <li key={n.star} className="flex gap-2">
-                      <span className="shrink-0 text-primary">★{n.star}</span>
-                      <span>{n.label}</span>
+                  {starTrackRows.map((n) => (
+                    <li
+                      key={n.star}
+                      className={cn(
+                        'flex gap-2',
+                        n.unlocked ? 'text-foreground' : 'text-muted-foreground/70',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'shrink-0',
+                          n.unlocked ? 'text-primary' : 'text-border',
+                        )}
+                      >
+                        ★{n.star}
+                      </span>
+                      <span>
+                        <span className={n.unlocked ? '' : 'opacity-80'}>{n.label}</span>
+                        <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
+                          {n.effectLine}
+                          {!n.unlocked ? ' · 未点亮' : ''}
+                        </span>
+                      </span>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {owned ? '尚未解锁升星节点' : '获得后升星点亮能力'}
+              </div>
+              <div className="border-t border-border/50 pt-2">
+                <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
+                  破境被动 · {realm}
                 </p>
-              )}
-              {starPreview?.node && owned ? (
-                <p className="mt-3 border-t border-border/50 pt-2 text-xs text-muted-foreground">
-                  下一星 · ★{starPreview.nextStar} {starPreview.node.label}
-                </p>
-              ) : null}
+                {btRows.unlocked.length > 0 ? (
+                  <ul className="mt-2 space-y-1.5 text-sm">
+                    {btRows.unlocked.map((p) => (
+                      <li key={`${p.tier}-${p.label}`} className="flex gap-2">
+                        <span className="shrink-0 text-teal-400/90">境{p.tier}</span>
+                        <span>
+                          {p.label}
+                          <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
+                            {p.effectLine}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">破境后解锁被动</p>
+                )}
+                {btRows.next ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    下一境 · {btRows.next.label}
+                    {btRows.next.effectLine ? ` · ${btRows.next.effectLine}` : ''}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         )}
@@ -686,8 +782,9 @@ export function CharacterList({
           <p className="font-mono text-[11px] tracking-[0.18em] text-primary/80">伙伴</p>
           <h2 className="font-display mt-1 text-2xl tracking-wide">全员一览</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            已有 {ownedCount}/{UNIT_TEMPLATES.length} · 修为 {player.currencies?.xiuwei ?? 0} · 星尘{' '}
-            {player.currencies?.stardust ?? 0}
+            全池 {UNIT_TEMPLATES.length} · 已拥有 {ownedCount}
+            {ownedCount < UNIT_TEMPLATES.length ? '（灰卡可预览，召唤/通关解锁）' : ''}
+            {' · '}修为 {player.currencies?.xiuwei ?? 0} · 星尘 {player.currencies?.stardust ?? 0}
           </p>
         </div>
         <div className="mt-1 flex shrink-0 flex-col items-end gap-1.5 sm:flex-row">

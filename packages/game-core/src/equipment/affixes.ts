@@ -21,8 +21,37 @@ export const AFFIX_DEFS: AffixDef[] = [
   { id: 'final_s', name: '终伤', stat: 'finalDmgRating', min: 3, max: 8 },
   { id: 'luck_s', name: '幸运', stat: 'fortune', min: 2, max: 6 },
   { id: 'dodge_s', name: '闪避', stat: 'dodge', min: 2, max: 5 },
+  { id: 'dodge_m', name: '飘忽', stat: 'dodge', min: 4, max: 8 },
   { id: 'leech_s', name: '吸血', stat: 'lifesteal', min: 2, max: 5 },
+  { id: 'leech_m', name: '噬血', stat: 'lifesteal', min: 4, max: 8 },
+  { id: 'cresist_s', name: '抗暴', stat: 'critResist', min: 3, max: 7 },
+  { id: 'cresist_m', name: '稳心', stat: 'critResist', min: 6, max: 12 },
+  { id: 'block_s', name: '格挡', stat: 'block', min: 2, max: 6 },
+  { id: 'block_m', name: '铁壁', stat: 'block', min: 5, max: 10 },
 ];
+
+/**
+ * 槽位词缀倾向（对齐 equipment.md）：权重越高越易滚到。
+ * 未列出的词缀默认 weight=1。
+ */
+export const SLOT_AFFIX_BIAS: Partial<Record<string, Partial<Record<string, number>>>> = {
+  mainHand: { patk_s: 3, patk_m: 3, satk_s: 2, satk_m: 2, crit_s: 3, crit_m: 2, cdmg_s: 3, final_s: 3 },
+  offHand: { pdef_s: 3, pdef_m: 2, sdef_s: 2, vers_s: 3, block_s: 3, block_m: 2 },
+  head: { hp_s: 3, hp_m: 2, mastery_s: 3, luck_s: 2 },
+  shoulder: { vers_s: 3, pdef_s: 2, sdef_s: 2 },
+  back: { vers_s: 3, dodge_s: 3, dodge_m: 2 },
+  chest: { hp_s: 3, hp_m: 3, pdef_s: 3, pdef_m: 2, sdef_s: 2 },
+  wrist: { crit_s: 3, crit_m: 2, haste_s: 3 },
+  hands: { patk_s: 3, satk_s: 2, final_s: 3, crit_s: 2 },
+  waist: { hp_s: 3, vers_s: 3, pdef_s: 2 },
+  legs: { pdef_s: 3, pdef_m: 2, hp_s: 2, sdef_s: 2 },
+  feet: { haste_s: 3, dodge_s: 3, spd_s: 2 },
+  neck: { mastery_s: 3, final_s: 3, satk_s: 2 },
+  finger1: { crit_s: 2, haste_s: 2, mastery_s: 2, luck_s: 2, leech_s: 2 },
+  finger2: { crit_s: 2, haste_s: 2, mastery_s: 2, luck_s: 2, cresist_s: 2 },
+  trinket1: { dodge_s: 2, dodge_m: 2, leech_s: 2, leech_m: 2, cresist_s: 2, block_s: 2, final_s: 2 },
+  trinket2: { dodge_s: 2, leech_s: 2, cresist_m: 2, block_m: 2, mastery_s: 2, luck_s: 2 },
+};
 
 export const SLOT_NAMES: Record<string, string> = {
   mainHand: '主手',

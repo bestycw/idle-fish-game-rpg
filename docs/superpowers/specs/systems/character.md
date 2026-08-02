@@ -2,7 +2,8 @@
 
 > 权威文档。归属系统骨架 §3.3 #3。  
 > **战斗**只消费本系统输出的「上阵单位」；**抽卡**写入持有并供给升星材料；**升级/破境/升星**为本系统成长子模块。  
-> **UI 定调：** 底栏称**伙伴**；列表展示**全池**（未获得灰显，点提示去召唤）；已有可进养成详情。
+> **UI 定调：** 底栏称**伙伴**；列表展示**全池**（未获得灰显，点提示去召唤）；已有可进养成详情。  
+> **新卡技能/星章怎么写：** [skill-design-spec](../2026-08-02-skill-design-spec.md)。架构管道见 [character-foundation](../2026-08-02-character-foundation-design.md)。
 
 ## 边界
 
@@ -63,7 +64,7 @@
 
 | jobId | 中性默认名 | 主绑 role | 可兼 role | 招牌特色（引擎侧） |
 |-------|------------|-----------|-----------|-------------------|
-| `vanguard` | **盾卫** | `tank` | — | 前排；`guard`/护盾；残血更爱防御 |
+| `vanguard` | **盾卫** | `tank` | — | 前排；招牌 `guard`/护盾承伤（无通用防御行动） |
 | `assassin` | **刺客** | `st_burst` | — | **穿透**切中后排；常挂流血 |
 | `ranger` | **射手** | `st_burst` | — | 远程点杀；穿透 + **残血加权**；暴击向 |
 | `mage` | **法师** | `aoe_dps` | — | 形状攻（常 `row_*` / `all`）；偏清排/清杂 |
@@ -83,32 +84,28 @@
 
 ## 初期人物表
 
-### 4.10 初期人物表（公版换代 · 2026-08-01）
+### 4.10 卡池人物表（公版 · 现行 24）
 
 > **出战上限 5** = 主角 + 最多 4 张卡。  
 > 默认上阵：主角 / 张飞 / 赵云 / 孙悟空 / 华佗。  
-> 权威实现设计：[public-domain-roster-design](../2026-08-01-public-domain-roster-design.md)。  
+> **完整名单与数值以代码为准：** `packages/game-core/src/character/templates.ts`（**24** = 主角 + 23）。  
+> **新卡技能/星章写法：** [skill-design-spec](../2026-08-02-skill-design-spec.md)。  
 > **卡面名可换皮**；**role / jobId / skillId** 以代码模板为准。  
-> 副属性为初始评级；maxQi=100。存档 **v9**（旧占位卡作废）。
+> 存档 **v10**（v9 去旧占位；v10 扩池补齐）。换代决策史：[public-domain-roster](../2026-08-01-public-domain-roster-design.md)（归档）。
 
-| id | 名 | rarity | role | job | skillId | 要点 | 耗 | 默认上阵 |
-|----|-----|--------|------|-----|---------|------|-----|----------|
-| hero | 主角 | 绝品 | `flex` | 行者 | skill_hero_strike | purge | 50 | ✓ |
-| zhangfei | 张飞 | 珍品 | `tank` | 盾卫 | skill_zhangfei_roar | stun | 45 | ✓ |
-| zhaoyun | 赵云 | 绝品 | `st_burst` | 刺客 | skill_zhaoyun_longdan | pierce+bleed | 55 | ✓ |
-| wukong | 孙悟空 | 绝品 | `aoe_dps` | 法师 | skill_wukong_sweep | row_front | 55 | ✓ |
-| huatuo | 华佗 | 良品 | `st_heal` | 治疗 | skill_huatuo_qingnang | heal+cleanse | 45 | ✓ |
-| houyi | 后羿 | 珍品 | `st_burst` | 射手 | skill_houyi_luori | pierce·残血 | 55 | 可抽 |
-| heracles | 赫拉克勒斯 | 良品 | `tank` | 盾卫 | skill_heracles_hide | guard+shield | 45 | 可抽 |
-| zhuge | 诸葛亮 | 绝品 | `group_amp` | 辅助 | skill_zhuge_qimen | shred | 50 | 章解锁 |
-| baigujing | 白骨精 | 珍品 | `aoe_ctrl` | 术士 | skill_baigujing_huagu | aoe+havoc | 50 | 章解锁 |
-| medusa | 美杜莎 | 珍品 | `st_ctrl` | 术士 | skill_medusa_gaze | stun | 50 | 章解锁 |
-| athena | 雅典娜 | 珍品 | `aoe_heal` | 治疗 | skill_athena_aegis | 群体 heal | 50 | 章解锁 |
+**开局五人（摘要）：**
 
-> **9 职能已盖全。** 新卡优先改模板/技能表，禁止改战斗主循环。  
-> 实现微调：华佗=单疗、雅典娜=群疗（盖全 st_heal / aoe_heal）；诸葛亮独扛群增幅。
+| id | 名 | role | skill 要点 |
+|----|-----|------|------------|
+| hero | 主角 | `flex` | purge |
+| zhangfei | 张飞 | `tank` | stun |
+| zhaoyun | 赵云 | `st_burst` | pierce+bleed |
+| wukong | 孙悟空 | `aoe_dps` | row_front |
+| huatuo | 华佗 | `st_heal` | heal+cleanse |
 
-初始评级见代码 `templates.ts`（与 design 草案对齐，可调）。
+**其余可抽/章锁（id）：** houyi, heracles, zhuge, baigujing, medusa, athena, guanyu, lvbu, dianwei, nezha, daji, yangjian, change, thor, robin, arthur, xishi, sunbin, beowulf。
+
+> **9 职能已盖全。** 新卡走 skill-design-spec 填表 → 改模板/技能/星轨，禁止改战斗主循环。
 
 **敌方异常 / 遭遇：** 见 [dungeon.md](./dungeon.md) 与 [combat.md](./combat.md)。
 
@@ -132,8 +129,8 @@
 
 ## 成长子模块（本阶段完成 · C1）
 
-> **实现设计：** [`2026-07-29-character-module-complete-design.md`](../2026-07-29-character-module-complete-design.md)  
-> 数值曲线仍可调：[`2026-07-20-character-growth-draft.md`](../2026-07-20-character-growth-draft.md)。  
+> **权威在本文 + 代码。** C1 实现史（归档）：[character-module-complete](../2026-07-29-character-module-complete-design.md)。  
+> **下一层管道：** [character-foundation](../2026-08-02-character-foundation-design.md)；**技能/星章内容：** [skill-design-spec](../2026-08-02-skill-design-spec.md)。  
 > 面板骨架 → [character-panel-wow-layout](../2026-07-20-character-panel-wow-layout.md)；爬塔 → [dungeon.md](./dungeon.md)。
 
 | 项 | 状态 |
@@ -141,12 +138,14 @@
 | GrowthTrack 注册表 | ✅ level / breakthrough / star；awaken/bond 预留 disabled |
 | BreakthroughDisplay | ✅ 与消耗/cap 分表 |
 | StarNode stack | ✅；特例赵云★3 / 孙悟空★3 |
-| 正式图鉴 / 扩池至 16–24 / 觉醒可玩 | 后置；**本批公版 11 卡（主角+10）已落地** |
+| 正式图鉴 / 觉醒可玩 | 后置；**公版已 24 卡（主角+23）** |
+| composeSkill 地基 | ✅ F1–F5；见 [foundation](../2026-08-02-character-foundation-design.md) |
 
 | 指针 | |
 |------|--|
 | 三轴 | GrowthTrack → `growthTracks.ts` |
-| 升星 | 碎片优先再星尘；`skillWithGrowth` + stack 节点 |
+| 升星 | ★1–★6；每卡个性轨（`starTracks`）；`skillWithGrowth` → `composeSkill`；消耗见 [gacha §3.1](./gacha.md)（★1–3×1 / ★4–5×2 / ★6×3 碎片） |
+| 破境 | 每境 4 小节点（修为）满后破境；抬 cap + 被动（`breakthroughPerks`）；修为仅塔 · [xiuwei-cultivation](../2026-08-02-xiuwei-cultivation-design.md) |
 | 修为来源 | 修炼塔薄壳 → dungeon |
 | 构筑总图 | [build-dual-core-design](../2026-07-21-build-dual-core-design.md) |
 

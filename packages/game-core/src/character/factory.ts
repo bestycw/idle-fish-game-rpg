@@ -5,6 +5,7 @@ import type {
   UnitTemplate,
 } from '../shared/types.js';
 import { defaultProgress, deriveGrowthStats, skillWithGrowth } from './growth.js';
+import type { SkillComposeContext } from './skillCompose.js';
 
 let uidSeq = 0;
 
@@ -12,6 +13,7 @@ export function createUnitFromTemplate(
   template: UnitTemplate,
   slot: GridSlot,
   progress?: CharacterProgress,
+  composeCtx?: SkillComposeContext,
 ): UnitRuntime {
   uidSeq += 1;
   const prog = progress ?? defaultProgress(template.id);
@@ -45,8 +47,7 @@ export function createUnitFromTemplate(
     block: g.block,
     qi: template.maxQi,
     maxQi: template.maxQi,
-    skill: skillWithGrowth(template, prog),
-    defending: false,
+    skill: skillWithGrowth(template, prog, composeCtx),
     shield: 0,
     statuses: [],
     rank: 'normal',

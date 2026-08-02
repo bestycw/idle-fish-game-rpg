@@ -1,27 +1,33 @@
 import { rowLabel, rowOf } from '../formation/grid.js';
 import type { GridSlot, PlayerState, UnitTemplate } from '../shared/types.js';
+import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
 import {
   deriveGrowthStats,
   getProgress,
   isOwned,
+  listBreakthroughPerks,
+  MAX_STAR,
+  nextBreakthroughPerk,
   resolveStarNode,
-  SHARED_STAR_NODES,
+  skillDiffLines,
   skillWithGrowth,
-  starCost,
+  starShardCost,
+  summarizeStarEffect,
   type DerivedGrowthStats,
   type StarNodeDef,
 } from './growth.js';
+import { getSkill } from './skills.js';
 import { jobLabel, roleLabel } from './labels.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
+import { previewStardustExchange } from './stardustExchange.js';
 
 export interface StarUpPreview {
   nextStar: number;
   node?: StarNodeDef;
-  /** 碎片优先 */
-  costKind: 'shard' | 'stardust' | 'max' | 'unowned';
+  /** 升星只吃碎片；不足为 need_shard */
+  costKind: 'shard' | 'need_shard' | 'max' | 'unowned';
   shardsHave: number;
-  stardustHave: number;
-  stardustNeed: number;
+  shardsNeed: number;
   /** 属性 diff 一句 */
   attrDiffLine: string;
   /** 节点能力一句 */
@@ -63,18 +69,7 @@ function summarizeAttrDiff(before: DerivedGrowthStats, after: DerivedGrowthStats
 }
 
 function effectSummary(node: StarNodeDef): string {
-  const bits: string[] = [];
-  for (const fx of node.effects) {
-    if (fx.kind === 'stat_pct') bits.push(`主属性+${Math.round(fx.mainPct * 100)}%`);
-    if (fx.kind === 'rare_stat') {
-      const name =
-        fx.stat === 'lifesteal' ? '吸血' : fx.stat === 'dodge' ? '闪避' : '格挡';
-      bits.push(`${name}+${Math.round(fx.value * 100)}%`);
-    }
-    if (fx.kind === 'enable_follow_up') {
-      bits.push(`连击${Math.round(fx.chance * 100)}%×${fx.multiplier ?? 1}`);
-    }
-  }
+  const bits = node.effects.map(summarizeStarEffect).filter(Boolean);
   return bits.join(' · ') || node.label;
 }
 
@@ -82,18 +77,16 @@ function effectSummary(node: StarNodeDef): string {
 export function previewStarUp(state: PlayerState, templateId: string): StarUpPreview {
   const template = getTemplate(templateId);
   const progress = getProgress(state, templateId);
-  const maxStar = Math.max(...SHARED_STAR_NODES.map((n) => n.star));
+  const maxStar = MAX_STAR;
   const shardsHave = progress.cardShards ?? 0;
-  const stardustHave = state.currencies?.stardust ?? 0;
-  const stardustNeed = starCost(progress.star);
+  const shardsNeed = starShardCost(progress.star);
 
   if (!isOwned(state, templateId) || !template) {
     return {
       nextStar: progress.star + 1,
       costKind: 'unowned',
       shardsHave,
-      stardustHave,
-      stardustNeed,
+      shardsNeed,
       attrDiffLine: '',
       nodeLine: '召唤解锁后可升星',
       ready: false,
@@ -104,8 +97,7 @@ export function previewStarUp(state: PlayerState, templateId: string): StarUpPre
       nextStar: progress.star,
       costKind: 'max',
       shardsHave,
-      stardustHave,
-      stardustNeed,
+      shardsNeed: 0,
       attrDiffLine: '',
       nodeLine: '已达星级上限',
       ready: false,
@@ -116,20 +108,21 @@ export function previewStarUp(state: PlayerState, templateId: string): StarUpPre
   const node = resolveStarNode(templateId, nextStar);
   const before = deriveGrowthStats(template, progress);
   const after = deriveGrowthStats(template, { ...progress, star: nextStar });
-  const useShard = shardsHave >= 1;
+  const useShard = shardsHave >= shardsNeed;
 
   return {
     nextStar,
     node,
-    costKind: useShard ? 'shard' : 'stardust',
+    costKind: useShard ? 'shard' : 'need_shard',
     shardsHave,
-    stardustHave,
-    stardustNeed,
+    shardsNeed,
     attrDiffLine: summarizeAttrDiff(before, after),
     nodeLine: node ? `解锁「${node.label}」· ${effectSummary(node)}` : `升至 ★${nextStar}`,
-    ready: useShard || stardustHave >= stardustNeed,
+    ready: useShard,
   };
 }
+
+export { previewStardustExchange };
 
 export interface SkillDisplayInfo {
   name: string;
@@ -138,10 +131,69 @@ export interface SkillDisplayInfo {
   damageSchool?: string;
   multiplier: number;
   statusLine: string;
+  effectsLine: string | null;
   followUpLine: string | null;
   nextFollowUpLine: string | null;
+  /** 相对底板的养成修正（多行拼一句） */
+  growthModLine: string | null;
+  /** 下一星相对当前的技能变化 */
+  nextStarDiffLine: string | null;
+  /** 装备形态修正一句 */
+  morphLine: string | null;
   roleLine: string;
   jobLine: string;
+}
+
+export interface StarTrackRow {
+  star: number;
+  label: string;
+  effectLine: string;
+  unlocked: boolean;
+}
+
+/** ★1–MAX 全轨预览（未解锁也列出，促抽/升星） */
+export function listStarTrackRows(templateId: string, star: number): StarTrackRow[] {
+  const rows: StarTrackRow[] = [];
+  for (let s = 1; s <= MAX_STAR; s += 1) {
+    const node = resolveStarNode(templateId, s);
+    if (!node) continue;
+    rows.push({
+      star: s,
+      label: node.label,
+      effectLine: effectSummary(node),
+      unlocked: s <= star,
+    });
+  }
+  return rows;
+}
+
+export interface BreakthroughPerkRow {
+  tier: number;
+  label: string;
+  effectLine: string;
+  unlocked: boolean;
+}
+
+export function listBreakthroughPerkRows(
+  templateId: string,
+  tier: number,
+): { unlocked: BreakthroughPerkRow[]; next: BreakthroughPerkRow | null } {
+  const unlocked = listBreakthroughPerks(templateId, tier).map((p) => ({
+    tier: p.tier,
+    label: p.label,
+    effectLine: p.effects.map(summarizeStarEffect).filter(Boolean).join(' · '),
+    unlocked: true as const,
+  }));
+  const nextPerk = nextBreakthroughPerk(templateId, tier);
+  const next = nextPerk
+    ? {
+        tier: nextPerk.tier,
+        label: nextPerk.label,
+        effectLine: nextPerk.effects.map(summarizeStarEffect).filter(Boolean).join(' · '),
+        unlocked: false,
+      }
+    : null;
+  return { unlocked, next };
 }
 
 function followUpText(fu: { chance: number; multiplier?: number } | undefined): string | null {
@@ -149,35 +201,67 @@ function followUpText(fu: { chance: number; multiplier?: number } | undefined): 
   return `连击 ${Math.round(fu.chance * 100)}% · 倍率×${fu.multiplier ?? 1}`;
 }
 
+function statusText(skill: { applyStatus: { statusId: string; layers?: number; duration?: number }[] }): string {
+  if (skill.applyStatus.length === 0) return '';
+  return skill.applyStatus
+    .map((s) => {
+      const bits = [s.statusId];
+      if (s.layers != null) bits.push(`×${s.layers}`);
+      if (s.duration != null) bits.push(`${s.duration}回`);
+      return bits.join('');
+    })
+    .join(' · ');
+}
+
 export function skillDisplayFor(templateId: string, state: PlayerState): SkillDisplayInfo | null {
   const template = getTemplate(templateId);
   if (!template) return null;
   const progress = getProgress(state, templateId);
-  const skill = skillWithGrowth(template, progress);
-  const derived = deriveGrowthStats(template, progress);
-  const nextNode = resolveStarNode(templateId, progress.star + 1);
+  const equipMods = listEquipmentSkillModifiers(state);
+  const composeCtx = { extraModifiers: equipMods };
+  const base = getSkill(template.skillId);
+  const skill = skillWithGrowth(template, progress, composeCtx);
+  const growthOnly = skillWithGrowth(template, progress);
+  const diffVsBase = skillDiffLines(base, growthOnly);
+  const morphBits = equipMods.map((m) => m.label).filter(Boolean) as string[];
+
   let nextFollowUpLine: string | null = null;
-  if (nextNode) {
+  let nextStarDiffLine: string | null = null;
+  const nextNode = resolveStarNode(templateId, progress.star + 1);
+  if (nextNode && progress.star < MAX_STAR) {
     const nextProgress = { ...progress, star: progress.star + 1 };
-    const nextDerived = deriveGrowthStats(template, nextProgress);
-    if (
-      nextDerived.followUp &&
-      (!derived.followUp ||
-        nextDerived.followUp.chance !== derived.followUp.chance ||
-        nextDerived.followUp.multiplier !== derived.followUp.multiplier)
+    const nextSkill = skillWithGrowth(template, nextProgress, composeCtx);
+    const nextDiff = skillDiffLines(skill, nextSkill);
+    if (nextDiff.length) {
+      nextStarDiffLine = `下一星 · ${nextDiff.join(' · ')}`;
+    }
+    if (!skill.followUp && nextSkill.followUp) {
+      nextFollowUpLine = `下一星 · ${followUpText(nextSkill.followUp)}`;
+    } else if (
+      skill.followUp &&
+      nextSkill.followUp &&
+      (skill.followUp.chance !== nextSkill.followUp.chance ||
+        skill.followUp.multiplier !== nextSkill.followUp.multiplier)
     ) {
-      nextFollowUpLine = `下一星 · ${followUpText(nextDerived.followUp)}`;
+      nextFollowUpLine = `下一星 · ${followUpText(nextSkill.followUp)}`;
     }
   }
+
+  const fx = skill.effects?.map((e) => e.kind).join(' · ') ?? null;
+
   return {
     name: skill.name,
     qiCost: skill.qiCost,
     targetPattern: skill.targetPattern,
     damageSchool: skill.damageSchool,
-    multiplier: skill.multiplier,
-    statusLine: skill.applyStatus[0] ? `附带 ${skill.applyStatus[0].statusId}` : '',
-    followUpLine: followUpText(derived.followUp ?? skill.followUp),
+    multiplier: Math.round(skill.multiplier * 100) / 100,
+    statusLine: statusText(skill) ? `附带 ${statusText(skill)}` : '',
+    effectsLine: fx ? `效果 ${fx}` : null,
+    followUpLine: followUpText(skill.followUp),
     nextFollowUpLine,
+    growthModLine: diffVsBase.length > 0 ? diffVsBase.join(' · ') : null,
+    nextStarDiffLine,
+    morphLine: morphBits.length > 0 ? morphBits.join(' · ') : null,
     roleLine: roleLabel(template.role),
     jobLine: jobLabel(template.job),
   };
