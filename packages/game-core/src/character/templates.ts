@@ -1,7 +1,11 @@
 import type { UnitTemplate } from '../shared/types.js';
+import { EXPAND_TEMPLATES } from './roster/buildExpand.js';
 
-/** 公版卡池：主角 + 10（见 2026-08-01-public-domain-roster-design） */
-export const UNIT_TEMPLATES: UnitTemplate[] = [
+/**
+ * 核心 24（含主角）：其中 20 深做技能/星章，4 张暂回落共用星轨。
+ * 扩展 76：职能占位技 + 共用星轨。合计 100。
+ */
+export const CORE_TEMPLATES: UnitTemplate[] = [
   {
     id: 'hero',
     name: '主角',
@@ -559,6 +563,34 @@ export const UNIT_TEMPLATES: UnitTemplate[] = [
     skillId: 'skill_beowulf_grip',
   },
 ];
+
+/** 首发深做 20（不含暂不深做的 beowulf/robin/change/sunbin） */
+export const DEEP_TEMPLATE_IDS = [
+  'hero',
+  'zhaoyun',
+  'guanyu',
+  'zhangfei',
+  'lvbu',
+  'dianwei',
+  'wukong',
+  'nezha',
+  'yangjian',
+  'huatuo',
+  'zhuge',
+  'baigujing',
+  'daji',
+  'houyi',
+  'athena',
+  'medusa',
+  'heracles',
+  'thor',
+  'arthur',
+  'xishi',
+] as const;
+
+export const STUB_CORE_IDS = ['beowulf', 'robin', 'change', 'sunbin'] as const;
+
+export const UNIT_TEMPLATES: UnitTemplate[] = [...CORE_TEMPLATES, ...EXPAND_TEMPLATES];
 
 export function getTemplate(id: string): UnitTemplate | undefined {
   return UNIT_TEMPLATES.find((t) => t.id === id);

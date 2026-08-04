@@ -84,14 +84,14 @@
 
 ## 初期人物表
 
-### 4.10 卡池人物表（公版 · 现行 24）
+### 4.10 卡池人物表（公版 · 现行 100）
 
 > **出战上限 5** = 主角 + 最多 4 张卡。  
 > 默认上阵：主角 / 张飞 / 赵云 / 孙悟空 / 华佗。  
-> **完整名单与数值以代码为准：** `packages/game-core/src/character/templates.ts`（**24** = 主角 + 23）。  
+> **完整名单以代码为准：** `CORE_TEMPLATES`（24）+ `EXPAND_ROSTER`（76）= **100**。  
+> **结构：** [roster-100](../2026-08-02-roster-100-design.md)——**20 深做** / 4 核心暂缓 / 76 占位。  
 > **新卡技能/星章写法：** [skill-design-spec](../2026-08-02-skill-design-spec.md)。  
-> **卡面名可换皮**；**role / jobId / skillId** 以代码模板为准。  
-> 存档 **v10**（v9 去旧占位；v10 扩池补齐）。换代决策史：[public-domain-roster](../2026-08-01-public-domain-roster-design.md)（归档）。
+> 存档 **v10**；换代史：[public-domain-roster](../2026-08-01-public-domain-roster-design.md)（归档）。
 
 **开局五人（摘要）：**
 
@@ -103,7 +103,7 @@
 | wukong | 孙悟空 | `aoe_dps` | row_front |
 | huatuo | 华佗 | `st_heal` | heal+cleanse |
 
-**其余可抽/章锁（id）：** houyi, heracles, zhuge, baigujing, medusa, athena, guanyu, lvbu, dianwei, nezha, daji, yangjian, change, thor, robin, arthur, xishi, sunbin, beowulf。
+**深做 20 / 暂缓 4 / 扩展解锁：** 见 roster-100 与 `chapter/defs` 的 `expandIdsByUnlock`。
 
 > **9 职能已盖全。** 新卡走 skill-design-spec 填表 → 改模板/技能/星轨，禁止改战斗主循环。
 
@@ -116,7 +116,7 @@
 
 | rarity | 中性名 | UI 框色倾向 | 示例卡 |
 |--------|--------|-------------|--------|
-| `common` | 凡品 | 中性边 | （预留） |
+| `common` | 凡品 | 中性边 | 扩展占位（孟获/沙僧等） |
 | `rare` | 良品 | 青蓝 | 华佗 / 赫拉克勒斯 |
 | `epic` | 珍品 | 品红 | 张飞 / 后羿 / 白骨精 / 美杜莎 / 雅典娜 |
 | `legendary` | 绝品 | 琥珀金 | 主角 / 赵云 / 孙悟空 / 诸葛亮 |
@@ -138,13 +138,13 @@
 | GrowthTrack 注册表 | ✅ level / breakthrough / star；awaken/bond 预留 disabled |
 | BreakthroughDisplay | ✅ 与消耗/cap 分表 |
 | StarNode stack | ✅；特例赵云★3 / 孙悟空★3 |
-| 正式图鉴 / 觉醒可玩 | 后置；**公版已 24 卡（主角+23）** |
+| 正式图鉴 / 觉醒可玩 | 后置；**公版已 100 卡（20 深做）** |
 | composeSkill 地基 | ✅ F1–F5；见 [foundation](../2026-08-02-character-foundation-design.md) |
 
 | 指针 | |
 |------|--|
 | 三轴 | GrowthTrack → `growthTracks.ts` |
-| 升星 | ★1–★6；每卡个性轨（`starTracks`）；`skillWithGrowth` → `composeSkill`；消耗见 [gacha §3.1](./gacha.md)（★1–3×1 / ★4–5×2 / ★6×3 碎片） |
+| 升星 | 数据轨 ★1–★6；**可玩上限按品级** 凡★3 / 良★4 / 珍★5 / 绝★6（`maxStarForRarity`）；消耗见 [gacha §3.1](./gacha.md) |
 | 破境 | 每境 4 小节点（修为）满后破境；抬 cap + 被动（`breakthroughPerks`）；修为仅塔 · [xiuwei-cultivation](../2026-08-02-xiuwei-cultivation-design.md) |
 | 修为来源 | 修炼塔薄壳 → dungeon |
 | 构筑总图 | [build-dual-core-design](../2026-07-21-build-dual-core-design.md) |

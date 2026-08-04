@@ -42,7 +42,7 @@
 | 骨架总览 | [systems-overview.md](./systems-overview.md) | 主循环 + §3.7 扩展登记 |
 | 战斗 | [systems/combat.md](./systems/combat.md) | **纯战斗**；刀一/刀二不含套装 |
 | 布阵 | [systems/formation.md](./systems/formation.md) | 九宫、出战≤5 |
-| 人物/卡池 | [systems/character.md](./systems/character.md) | 伙伴；role/job；**24 卡**；名单以代码为准 |
+| 人物/卡池 | [systems/character.md](./systems/character.md) | 伙伴；role/job；**100 卡**（20 深做）；名单以代码为准 |
 | 装备 | [systems/equipment.md](./systems/equipment.md) | 槽位、词缀；套装子模块 |
 | 抽卡 | [systems/gacha.md](./systems/gacha.md) | B1 已落地 |
 | 副本/遭遇 | [systems/dungeon.md](./systems/dungeon.md) | 猎装 + 塔 + 星尘 + 镜渊 |
@@ -62,7 +62,9 @@
 
 | 切片 | 文件 | 地位 |
 |------|------|------|
+| 卡池 100 | [2026-08-02-roster-100-design.md](./2026-08-02-roster-100-design.md) | **100 挂池**；20 深做 / 76 占位 |
 | 技能设计规范 | [2026-08-02-skill-design-spec.md](./2026-08-02-skill-design-spec.md) | **内容规范**：母题→招牌→六星章 |
+| 系数带与命中 | [2026-08-03-skill-coeff-and-status-hit-design.md](./2026-08-03-skill-coeff-and-status-hit-design.md) | 职责系数带；Debuff 双层命中；技能页可读 |
 | 能力池总表 | [2026-08-02-ability-pool-catalog.md](./2026-08-02-ability-pool-catalog.md) | **≥100 原子**；星章/装形态从池拼装 |
 | 修为/境界盘 | [2026-08-02-xiuwei-cultivation-design.md](./2026-08-02-xiuwei-cultivation-design.md) | 小节点×4 + 破境；修为仅塔 |
 | 人物系统地基 | [2026-08-02-character-foundation-design.md](./2026-08-02-character-foundation-design.md) | **F1–F5 已落地**：compose + Bundle + 血刃示范 |
@@ -83,7 +85,7 @@
 | 旧单体规格 | [2026-07-19-moyu-xiuxian-design.md](./2026-07-19-moyu-xiuxian-design.md) | 仅跳转入口 |
 | 人物成长草案 | [2026-07-20-character-growth-draft.md](./2026-07-20-character-growth-draft.md) | 被 C1 + character 吸收 |
 | 人物 C1 做透 | [2026-07-29-character-module-complete-design.md](./2026-07-29-character-module-complete-design.md) | 已落地；细则认 character |
-| 公版卡池换代 | [2026-08-01-public-domain-roster-design.md](./2026-08-01-public-domain-roster-design.md) | 已落地（v9 换代）；现池 **24** 认代码 |
+| 公版卡池换代 | [2026-08-01-public-domain-roster-design.md](./2026-08-01-public-domain-roster-design.md) | 归档；现池认 [roster-100](./2026-08-02-roster-100-design.md) |
 | Plan：竖切里程碑 | [../plans/2026-07-19-vertical-slice.md](../plans/2026-07-19-vertical-slice.md) | 索引；进度认 tracking |
 | Plan：刀一 attrs/qi | [../plans/2026-07-19-attrs-and-qi.md](../plans/2026-07-19-attrs-and-qi.md) | 已完成归档 |
 

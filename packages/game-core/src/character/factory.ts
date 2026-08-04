@@ -53,6 +53,7 @@ export function createUnitFromTemplate(
     rank: 'normal',
     ccDr: {},
     statusApplyCounts: {},
+    skillCastCount: 0,
     focusPolicy: template.focusPolicy,
   };
 }

@@ -1,6 +1,8 @@
 import type { SkillDef } from '../shared/types.js';
+import { DEEP_SKILL_OVERRIDES } from './deepKits.js';
+import { EXPAND_SKILLS } from './roster/buildExpand.js';
 
-export const SKILLS: Record<string, SkillDef> = {
+const CORE_SKILLS_BASE: Record<string, SkillDef> = {
   skill_hero_strike: {
     id: 'skill_hero_strike',
     name: '斩击',
@@ -20,9 +22,11 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.zhangfei_roar',
     targetPattern: 'single',
     tags: ['damage'],
-    multiplier: 0.85,
+    /** 当阳断喝：先声夺人；星章开结界/还元；硬控带 ≥1.05 */
+    multiplier: 1.15,
     qiCost: 45,
     applyStatus: [{ statusId: 'stun', duration: 1 }],
+    effects: [{ kind: 'first_cast', multiplier: 1.4 }],
     damageSchool: 'phys',
     aiWeight: 0.5,
   },
@@ -32,9 +36,11 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.zhaoyun_longdan',
     targetPattern: 'single',
     tags: ['pierce', 'damage'],
+    /** 穿后排点杀；星章开猎印/斩杀/还元 */
     multiplier: 2.05,
     qiCost: 55,
     applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
+    effects: [{ kind: 'vs_shield', multiplier: 1.25 }],
     damageSchool: 'phys',
     aiWeight: 0.65,
   },
@@ -57,10 +63,14 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.huatuo_qingnang',
     targetPattern: 'single',
     tags: ['heal', 'cleanse'],
+    /** 妙手回春；星章开残血加疗/回能 */
     multiplier: 1.4,
     qiCost: 45,
     applyStatus: [],
-    effects: [{ kind: 'cleanse' }],
+    effects: [
+      { kind: 'cleanse' },
+      { kind: 'heal_low_hp', value: 0.4, multiplier: 1.35 },
+    ],
     damageSchool: 'spirit',
     aiWeight: 0.75,
   },
@@ -97,10 +107,11 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.zhuge_qimen',
     targetPattern: 'single',
     tags: ['damage'],
-    multiplier: 0.5,
+    /** 辅助破甲带 0.9～1.2 */
+    multiplier: 0.95,
     qiCost: 50,
-    /** 更狠破甲、略降直伤——放大器身份 */
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.68 }],
+    /** 深破甲：盾墙/铁壁关解法核；持续略长以便队友吃满窗口 */
+    applyStatus: [{ statusId: 'shred', duration: 3, value: 0.55 }],
     damageSchool: 'spirit',
     aiWeight: 0.55,
   },
@@ -110,7 +121,8 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.baigujing_huagu',
     targetPattern: 'row_front',
     tags: ['aoe', 'damage'],
-    multiplier: 0.7,
+    /** 群控硬控带；每人系数 */
+    multiplier: 1.1,
     qiCost: 50,
     applyStatus: [{ statusId: 'havoc', duration: 1 }],
     damageSchool: 'spirit',
@@ -122,7 +134,8 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.medusa_gaze',
     targetPattern: 'single',
     tags: ['damage'],
-    multiplier: 0.55,
+    /** 硬控带 ≥1.05 */
+    multiplier: 1.15,
     qiCost: 50,
     applyStatus: [{ statusId: 'stun', duration: 1 }],
     damageSchool: 'spirit',
@@ -186,7 +199,8 @@ export const SKILLS: Record<string, SkillDef> = {
     tags: ['pierce', 'damage'],
     multiplier: 1.7,
     qiCost: 50,
-    applyStatus: [{ statusId: 'bleed', duration: 2, layers: 1 }],
+    /** 穿甲灼锋：与赵云流血 / 后羿点残错开 */
+    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.85 }],
     damageSchool: 'phys',
     aiWeight: 0.65,
   },
@@ -196,7 +210,7 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.daji_charm',
     targetPattern: 'row_front',
     tags: ['aoe', 'damage'],
-    multiplier: 0.55,
+    multiplier: 1.1,
     qiCost: 50,
     applyStatus: [{ statusId: 'havoc', duration: 1 }],
     damageSchool: 'spirit',
@@ -234,7 +248,7 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.thor_hammer',
     targetPattern: 'row_front',
     tags: ['aoe', 'damage'],
-    multiplier: 1.1,
+    multiplier: 1.2,
     qiCost: 55,
     applyStatus: [{ statusId: 'stun', duration: 1 }],
     damageSchool: 'phys',
@@ -271,7 +285,8 @@ export const SKILLS: Record<string, SkillDef> = {
     nameKey: 'skill.xishi_chenyu',
     targetPattern: 'single',
     tags: ['damage'],
-    multiplier: 0.45,
+    /** 硬控沉眠带 ≥1.05 */
+    multiplier: 1.1,
     qiCost: 50,
     applyStatus: [{ statusId: 'sleep', duration: 2 }],
     damageSchool: 'spirit',
@@ -428,6 +443,27 @@ export const SKILLS: Record<string, SkillDef> = {
     damageSchool: 'spirit',
     aiWeight: 0.35,
   },
+};
+
+function applyDeepOverrides(base: Record<string, SkillDef>): Record<string, SkillDef> {
+  const out: Record<string, SkillDef> = { ...base };
+  for (const [id, patch] of Object.entries(DEEP_SKILL_OVERRIDES)) {
+    const cur = out[id];
+    if (!cur) continue;
+    out[id] = {
+      ...cur,
+      ...patch,
+      applyStatus: (patch.applyStatus ?? cur.applyStatus).map((s) => ({ ...s })),
+      tags: [...(patch.tags ?? cur.tags)],
+      effects: (patch.effects ?? cur.effects)?.map((e) => ({ ...e })),
+    };
+  }
+  return out;
+}
+
+export const SKILLS: Record<string, SkillDef> = {
+  ...applyDeepOverrides(CORE_SKILLS_BASE),
+  ...EXPAND_SKILLS,
 };
 
 export function getSkill(id: string): SkillDef {

@@ -1,12 +1,26 @@
-import { rowLabel, rowOf } from '../formation/grid.js';
-import type { GridSlot, PlayerState, UnitTemplate } from '../shared/types.js';
+import {
+  markPreyValueWithMastery,
+  shredValueWithMastery,
+  statusLandChance,
+} from '../combat/mastery.js';
+import { getStatusDef, statusLabel } from '../combat/statusFx.js';
+import { sumEquipmentBonuses } from '../equipment/equipment.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
+import { rowLabel, rowOf } from '../formation/grid.js';
+import type {
+  ApplyStatusDef,
+  GridSlot,
+  PlayerState,
+  Role,
+  SkillDef,
+  UnitTemplate,
+} from '../shared/types.js';
 import {
   deriveGrowthStats,
   getProgress,
   isOwned,
   listBreakthroughPerks,
-  MAX_STAR,
+  maxStarForTemplate,
   nextBreakthroughPerk,
   resolveStarNode,
   skillDiffLines,
@@ -17,7 +31,7 @@ import {
   type StarNodeDef,
 } from './growth.js';
 import { getSkill } from './skills.js';
-import { jobLabel, roleLabel } from './labels.js';
+import { jobLabel, roleLabel, targetPatternLabel } from './labels.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 import { previewStardustExchange } from './stardustExchange.js';
 
@@ -77,7 +91,7 @@ function effectSummary(node: StarNodeDef): string {
 export function previewStarUp(state: PlayerState, templateId: string): StarUpPreview {
   const template = getTemplate(templateId);
   const progress = getProgress(state, templateId);
-  const maxStar = MAX_STAR;
+  const maxStar = maxStarForTemplate(templateId);
   const shardsHave = progress.cardShards ?? 0;
   const shardsNeed = starShardCost(progress.star);
 
@@ -99,7 +113,7 @@ export function previewStarUp(state: PlayerState, templateId: string): StarUpPre
       shardsHave,
       shardsNeed: 0,
       attrDiffLine: '',
-      nodeLine: '已达星级上限',
+      nodeLine: `已达品级星级上限（★${maxStar}）`,
       ready: false,
     };
   }
@@ -126,10 +140,14 @@ export { previewStardustExchange };
 
 export interface SkillDisplayInfo {
   name: string;
+  /** 母题一句（深做卡优先） */
+  blurb: string | null;
   qiCost: number;
   targetPattern: string;
   damageSchool?: string;
   multiplier: number;
+  /** 伤害/治疗/护盾 = 力系|灵系×系数 */
+  coeffLine: string;
   statusLine: string;
   effectsLine: string | null;
   followUpLine: string | null;
@@ -151,10 +169,11 @@ export interface StarTrackRow {
   unlocked: boolean;
 }
 
-/** ★1–MAX 全轨预览（未解锁也列出，促抽/升星） */
+/** ★1–品级上限 星轨预览（未解锁也列出；超品级星章不展示） */
 export function listStarTrackRows(templateId: string, star: number): StarTrackRow[] {
   const rows: StarTrackRow[] = [];
-  for (let s = 1; s <= MAX_STAR; s += 1) {
+  const cap = maxStarForTemplate(templateId);
+  for (let s = 1; s <= cap; s += 1) {
     const node = resolveStarNode(templateId, s);
     if (!node) continue;
     rows.push({
@@ -201,16 +220,83 @@ function followUpText(fu: { chance: number; multiplier?: number } | undefined): 
   return `连击 ${Math.round(fu.chance * 100)}% · 倍率×${fu.multiplier ?? 1}`;
 }
 
-function statusText(skill: { applyStatus: { statusId: string; layers?: number; duration?: number }[] }): string {
+type StatusDisplayCtx = {
+  role: Role;
+  masteryRating: number;
+};
+
+/** 状态强度一句（与命中分开；含精通预览） */
+function statusPotencyText(s: ApplyStatusDef, ctx: StatusDisplayCtx): string | null {
+  const meta = getStatusDef(s.statusId);
+  if (!meta) return null;
+  const carrier = { role: ctx.role, masteryRating: ctx.masteryRating };
+  if (meta.incomingDefMultFromValue && s.value != null) {
+    const v = shredValueWithMastery(carrier, s.value);
+    return `防御×${Math.round(v * 100)}%`;
+  }
+  if (meta.incomingDamageTakenFromValue && s.value != null) {
+    const v = markPreyValueWithMastery(carrier, s.value);
+    return `承伤×${Math.round(v * 100)}%`;
+  }
+  if (meta.actionWeightMult != null && meta.actionWeightMult !== 1) {
+    return `行动权重×${Math.round(meta.actionWeightMult * 100)}%`;
+  }
+  if (meta.outgoingDamageMult != null && meta.outgoingDamageMult !== 1) {
+    return `出手伤害×${Math.round(meta.outgoingDamageMult * 100)}%`;
+  }
+  return null;
+}
+
+function statusBody(s: ApplyStatusDef, ctx: StatusDisplayCtx): string {
+  const meta = getStatusDef(s.statusId);
+  const name = statusLabel(s.statusId);
+  const bits: string[] = [name];
+  if (s.layers != null && s.layers > 1) bits.push(`×${s.layers}`);
+  if (s.duration != null && !meta?.appliesAsShield) bits.push(`${s.duration}回`);
+  const potency = statusPotencyText(s, ctx);
+  if (potency) bits.push(`（${potency}）`);
+  return bits.join('');
+}
+
+function statusEntryText(s: ApplyStatusDef, ctx: StatusDisplayCtx): string {
+  const meta = getStatusDef(s.statusId);
+  const body = statusBody(s, ctx);
+  const isHostile = meta?.kind === 'debuff' || meta?.kind === 'cc';
+  if (!isHostile) return body;
+  // 铺垫类不写「必中」；硬控/扰乱写命中率（按状态 landBase）
+  if (meta?.guaranteedLand) {
+    if (s.chance != null && s.chance < 1) {
+      return `${Math.round(s.chance * 100)}%附加${body}`;
+    }
+    return `附加${body}`;
+  }
+  const land = Math.round(
+    statusLandChance(ctx.role, ctx.masteryRating, 0, s.statusId) * 100,
+  );
+  if (s.chance != null && s.chance < 1) {
+    return `${Math.round(s.chance * 100)}%附加${body} · 命中率${land}%`;
+  }
+  return `附加${body} · 命中率${land}%`;
+}
+
+/** 导出供单测；技能页状态一句 */
+export function statusText(
+  skill: { applyStatus: ApplyStatusDef[] },
+  ctx: StatusDisplayCtx = { role: 'flex', masteryRating: 0 },
+): string {
   if (skill.applyStatus.length === 0) return '';
-  return skill.applyStatus
-    .map((s) => {
-      const bits = [s.statusId];
-      if (s.layers != null) bits.push(`×${s.layers}`);
-      if (s.duration != null) bits.push(`${s.duration}回`);
-      return bits.join('');
-    })
-    .join(' · ');
+  return skill.applyStatus.map((s) => statusEntryText(s, ctx)).join(' · ');
+}
+
+function buildCoeffLine(skill: SkillDef): { coeffLine: string; multiplier: number } {
+  const mult = Math.round(skill.multiplier * 100) / 100;
+  const isHeal = skill.tags.includes('heal');
+  const isGuard = skill.tags.includes('guard');
+  const school = skill.damageSchool ?? (isHeal || isGuard ? 'spirit' : 'phys');
+  const schoolLabel = school === 'spirit' ? '灵系' : '力系';
+  if (isHeal) return { multiplier: mult, coeffLine: `治疗 = ${schoolLabel}×${mult}` };
+  if (isGuard) return { multiplier: mult, coeffLine: `护盾 = ${schoolLabel}×${mult}` };
+  return { multiplier: mult, coeffLine: `伤害 = ${schoolLabel}×${mult}` };
 }
 
 export function skillDisplayFor(templateId: string, state: PlayerState): SkillDisplayInfo | null {
@@ -228,7 +314,7 @@ export function skillDisplayFor(templateId: string, state: PlayerState): SkillDi
   let nextFollowUpLine: string | null = null;
   let nextStarDiffLine: string | null = null;
   const nextNode = resolveStarNode(templateId, progress.star + 1);
-  if (nextNode && progress.star < MAX_STAR) {
+  if (nextNode && progress.star < maxStarForTemplate(templateId)) {
     const nextProgress = { ...progress, star: progress.star + 1 };
     const nextSkill = skillWithGrowth(template, nextProgress, composeCtx);
     const nextDiff = skillDiffLines(skill, nextSkill);
@@ -247,16 +333,25 @@ export function skillDisplayFor(templateId: string, state: PlayerState): SkillDi
     }
   }
 
-  const fx = skill.effects?.map((e) => e.kind).join(' · ') ?? null;
+  const { coeffLine, multiplier } = buildCoeffLine(skill);
+  const derived = deriveGrowthStats(template, progress);
+  const equipBonus = sumEquipmentBonuses(state);
+  const masteryRating = derived.masteryRating + equipBonus.masteryRating;
+  const st = statusText(skill, {
+    role: template.role,
+    masteryRating,
+  });
 
   return {
     name: skill.name,
+    blurb: skill.blurb ?? null,
     qiCost: skill.qiCost,
-    targetPattern: skill.targetPattern,
+    targetPattern: targetPatternLabel(skill.targetPattern),
     damageSchool: skill.damageSchool,
-    multiplier: Math.round(skill.multiplier * 100) / 100,
-    statusLine: statusText(skill) ? `附带 ${statusText(skill)}` : '',
-    effectsLine: fx ? `效果 ${fx}` : null,
+    multiplier,
+    coeffLine,
+    statusLine: st,
+    effectsLine: null,
     followUpLine: followUpText(skill.followUp),
     nextFollowUpLine,
     growthModLine: diffVsBase.length > 0 ? diffVsBase.join(' · ') : null,

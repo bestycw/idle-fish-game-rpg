@@ -9,6 +9,7 @@ import {
   loadOrCreatePlayer,
   persistPlayer,
   pickUnlockedEncounterIndex,
+  pressureForDungeon,
   staminaCostForDungeon,
   stepBattle,
   syncStamina,
@@ -191,7 +192,9 @@ export default function App() {
     setActiveDungeonId(dungeonId);
     dungeonRef.current = dungeonId;
     const encIdx = pickUnlockedEncounterIndex(spend.state, dungeonId, spend.state.encounterIndex);
-    const initial = createBattle(party, spend.state.seed + spend.state.wins, encIdx);
+    const initial = createBattle(party, spend.state.seed + spend.state.wins, encIdx, {
+      pressure: pressureForDungeon(dungeonId),
+    });
     battleRef.current = initial;
     setBattle(initial);
     setLastLoot(null);

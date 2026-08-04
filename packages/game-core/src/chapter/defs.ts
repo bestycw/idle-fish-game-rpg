@@ -2,6 +2,7 @@
  * 章节内容表（B4 框架）。
  * 后续加章、改解锁、改节点 → 只改本文件；禁止在 Hub/战斗主循环写死章 id 业务。
  */
+import { expandIdsByUnlock } from '../character/roster/expandRoster.js';
 
 /** 解锁种类：各系统用 isContentUnlocked 查询 */
 export type UnlockKind = 'dungeon' | 'gacha_unit' | 'encounter';
@@ -38,13 +39,16 @@ export interface ChapterDef {
  * 开局即解锁。调开局内容池只改这里。
  * 注意：未列入的 gacha_unit / encounter / dungeon 默认锁定，直到某章 unlocksOnClear。
  */
+function gachaUnlocks(...ids: string[]): ContentUnlock[] {
+  return ids.map((id) => ({ kind: 'gacha_unit' as const, id }));
+}
+
 export const START_UNLOCKS: ContentUnlock[] = [
   { kind: 'dungeon', id: 'gear_trial' },
   { kind: 'dungeon', id: 'tower' },
   { kind: 'dungeon', id: 'stardust_realm' },
   { kind: 'encounter', id: 'wall' },
   { kind: 'encounter', id: 'archers' },
-  { kind: 'encounter', id: 'spirit_wall' },
   { kind: 'gacha_unit', id: 'zhangfei' },
   { kind: 'gacha_unit', id: 'zhaoyun' },
   { kind: 'gacha_unit', id: 'wukong' },
@@ -55,6 +59,7 @@ export const START_UNLOCKS: ContentUnlock[] = [
   { kind: 'gacha_unit', id: 'robin' },
   { kind: 'gacha_unit', id: 'dianwei' },
   { kind: 'gacha_unit', id: 'beowulf' },
+  ...gachaUnlocks(...expandIdsByUnlock('start')),
 ];
 
 /**
@@ -91,6 +96,7 @@ export const CHAPTERS: ChapterDef[] = [
     unlocksOnClear: [
       { kind: 'encounter', id: 'raiders' },
       { kind: 'gacha_unit', id: 'nezha' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch1')),
     ],
   },
   {
@@ -117,7 +123,9 @@ export const CHAPTERS: ChapterDef[] = [
       { kind: 'gacha_unit', id: 'baigujing' },
       { kind: 'dungeon', id: 'abyss_mirror' },
       { kind: 'encounter', id: 'chaos_rite' },
+      { kind: 'encounter', id: 'spirit_wall' },
       { kind: 'gacha_unit', id: 'daji' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch2')),
     ],
   },
   {
@@ -139,6 +147,7 @@ export const CHAPTERS: ChapterDef[] = [
       { kind: 'encounter', id: 'boss_warden' },
       { kind: 'gacha_unit', id: 'yangjian' },
       { kind: 'gacha_unit', id: 'xishi' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch3')),
     ],
   },
   {
@@ -165,6 +174,7 @@ export const CHAPTERS: ChapterDef[] = [
       { kind: 'gacha_unit', id: 'zhuge' },
       { kind: 'gacha_unit', id: 'change' },
       { kind: 'gacha_unit', id: 'arthur' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch4')),
     ],
   },
   {
@@ -185,6 +195,7 @@ export const CHAPTERS: ChapterDef[] = [
       { kind: 'gacha_unit', id: 'athena' },
       { kind: 'gacha_unit', id: 'lvbu' },
       { kind: 'gacha_unit', id: 'thor' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch5')),
     ],
   },
   {
@@ -207,7 +218,10 @@ export const CHAPTERS: ChapterDef[] = [
         encounterId: 'boss_warden',
       },
     ],
-    unlocksOnClear: [{ kind: 'gacha_unit', id: 'sunbin' }],
+    unlocksOnClear: [
+      { kind: 'gacha_unit', id: 'sunbin' },
+      ...gachaUnlocks(...expandIdsByUnlock('ch6')),
+    ],
   },
 ];
 

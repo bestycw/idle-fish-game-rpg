@@ -38,6 +38,10 @@ export interface StatusDef {
   outgoingDamageMult?: number;
   /** 若 true，用 instance.value 乘目标防御（如破甲 value=0.7） */
   incomingDefMultFromValue?: boolean;
+  /** 固定额外承伤倍率（如 1.15） */
+  incomingDamageTakenMult?: number;
+  /** 若 true，用 instance.value 作额外承伤倍率（猎印） */
+  incomingDamageTakenFromValue?: boolean;
   /** 行动权重倍率（如迟缓） */
   actionWeightMult?: number;
   /** 本场同一目标成功挂上上限 */
@@ -47,6 +51,16 @@ export interface StatusDef {
   maxLayers?: number;
   /** 挂上时转为护盾值，不进 statuses 列表 */
   appliesAsShield?: boolean;
+  /**
+   * 对敌必中（跳过抵抗检定）。铺垫类：破甲/流血/迟缓/猎印等。
+   * 硬控与强扰乱（晕/睡/沉默/混乱/狂乱）不设，仍走命中率。
+   */
+  guaranteedLand?: boolean;
+  /**
+   * 抵抗检定基础命中（缺省用全局 0.75）。
+   * 强扰乱应明显更低，避免动辄改写战局。
+   */
+  landBase?: number;
   /** 精英 / Boss 抗性；缺省 ok */
   rankGate?: Partial<Record<'elite' | 'boss', RankGate>>;
 }
@@ -71,6 +85,7 @@ register({
   kind: 'debuff',
   cleanseable: true,
   incomingDefMultFromValue: true,
+  guaranteedLand: true,
 });
 register({
   id: 'stun',
@@ -79,6 +94,7 @@ register({
   blocksAct: true,
   cleanseable: false,
   ccDrBucket: 'stun',
+  landBase: 0.4,
   rankGate: { boss: 'immune' },
 });
 register({
@@ -89,6 +105,7 @@ register({
   wakeOnDamage: true,
   cleanseable: false,
   ccDrBucket: 'sleep',
+  landBase: 0.3,
   rankGate: { elite: 'halve', boss: 'immune' },
 });
 register({
@@ -98,6 +115,7 @@ register({
   blocksSkill: true,
   cleanseable: false,
   ccDrBucket: 'silence',
+  landBase: 0.4,
   rankGate: { boss: 'halve' },
 });
 register({
@@ -106,6 +124,7 @@ register({
   kind: 'debuff',
   healBlocked: true,
   cleanseable: true,
+  guaranteedLand: true,
 });
 register({
   id: 'havoc',
@@ -114,6 +133,7 @@ register({
   forceRandomTarget: true,
   cleanseable: true,
   maxBattleApplies: 2,
+  landBase: 0.25,
   rankGate: { elite: 'halve', boss: 'immune' },
 });
 register({
@@ -124,6 +144,7 @@ register({
   tickKind: 'bleed_hp_pct',
   stack: 'layers',
   maxLayers: 3,
+  guaranteedLand: true,
 });
 register({
   id: 'slow',
@@ -131,6 +152,7 @@ register({
   kind: 'debuff',
   cleanseable: true,
   actionWeightMult: 0.75,
+  guaranteedLand: true,
 });
 register({
   id: 'berserk',
@@ -140,7 +162,18 @@ register({
   forceBasicAttack: true,
   outgoingDamageMult: 1.3,
   cleanseable: true,
+  landBase: 0.25,
   rankGate: { boss: 'immune' },
+});
+/** 猎印：被攻击额外承伤；value 为倍率（如 1.18） */
+register({
+  id: 'mark_prey',
+  defaultLabel: '猎印',
+  kind: 'debuff',
+  cleanseable: true,
+  incomingDamageTakenFromValue: true,
+  stack: 'replace',
+  guaranteedLand: true,
 });
 
 export function registerStatus(def: StatusDef): void {

@@ -172,7 +172,7 @@ describe('character growth', () => {
   it('stack merges shared and override effects', () => {
     const node = resolveStarNode('wukong', 3);
     assert.ok(node);
-    assert.equal(node!.label, '筋斗');
+    assert.equal(node!.label, '大闹天宫');
     assert.ok(node!.effects.some((e) => e.kind === 'enable_follow_up'));
     assert.ok(node!.effects.some((e) => e.kind === 'rare_stat' && e.stat === 'dodge'));
   });
@@ -279,12 +279,43 @@ describe('character growth', () => {
 
   it('lists full star track and breakthrough rows', () => {
     const rows = listStarTrackRows('zhaoyun', 2);
-    assert.equal(rows.length, MAX_STAR);
+    assert.equal(rows.length, MAX_STAR); // legendary → ★6
     assert.equal(rows.filter((r) => r.unlocked).length, 2);
     assert.ok(rows.every((r) => r.effectLine.length > 0));
+    assert.equal(listStarTrackRows('huatuo', 0).length, 4); // rare
+    assert.equal(listStarTrackRows('zhangfei', 0).length, 5); // epic
     const bt = listBreakthroughPerkRows('zhangfei', 0);
     assert.ok(bt.next);
-    assert.equal(UNIT_TEMPLATES.length, 24);
+    assert.equal(UNIT_TEMPLATES.length, 100);
+  });
+
+  it('star cap follows rarity (凡3/良4/珍5/绝6)', () => {
+    let state = createInitialPlayer(3);
+    state = {
+      ...state,
+      roster: {
+        ...state.roster,
+        huatuo: {
+          ...state.roster.huatuo!,
+          owned: true,
+          star: 4,
+          cardShards: 99,
+        },
+        menghuo: {
+          templateId: 'menghuo',
+          level: 1,
+          exp: 0,
+          breakthroughTier: 0,
+          cultivationNodes: 0,
+          star: 3,
+          owned: true,
+          cardShards: 99,
+        },
+      },
+    };
+    assert.equal(tryStarUp(state, 'huatuo').ok, false); // rare max ★4
+    assert.equal(tryStarUp(state, 'menghuo').ok, false); // common max ★3
+    assert.match(tryStarUp(state, 'huatuo').message, /良品|上限/);
   });
 
   it('formationHints flags missing tank/heal', () => {

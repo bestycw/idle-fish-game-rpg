@@ -12,7 +12,7 @@ import {
 import { getSkill } from './skills.js';
 import { getTemplate } from './templates.js';
 import { buildPlayerParty } from '../formation/formation.js';
-import { skillDisplayFor } from './growthHelpers.js';
+import { skillDisplayFor, statusText } from './growthHelpers.js';
 
 describe('skill compose foundation', () => {
   it('skillWithGrowth matches compose path for zhaoyun ★3 follow-up', () => {
@@ -32,7 +32,7 @@ describe('skill compose foundation', () => {
     assert.equal(skill.applyStatus[0]?.statusId, 'bleed');
   });
 
-  it('status_unlock appends shred at zhaoyun ★6', () => {
+  it('zhaoyun ★6 unlocks mark_prey + execute + kill refund', () => {
     const tpl = getTemplate('zhaoyun')!;
     const progress = {
       templateId: 'zhaoyun',
@@ -45,10 +45,12 @@ describe('skill compose foundation', () => {
     };
     const skill = skillWithGrowth(tpl, progress);
     assert.ok(skill.applyStatus.some((s) => s.statusId === 'bleed'));
-    assert.ok(skill.applyStatus.some((s) => s.statusId === 'shred'));
+    assert.ok(skill.applyStatus.some((s) => s.statusId === 'mark_prey'));
+    assert.ok(skill.effects?.some((e) => e.kind === 'execute'));
+    assert.ok(skill.effects?.some((e) => e.kind === 'refund_qi_on_kill'));
     const base = getSkill(tpl.skillId);
     const diffs = skillDiffLines(base, skill);
-    assert.ok(diffs.some((d) => d.includes('shred') || d.includes('新状态')));
+    assert.ok(diffs.some((d) => d.includes('猎印') || d.includes('新状态') || d.includes('execute')));
   });
 
   it('effectPatches can append purge via compose', () => {
@@ -114,5 +116,25 @@ describe('skill compose foundation', () => {
     const info = skillDisplayFor('zhaoyun', next);
     assert.ok(info);
     assert.ok(info!.nextStarDiffLine || info!.growthModLine);
+  });
+
+  it('skillDisplayFor: setup has no必中 tag; swing CC uses lower landBase', () => {
+    const state = createInitialPlayer(8);
+    const info = skillDisplayFor('zhangfei', state);
+    assert.ok(info);
+    assert.match(info!.coeffLine, /^伤害 = 力系×/);
+    assert.match(info!.statusLine, /附加眩晕/);
+    assert.match(info!.statusLine, /命中率40%/); // stun landBase 0.4
+    assert.doesNotMatch(info!.statusLine, /必中/);
+    const shred = statusText(
+      { applyStatus: [{ statusId: 'shred', duration: 2, value: 0.82 }] },
+      { role: 'flex', masteryRating: 0 },
+    );
+    assert.equal(shred, '附加破甲2回（防御×82%）');
+    const havoc = statusText(
+      { applyStatus: [{ statusId: 'havoc', duration: 1 }] },
+      { role: 'flex', masteryRating: 0 },
+    );
+    assert.match(havoc, /附加混乱1回 · 命中率25%/);
   });
 });

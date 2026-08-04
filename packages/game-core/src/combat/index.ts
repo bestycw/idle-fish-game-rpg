@@ -6,3 +6,4 @@ export * from './lifecycle.js';
 export * from './statusFx.js';
 export * from './effectRegistry.js';
 export * from './tickRegistry.js';
+export * from './skillRules.js';

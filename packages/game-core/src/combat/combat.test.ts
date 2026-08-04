@@ -14,7 +14,15 @@ import {
   resolveTargets,
 } from './targeting.js';
 import { isLiving, livingUnits } from './lifecycle.js';
-import { applyCcDrDuration, enforceStatusSoftCap, pickCleanseTarget, pickPurgeTarget, STATUS_SOFT_CAP } from './statusFx.js';
+import { shredValueWithMastery } from './mastery.js';
+import {
+  applyCcDrDuration,
+  enforceStatusSoftCap,
+  getStatusDef,
+  pickCleanseTarget,
+  pickPurgeTarget,
+  STATUS_SOFT_CAP,
+} from './statusFx.js';
 import { listSkillEffectKinds, registerSkillEffect, runSkillEffects } from './effectRegistry.js';
 import { listStatusTickKinds, registerStatusTick } from './tickRegistry.js';
 import type { GridSlot, UnitRuntime } from '../shared/types.js';
@@ -140,6 +148,17 @@ describe('targeting', () => {
 });
 
 describe('knife-2 combat', () => {
+  it('setup debuffs guaranteedLand; hard CC uses resist; amp mastery deepens shred', () => {
+    assert.equal(getStatusDef('shred')?.guaranteedLand, true);
+    assert.equal(getStatusDef('bleed')?.guaranteedLand, true);
+    assert.equal(getStatusDef('mark_prey')?.guaranteedLand, true);
+    assert.equal(getStatusDef('stun')?.guaranteedLand, undefined);
+    assert.equal(getStatusDef('havoc')?.guaranteedLand, undefined);
+    const deepened = shredValueWithMastery({ role: 'group_amp', masteryRating: 90 }, 0.82);
+    assert.ok(deepened < 0.82);
+    assert.ok(deepened >= 0.45);
+  });
+
   it('player ctrl skill applies havoc; heal cleanses; hero purges', () => {
     assert.equal(getSkill('skill_baigujing_huagu').applyStatus[0]?.statusId, 'havoc');
     assert.equal(getTemplate('baigujing')!.skillId, 'skill_baigujing_huagu');
@@ -240,9 +259,12 @@ describe('extension registries', () => {
       state: {} as never,
       actor: {} as never,
       targets: [],
+      allies: [],
       rng: createRng(1),
       emit: () => {},
       grantQi: () => {},
+      attackPower: () => 10,
+      shieldMasteryMult: () => 1,
     });
     assert.equal(hits, 1);
   });

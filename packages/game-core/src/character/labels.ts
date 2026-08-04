@@ -1,4 +1,23 @@
-import type { Job, Role } from '../shared/types.js';
+import type { Job, Role, TargetPattern } from '../shared/types.js';
+
+/** 技能索敌形状中文（内部 id 不进 UI） */
+export const TARGET_PATTERN_LABELS: Record<string, string> = {
+  single: '单体',
+  all: '全体',
+  row_front: '前排',
+  row_mid: '中排',
+  row_back: '后排',
+  row_focus: '同排',
+  col_focus: '贯列',
+  col_left: '左列',
+  col_mid: '中列',
+  col_right: '右列',
+  cross: '十字',
+};
+
+export function targetPatternLabel(pattern: TargetPattern): string {
+  return TARGET_PATTERN_LABELS[pattern] ?? pattern;
+}
 
 /** 职能中性中文（故事皮可后换） */
 export const ROLE_LABELS: Record<Role, string> = {

@@ -24,13 +24,19 @@ import {
 } from './lifecycle.js';
 import {
   burstCritDmgExtra,
-  controlMasteryBonus,
+  controlDurationMult,
   healMasteryMult,
+  markPreyValueWithMastery,
   outputMasteryMult,
   pierceDefReduction,
   shieldMasteryMult,
+  shredValueWithMastery,
+  STATUS_LAND_BASE,
+  statusLandChance,
   tankDamageTakenMult,
 } from './mastery.js';
+
+export { STATUS_LAND_BASE };
 import { ratingToPct } from './ratings.js';
 import {
   applyCcDrDuration,
@@ -50,6 +56,12 @@ import {
   resolveFocusPolicy,
   resolveTargets,
 } from './targeting.js';
+import {
+  qiRefundOnKill,
+  skillHealMult,
+  skillOutgoingDamageMult,
+  statusIncomingDamageMult,
+} from './skillRules.js';
 
 export type { StepOptions };
 
@@ -72,6 +84,7 @@ function cloneUnit(u: UnitRuntime): UnitRuntime {
       Object.entries(u.ccDr ?? {}).map(([k, v]) => [k, v ? { ...v } : v]),
     ) as UnitRuntime['ccDr'],
     statusApplyCounts: { ...(u.statusApplyCounts ?? {}) },
+    skillCastCount: u.skillCastCount ?? 0,
   };
 }
 
@@ -196,7 +209,13 @@ function computeDamage(
   actor: UnitRuntime,
   target: UnitRuntime,
   multiplier: number,
-  opts: { pierce?: boolean; aoe?: boolean; single?: boolean; school?: DamageSchool },
+  opts: {
+    pierce?: boolean;
+    aoe?: boolean;
+    single?: boolean;
+    school?: DamageSchool;
+    skill?: SkillDef;
+  },
   rng: Rng,
 ): { amount: number; crit: boolean; blocked: boolean; dodged: boolean } {
   const school = opts.school ?? 'phys';
@@ -210,12 +229,15 @@ function computeDamage(
     const mult = getStatusDef(s.statusId)?.outgoingDamageMult;
     if (mult != null) raw *= mult;
   }
+  raw *= skillOutgoingDamageMult(actor, target, opts.skill);
+  raw *= statusIncomingDamageMult(target);
   const crit = rollCrit(actor, target, rng);
   if (crit) raw *= 1.5 + critDmgExtra;
 
   const pierce = opts.pierce ? pierceDefReduction(actor) : 0;
   const effDef = effectiveDef(target, school, pierce);
-  let afterDef = Math.max(1, raw - effDef * 0.35);
+  // 防御权重：过低则破甲/厚甲无解法感（曾 0.35）；0.5 让盾墙关能卡「无破甲」
+  let afterDef = Math.max(1, raw - effDef * 0.5);
 
   let middle = afterDef * (1 - versPct);
   middle *= tankDamageTakenMult(target);
@@ -311,10 +333,16 @@ function applyDamageToTarget(
   return dealt;
 }
 
-function rollStatusLand(actor: UnitRuntime, target: UnitRuntime, rng: Rng): boolean {
-  const bonus = controlMasteryBonus(actor);
-  const chance = Math.min(0.95, Math.max(0.15, 0.75 + bonus - target.fortune * 0.005));
-  return rng.next() < chance;
+function rollStatusLand(
+  actor: UnitRuntime,
+  target: UnitRuntime,
+  rng: Rng,
+  statusId: string,
+): boolean {
+  return (
+    rng.next() <
+    statusLandChance(actor.role, actor.masteryRating, target.fortune, statusId)
+  );
 }
 
 function applyOneStatus(
@@ -354,13 +382,24 @@ function applyOneStatus(
     }
   }
 
-  if (!rollStatusLand(actor, target, rng)) {
+  // Buff / 铺垫类必中；硬控与强扰乱走抵抗检定
+  const isAllyBuff = statusMeta?.kind === 'buff';
+  const guaranteed = isAllyBuff || !!statusMeta?.guaranteedLand;
+  if (!guaranteed && !rollStatusLand(actor, target, rng, def.statusId)) {
     emit(state, 'resist', { actor: actor.name, target: target.name, status: label });
     return;
   }
 
   let duration = def.duration ?? 1;
   if (gate === 'halve') duration = Math.max(1, Math.floor(duration * 0.5));
+  // 控制精通：硬控/有 DR 桶 / 强扰乱 加时长
+  const needsCtrlDuration =
+    statusMeta?.kind === 'cc' ||
+    !!statusMeta?.ccDrBucket ||
+    statusMeta?.forceRandomTarget === true;
+  if (needsCtrlDuration) {
+    duration = Math.max(1, Math.round(duration * controlDurationMult(actor)));
+  }
 
   const ccBucket = statusCcDrBucket(def.statusId);
   if (ccBucket) {
@@ -391,6 +430,13 @@ function applyOneStatus(
     return;
   }
 
+  let value = def.value;
+  if (statusMeta?.incomingDefMultFromValue && value != null) {
+    value = shredValueWithMastery(actor, value);
+  } else if (statusMeta?.incomingDamageTakenFromValue && value != null) {
+    value = markPreyValueWithMastery(actor, value);
+  }
+
   if (statusMeta?.stack === 'layers') {
     const existing = target.statuses.find((s) => s.statusId === def.statusId);
     const maxLayers = statusMeta.maxLayers ?? 99;
@@ -400,14 +446,14 @@ function applyOneStatus(
       statusId: def.statusId,
       layers,
       remaining: duration,
-      value: def.value ?? 0.03,
+      value: value ?? 0.03,
     });
   } else {
     target.statuses = target.statuses.filter((s) => s.statusId !== def.statusId);
     target.statuses.push({
       statusId: def.statusId,
       remaining: duration,
-      value: def.value,
+      value,
       layers: def.layers,
     });
   }
@@ -432,14 +478,18 @@ function applySkillEffects(
   targets: UnitRuntime[],
   skill: SkillDef,
   rng: Rng,
+  allies?: UnitRuntime[],
 ): void {
   runSkillEffects(skill.effects, {
     state,
     actor,
     targets,
+    allies: allies ?? [],
     rng,
     emit,
     grantQi: gainQi,
+    attackPower,
+    shieldMasteryMult,
   });
 }
 
@@ -605,6 +655,7 @@ function applySkill(
   }
 
   actor.qi -= skill.qiCost;
+  const castIndex = actor.skillCastCount ?? 0;
 
   if (
     skill.tags.includes('guard') &&
@@ -617,6 +668,8 @@ function applySkill(
     );
     actor.shield += shieldAmt;
     emit(state, 'shield_gain', { actor: actor.name, target: actor.name, amount: shieldAmt });
+    actor.skillCastCount = castIndex + 1;
+    applySkillEffects(state, actor, [actor], skill, rng, allies);
     return;
   }
 
@@ -631,13 +684,15 @@ function applySkill(
         Math.floor(
           attackPower(actor, school) *
             skill.multiplier *
-            healMasteryMult(actor, skill.tags.includes('aoe')),
+            healMasteryMult(actor, skill.tags.includes('aoe')) *
+            skillHealMult(target, skill),
         ),
       );
       target.hp = Math.min(target.maxHp, target.hp + amount);
       emit(state, 'heal', { actor: actor.name, target: target.name, amount });
     }
-    applySkillEffects(state, actor, targets, skill, rng);
+    applySkillEffects(state, actor, targets, skill, rng, allies);
+    actor.skillCastCount = castIndex + 1;
     return;
   }
 
@@ -649,20 +704,21 @@ function applySkill(
   const pierce = skill.tags.includes('pierce');
   const aoe = skill.tags.includes('aoe') || skill.targetPattern !== 'single';
   const school = resolveDamageSchool(skill, 'skill');
+  const livingBefore = new Set(targets.filter((t) => isLiving(t)).map((t) => t.uid));
 
   for (const target of targets) {
     const result = computeDamage(
       actor,
       target,
       skill.multiplier,
-      { pierce, aoe, single: !aoe, school },
+      { pierce, aoe, single: !aoe, school, skill },
       rng,
     );
     applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged);
   }
 
   applyStatuses(state, actor, targets, skill, rng);
-  applySkillEffects(state, actor, targets, skill, rng);
+  applySkillEffects(state, actor, targets, skill, rng, allies);
 
   // 升星等点亮的连击钩子（配置 followUp）
   if (skill.followUp && targets.length > 0 && rng.next() < skill.followUp.chance) {
@@ -673,7 +729,7 @@ function applySkill(
         actor,
         focus,
         mult,
-        { pierce, aoe: false, single: true, school },
+        { pierce, aoe: false, single: true, school, skill },
         rng,
       );
       applyDamageToTarget(state, actor, focus, result.amount, result.crit, result.blocked, result.dodged);
@@ -684,6 +740,14 @@ function applySkill(
       });
     }
   }
+
+  const killCount = targets.filter((t) => livingBefore.has(t.uid) && t.dead).length;
+  const refund = qiRefundOnKill(skill, killCount);
+  if (refund > 0) {
+    gainQi(state, actor, refund);
+  }
+
+  actor.skillCastCount = castIndex + 1;
 }
 
 function applyAction(
@@ -741,7 +805,7 @@ export function buildDefeatHint(state: BattleState): string {
     return '战败提示：敌方身法太快且有控制/混乱。给坦克开护盾，或调整站位优先秒脆皮。';
   }
   if (state.encounterId === 'spirit_wall') {
-    return '战败提示：灵防极高。带灵伤破甲或力系穿透绕开，别纯灵轰。';
+    return '战败提示：物防极高，力队吃瘪。上灵伤输出或深破甲（诸葛），别纯力普攻硬凿。';
   }
   if (state.encounterId === 'chaos_rite') {
     return '战败提示：敌方群乱心。优先斩祭师，上净化治疗或护盾稳住阵脚。';
@@ -787,7 +851,12 @@ function nextActor(state: BattleState): UnitRuntime | null {
   return order[0] ?? null;
 }
 
-function enemyFromSpec(spec: EnemySpec, index: number): UnitRuntime {
+function scaleStat(n: number, pressure: number): number {
+  return Math.max(1, Math.round(n * pressure));
+}
+
+function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntime {
+  const maxHp = scaleStat(spec.maxHp, pressure);
   return {
     uid: `enemy_${spec.name}_${index}`,
     templateId: `enemy_${index}`,
@@ -797,12 +866,12 @@ function enemyFromSpec(spec: EnemySpec, index: number): UnitRuntime {
     slot: spec.slot,
     isHero: false,
     dead: false,
-    physAtk: spec.physAtk,
-    spiritAtk: spec.spiritAtk,
-    physDef: spec.physDef,
-    spiritDef: spec.spiritDef,
-    maxHp: spec.maxHp,
-    hp: spec.maxHp,
+    physAtk: scaleStat(spec.physAtk, pressure),
+    spiritAtk: scaleStat(spec.spiritAtk, pressure),
+    physDef: scaleStat(spec.physDef, pressure),
+    spiritDef: scaleStat(spec.spiritDef, pressure),
+    maxHp,
+    hp: maxHp,
     spd: spec.spd,
     critRating: spec.critRating ?? 5,
     critDmgRating: spec.critDmgRating ?? 5,
@@ -810,7 +879,7 @@ function enemyFromSpec(spec: EnemySpec, index: number): UnitRuntime {
     versRating: spec.versRating ?? 0,
     masteryRating: spec.masteryRating ?? 0,
     finalDmgRating: spec.finalDmgRating ?? 0,
-    fortune: spec.fortune ?? 8,
+    fortune: scaleStat(spec.fortune ?? 8, Math.min(pressure, 1.15)),
     dodge: 0,
     lifesteal: 0,
     critResist: 0,
@@ -823,16 +892,24 @@ function enemyFromSpec(spec: EnemySpec, index: number): UnitRuntime {
     rank: spec.rank ?? 'normal',
     ccDr: {},
     statusApplyCounts: {},
+    skillCastCount: 0,
   };
 }
+
+export type CreateBattleOpts = {
+  /** 敌人攻防血压力系数，默认 1（副本可传 DungeonDef.pressure） */
+  pressure?: number;
+};
 
 export function createBattle(
   playerUnits: UnitRuntime[],
   _seed: number,
   encounterIndex = 0,
+  opts: CreateBattleOpts = {},
 ): BattleState {
+  const pressure = opts.pressure ?? 1;
   const encounter = ENCOUNTERS[encounterIndex % ENCOUNTERS.length]!;
-  const enemies = encounter.enemies.map((spec, i) => enemyFromSpec(spec, i));
+  const enemies = encounter.enemies.map((spec, i) => enemyFromSpec(spec, i, pressure));
 
   const state: BattleState = {
     turn: 1,
@@ -846,6 +923,7 @@ export function createBattle(
         statuses: [],
         ccDr: {},
         statusApplyCounts: {},
+        skillCastCount: 0,
         rank: u.rank ?? 'normal',
       })),
     },

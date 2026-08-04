@@ -8,6 +8,7 @@ import {
   ensureRoster,
   getProgress,
   isOwned,
+  maxStarForTemplate,
   type GrowthActionResult,
 } from './growth.js';
 
@@ -16,8 +17,8 @@ export const STARDUST_PER_SHARD = 200;
 /** 每日指定兑换次数上限 */
 export const STARDUST_EXCHANGE_DAILY_LIMIT = 1;
 /**
- * 星尘最多助到 ★4：当前星 ≥ 此值不可再兑该卡。
- * ★5 / ★6 必须靠抽卡同名碎片。
+ * 星尘全局助星软顶：当前星 ≥ 此值不可再兑（且不超过该卡品级上限）。
+ * 珍/绝的更高星必须靠抽卡同名碎片。
  */
 export const STARDUST_ASSIST_STAR_CAP = 4;
 
@@ -47,10 +48,14 @@ export function previewStardustExchange(
   const progress = getProgress(state, templateId);
   const dustHave = state.currencies?.stardust ?? 0;
   const today = exchangesToday(state, now);
+  const assistCap = Math.min(STARDUST_ASSIST_STAR_CAP, maxStarForTemplate(templateId));
   let blockedReason: string | null = null;
   if (!isOwned(state, templateId)) blockedReason = '尚未拥有该角色';
-  else if (progress.star >= STARDUST_ASSIST_STAR_CAP) {
-    blockedReason = `星尘最多助到 ★${STARDUST_ASSIST_STAR_CAP}，更高需抽卡碎片`;
+  else if (progress.star >= assistCap) {
+    blockedReason =
+      assistCap < maxStarForTemplate(templateId)
+        ? `星尘最多助到 ★${assistCap}，更高需抽卡碎片`
+        : `已达品级星级上限（★${assistCap}）`;
   } else if (today >= STARDUST_EXCHANGE_DAILY_LIMIT) {
     blockedReason = '今日兑换次数已用完';
   } else if (dustHave < STARDUST_PER_SHARD) {
@@ -63,7 +68,7 @@ export function previewStardustExchange(
     exchangesToday: today,
     dailyLimit: STARDUST_EXCHANGE_DAILY_LIMIT,
     star: progress.star,
-    assistCap: STARDUST_ASSIST_STAR_CAP,
+    assistCap,
     ready: blockedReason == null,
     blockedReason,
   };

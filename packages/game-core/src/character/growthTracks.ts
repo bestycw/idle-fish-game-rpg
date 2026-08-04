@@ -8,7 +8,7 @@ import {
   isOwned,
   LEVEL_CAP_BY_TIER,
   levelCapForTier,
-  MAX_STAR,
+  maxStarForTemplate,
   nextBreakthroughPerk,
   resolveStarNode,
   starShardCost,
@@ -173,11 +173,13 @@ function starTrack(): GrowthTrackDef {
     },
     preview(state, templateId) {
       const progress = getProgress(state, templateId);
-      const atMax = progress.star >= MAX_STAR;
+      const starCap = maxStarForTemplate(templateId);
+      const atMax = progress.star >= starCap;
       const shards = progress.cardShards ?? 0;
       const shardNeed = starShardCost(progress.star);
       const next = resolveStarNode(templateId, progress.star + 1);
       const owned = isOwned(state, templateId);
+      const assistCap = Math.min(STARDUST_ASSIST_STAR_CAP, starCap);
       if (!owned) {
         return {
           costLine: '未获得',
@@ -190,7 +192,7 @@ function starTrack(): GrowthTrackDef {
       if (atMax) {
         return {
           costLine: '已满星',
-          effectLine: `★${progress.star}`,
+          effectLine: `★${progress.star}/${starCap}`,
           current: 1,
           need: 1,
           ready: false,
@@ -198,9 +200,11 @@ function starTrack(): GrowthTrackDef {
       }
       const useShard = shards >= shardNeed;
       const dustHint =
-        progress.star < STARDUST_ASSIST_STAR_CAP
+        progress.star < assistCap
           ? ` · 可兑碎片(${STARDUST_PER_SHARD}尘/日1)`
-          : ' · ★5+需抽卡';
+          : starCap > assistCap
+            ? ' · 更高需抽卡碎片'
+            : '';
       return {
         costLine: `碎片 ${shards}/${shardNeed}${useShard ? '' : dustHint}`,
         effectLine: next

@@ -87,14 +87,9 @@ function pct(n: number, d: number): string {
   return `${Math.round((n / d) * 100)}%`;
 }
 
-function clonePartyFresh(party: ReturnType<typeof buildPlayerParty>) {
-  return party.map((u) => ({ ...u }));
-}
-
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const player = createInitialPlayer(1);
-  const party = buildPlayerParty(player);
+  const player = createInitialPlayer(42);
   const allRows: RunRow[] = [];
   const lossLogs: { encounter: string; seed: number; tail: string[] }[] = [];
 
@@ -104,9 +99,10 @@ function main() {
     return { id, idx };
   });
 
+  const sampleNames = buildPlayerParty(player).map((u) => u.name).join('/');
   console.log('=== combat-feel baseline ===');
   console.log(
-    `party=${party.map((u) => u.name).join('/')}` +
+    `party=${sampleNames}` +
       ` | seeds=${opts.seeds}` +
       ` | encounters=${opts.encounterIds.join(',')}`,
   );
@@ -115,7 +111,8 @@ function main() {
   for (const { id: enc, idx } of encounterEntries) {
     for (let i = 0; i < opts.seeds; i += 1) {
       const seed = 1000 + i * 17 + idx * 97;
-      let battle = createBattle(clonePartyFresh(party), seed, idx);
+      // 每场重建队伍，避免战斗可变字段污染下一场
+      let battle = createBattle(buildPlayerParty(player), seed, idx);
       battle = runAutoBattle(battle, seed, opts.maxSteps);
       const row = summarizeBattle(battle, seed, enc);
       allRows.push(row);

@@ -153,6 +153,11 @@ export interface SkillDef {
   id: string;
   name: string;
   nameKey?: string;
+  /**
+   * 玩家可见一句说明（母题+机制，勿写纯数值表）。
+   * 例：「穿透后排并附加猎印；对护盾额外伤」
+   */
+  blurb?: string;
   targetPattern: TargetPattern;
   tags: string[];
   multiplier: number;
@@ -295,6 +300,8 @@ export interface UnitRuntime {
   ccDr: Partial<Record<string, CcDrEntry>>;
   /** 本场各 statusId 成功挂上次数（配合 StatusDef.maxBattleApplies） */
   statusApplyCounts: Record<string, number>;
+  /** 本场已成功施放技能次数（先声 first_cast） */
+  skillCastCount?: number;
   /** 普攻焦点策略；缺省 lane */
   focusPolicy?: FocusPolicyId;
 }

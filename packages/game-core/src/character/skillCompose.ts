@@ -10,9 +10,10 @@ import type {
   SkillEffect,
   UnitTemplate,
 } from '../shared/types.js';
+import { statusLabel } from '../combat/statusFx.js';
 import { listBreakthroughPerks } from './breakthroughPerks.js';
 import { getSkill } from './skills.js';
-import type { StarNodeDef, StarNodeEffect } from './starTypes.js';
+import { EFFECT_KIND_LABELS, type StarNodeDef, type StarNodeEffect } from './starTypes.js';
 import { unlockedStarNodes } from './starTracks.js';
 
 export type SkillModifierSource = 'star' | 'breakthrough' | 'equipment' | 'awaken';
@@ -218,7 +219,7 @@ export function skillDiffLines(before: SkillDef, after: SkillDef): string[] {
   if (beforeIds !== afterIds) {
     const added = after.applyStatus
       .filter((s) => !before.applyStatus.some((b) => b.statusId === s.statusId))
-      .map((s) => s.statusId);
+      .map((s) => statusLabel(s.statusId));
     if (added.length) lines.push(`新状态 ${added.join('·')}`);
   }
   for (const a of after.applyStatus) {
@@ -234,10 +235,12 @@ export function skillDiffLines(before: SkillDef, after: SkillDef): string[] {
     if ((a.value ?? 0) !== (b.value ?? 0) && a.value != null) {
       bits.push(`强度→${a.value}`);
     }
-    if (bits.length) lines.push(`${a.statusId} ${bits.join('·')}`);
+    if (bits.length) lines.push(`${statusLabel(a.statusId)} ${bits.join('·')}`);
   }
   const beforeFx = new Set((before.effects ?? []).map((e) => e.kind));
-  const addedFx = (after.effects ?? []).filter((e) => !beforeFx.has(e.kind)).map((e) => e.kind);
+  const addedFx = (after.effects ?? [])
+    .filter((e) => !beforeFx.has(e.kind))
+    .map((e) => EFFECT_KIND_LABELS[e.kind] ?? e.kind);
   if (addedFx.length) lines.push(`效果 ${addedFx.join('·')}`);
   if (!before.followUp && after.followUp) {
     lines.push(

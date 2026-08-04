@@ -1,9 +1,10 @@
-import type {
-  CharacterProgress,
-  PlayerCurrencies,
-  PlayerState,
-  SkillDef,
-  UnitTemplate,
+import {
+  RARITY_LABELS,
+  type CharacterProgress,
+  type PlayerCurrencies,
+  type PlayerState,
+  type SkillDef,
+  type UnitTemplate,
 } from '../shared/types.js';
 import { breakthroughLabel } from './breakthroughDisplay.js';
 import { listBreakthroughPerks } from './breakthroughPerks.js';
@@ -16,6 +17,7 @@ import {
 } from './starTypes.js';
 import {
   MAX_STAR,
+  maxStarForRarity,
   resolveStarNode,
   unlockedStarNodes,
 } from './starTracks.js';
@@ -23,7 +25,7 @@ import {
   composeSkillFor,
   type SkillComposeContext,
 } from './skillCompose.js';
-import { UNIT_TEMPLATES } from './templates.js';
+import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 
 export { breakthroughLabel, nextBreakthroughLabel, BREAKTHROUGH_LABELS } from './breakthroughDisplay.js';
 export {
@@ -34,12 +36,21 @@ export {
 } from './breakthroughPerks.js';
 export {
   MAX_STAR,
+  MAX_STAR_BY_RARITY,
+  maxStarForRarity,
   SHARED_STAR_NODES,
   STAR_OVERRIDES,
   registerStarTrack,
   resolveStarNode,
   unlockedStarNodes,
 } from './starTracks.js';
+
+/** 该卡可玩星级上限（按模板稀有度） */
+export function maxStarForTemplate(templateId: string): number {
+  const t = getTemplate(templateId);
+  if (!t) return MAX_STAR;
+  return maxStarForRarity(t.rarity);
+}
 export type { StarNodeDef, StarNodeEffect, SkillGrowthMods } from './starTypes.js';
 export { summarizeStarEffect } from './starTypes.js';
 export {
@@ -165,6 +176,11 @@ export function ensureRoster(state: PlayerState): PlayerState {
     }
     if (row.cultivationNodes == null) {
       row = { ...row, cultivationNodes: 0 };
+      changed = true;
+    }
+    const starCap = maxStarForRarity(t.rarity);
+    if ((row.star ?? 0) > starCap) {
+      row = { ...row, star: starCap };
       changed = true;
     }
     roster[t.id] = row;
@@ -433,16 +449,20 @@ export function tryStarUp(state: PlayerState, templateId: string): GrowthActionR
     return { ok: false, message: '尚未拥有该角色。' };
   }
   const progress = { ...getProgress(s, templateId) };
-  if (progress.star >= MAX_STAR) {
-    return { ok: false, message: `已达星级上限（★${MAX_STAR}）。` };
+  const starCap = maxStarForTemplate(templateId);
+  if (progress.star >= starCap) {
+    const rarity = getTemplate(templateId)?.rarity;
+    const rarityBit = rarity ? `（${RARITY_LABELS[rarity]}上限）` : '';
+    return { ok: false, message: `已达星级上限（★${starCap}）${rarityBit}` };
   }
   const next = progress.star + 1;
   const shardNeed = starShardCost(progress.star);
   const shards = progress.cardShards ?? 0;
   if (shards < shardNeed) {
+    const assistCap = Math.min(4, starCap);
     return {
       ok: false,
-      message: `同名碎片不足（${shards}/${shardNeed}）。可用星尘兑换碎片（最多助到 ★4）。`,
+      message: `同名碎片不足（${shards}/${shardNeed}）。可用星尘兑换碎片（最多助到 ★${assistCap}）。`,
     };
   }
   progress.cardShards = shards - shardNeed;

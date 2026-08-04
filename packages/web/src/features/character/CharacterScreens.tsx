@@ -23,7 +23,7 @@ import {
   listBreakthroughPerkRows,
   listGrowthTracks,
   listStarTrackRows,
-  MAX_STAR,
+  maxStarForTemplate,
   previewStarUp,
   previewStardustExchange,
   ratingToPct,
@@ -47,7 +47,7 @@ import { rarityFrame, rarityFrameLocked, rarityTone } from '@/lib/tones';
 
 type SheetTab = 'stats' | 'skill' | 'gear';
 
-function StarRow({ star, max = MAX_STAR }: { star: number; max?: number }) {
+function StarRow({ star, max }: { star: number; max: number }) {
   return (
     <span className="inline-flex gap-0.5 text-sm leading-none" aria-label={`星级 ${star}`}>
       {Array.from({ length: max }, (_, i) => (
@@ -104,6 +104,7 @@ export function CharacterSheet({
     () => (template ? previewStardustExchange(player, templateId) : null),
     [player, template, templateId],
   );
+  const starCap = maxStarForTemplate(templateId);
   const starTrackRows = useMemo(
     () => listStarTrackRows(templateId, progress?.star ?? 0),
     [templateId, progress?.star],
@@ -305,7 +306,7 @@ export function CharacterSheet({
                 {owned ? ` · Lv ${progress.level}/${cap}` : ' · 未获得'}
               </p>
               <div className="mt-1">
-                <StarRow star={progress.star} />
+                <StarRow star={progress.star} max={starCap} />
               </div>
             </div>
           </div>
@@ -544,22 +545,15 @@ export function CharacterSheet({
                 {!owned ? ' · 预览' : ''}
               </p>
               <h3 className="font-display mt-1 text-xl">{skill.name}</h3>
+              {skill.blurb ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">{skill.blurb}</p>
+              ) : null}
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                {skill.roleLine} · {skill.jobLine}
-                {spec ? ` · ${spec.label}` : ''}
-              </p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 目标 {skill.targetPattern}
-                {skill.damageSchool === 'spirit'
-                  ? ' · 灵系'
-                  : skill.damageSchool === 'phys'
-                    ? ' · 力系'
-                    : ''}
-                · 倍率 {skill.multiplier}
-                {skill.statusLine ? ` · ${skill.statusLine}` : ''}
               </p>
-              {skill.effectsLine ? (
-                <p className="mt-1 text-sm text-muted-foreground">{skill.effectsLine}</p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground/90">{skill.coeffLine}</p>
+              {skill.statusLine ? (
+                <p className="mt-1 text-sm text-muted-foreground">{skill.statusLine}</p>
               ) : null}
               {skill.growthModLine ? (
                 <p className="mt-1.5 text-sm text-primary/90">养成修正 · {skill.growthModLine}</p>
@@ -568,10 +562,8 @@ export function CharacterSheet({
                 <p className="mt-1 text-sm text-primary/90">装形态 · {skill.morphLine}</p>
               ) : null}
               {skill.followUpLine ? (
-                <p className="mt-1 text-sm text-primary/90">连击 · {skill.followUpLine}</p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">连击 · 尚未点亮</p>
-              )}
+                <p className="mt-1 text-sm text-primary/90">{skill.followUpLine}</p>
+              ) : null}
               {skill.nextStarDiffLine ? (
                 <p className="mt-0.5 text-xs text-muted-foreground">{skill.nextStarDiffLine}</p>
               ) : skill.nextFollowUpLine ? (
@@ -581,7 +573,7 @@ export function CharacterSheet({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain rounded-xl border border-border/70 bg-card/40 p-3">
               <div>
                 <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
-                  升星轨 · ★{progress.star}/{MAX_STAR}
+                  升星轨 · ★{progress.star}/{starCap}
                 </p>
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {starTrackRows.map((n) => (
@@ -657,7 +649,7 @@ export function CharacterSheet({
                   </div>
                   <div className="font-display mt-2 text-lg leading-tight">{template.name}</div>
                   <div className="mt-1">
-                    <StarRow star={progress.star} />
+                    <StarRow star={progress.star} max={starCap} />
                   </div>
                 </div>
                 <div className="flex min-h-0 flex-col gap-1">
@@ -944,7 +936,7 @@ export function CharacterList({
               </div>
               {owned ? (
                 <div className="mt-1">
-                  <StarRow star={progress.star} />
+                  <StarRow star={progress.star} max={maxStarForTemplate(t.id)} />
                 </div>
               ) : (
                 <p className="mt-1 text-[10px] text-muted-foreground/80">

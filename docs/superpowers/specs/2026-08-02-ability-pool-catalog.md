@@ -122,11 +122,11 @@
 
 | id | 名 | 钩子 | 档 | 质变 | 备注 |
 |----|----|------|----|------|------|
-| e_vs_low_hp | 猎残 | rule/focus | N | ★ | focusPolicy lowest_hp（已有） |
+| e_vs_low_hp | 猎残 | rule/focus | N | ★ | focusPolicy lowest_hp；斩杀见 `execute` |
 | e_vs_high_hp | 撼岳 | rule | L | ★ | 高血额外伤 |
-| e_vs_shield | 碎甲 | rule | L | ★ | 对盾额外 |
+| e_vs_shield | 碎甲 | rule | N | ★ | `effects: vs_shield`（2026-08-03） |
 | e_vs_cc | 乘乱 | rule | L | | 目标被控增伤 |
-| e_first_cast | 先声 | rule | L | | 本场首次技能增伤 |
+| e_first_cast | 先声 | rule | N | ★ | `effects: first_cast`（2026-08-03） |
 | e_after_basic | 蓄锐 | rule | L | | 普攻后下一技增伤 |
 | e_front_bonus | 陷阵 | rule | L | | 打前排增伤 |
 | e_back_bonus | 袭后 | rule | P | ★ | pierce+后排（现网近似） |
@@ -150,7 +150,7 @@
 | f_heal_block | 封疗 | status | N | ★ | heal_block |
 | f_atk_down | 丧锋 | status | P | | 降低攻击 |
 | f_def_down | 碎防 | status | P | | 非 shred 的减防 |
-| f_mark_prey | 猎印 | status | P | ★ | 标记：被攻击受伤↑ |
+| f_mark_prey | 猎印 | status | N | ★ | `mark_prey` + value 承伤倍率（2026-08-03） |
 | f_curse_weak | 咒弱 | status | P | | 综合小减益 |
 | f_corruption | 侵蚀 | status | L | | 叠层爆炸（网文毒誓） |
 
@@ -176,7 +176,7 @@
 | id | 名 | 钩子 | 档 | 质变 | 备注 |
 |----|----|------|----|------|------|
 | h_shield | 护体 | status | N | ★ | shield |
-| h_shield_team | 结界 | status | P | ★ | 群体盾 |
+| h_shield_team | 结界 | status | N | ★ | `effects: team_shield`（2026-08-03） |
 | h_atk_up | 加持 | status | P | | 攻↑ |
 | h_def_up | 铁壁咒 | status | P | | 防↑ |
 | h_spd_up | 神行 | status | P | | 身法↑ |
@@ -227,7 +227,7 @@
 | k_qi_on_kill | 杀意 | effect/rule | L | | |
 | k_grant_qi | 赠气 | effect | N | | grant_qi 已有 |
 | k_qi_steal | 夺气 | rule | L | ★ | 偷敌 qi |
-| k_refund_on_kill | 还元 | rule | L | ★ | 击杀返还技能消耗 |
+| k_refund_on_kill | 还元 | rule | N | ★ | `refund_qi_on_kill`（2026-08-03） |
 | k_basic_qi_up | 普攻充盈 | rule | P | | 普攻 +qi 更高 |
 | k_skill_qi_battery | 电池 | skill | N | | 低耗能+小伤（辅助向） |
 
@@ -251,7 +251,7 @@
 | m_revive_self | 涅槃 | rule | L | ★ | 本场一次免死起身 |
 | m_revive_ally | 招魂 | rule | L | ★ | 拉人 |
 | m_second_wind | 残阳 | rule | L | | 残血触发自疗/盾 |
-| m_execute | 斩杀线 | rule | L | ★ | <X% 血秒杀或巨伤 |
+| m_execute | 斩杀线 | rule | N | ★ | `execute` 残血增伤（非秒杀；2026-08-03） |
 | m_lifesteal_burst | 血祭 | rare+skill | N | ★ | 吸血+技能加深 |
 | m_clone_hit | 影袭 | follow | L | ★ | 分身多一段（连击皮） |
 | m_time_rewind | 逆转 | rule | L | | 回档生命（慎） |

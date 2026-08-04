@@ -2,6 +2,7 @@
  * 升星效果类型（扩展口）。
  * 新 kind：在此加联合成员 → deriveGrowthStats / skillCompose / summarizeStarEffect 各加一支。
  */
+import { statusLabel } from '../combat/statusFx.js';
 import type { ApplyStatusDef, SkillEffect } from '../shared/types.js';
 
 export type StarRareStat = 'lifesteal' | 'dodge' | 'block';
@@ -110,10 +111,27 @@ export function summarizeStarEffect(fx: StarNodeEffect): string {
     return bits.join('·') || '状态强化';
   }
   if (fx.kind === 'status_unlock') {
-    return `解锁状态 ${fx.status.statusId}`;
+    return `解锁${statusLabel(fx.status.statusId)}`;
   }
   if (fx.kind === 'effect_unlock') {
-    return `解锁效果 ${fx.effect.kind}`;
+    return `解锁${effectKindLabel(fx.effect.kind)}`;
   }
   return '';
+}
+
+/** 技能效果 kind → 中文（UI / 升星摘要） */
+export const EFFECT_KIND_LABELS: Record<string, string> = {
+  purge: '驱散',
+  cleanse: '净化',
+  first_cast: '先声增伤',
+  vs_shield: '对盾增伤',
+  execute: '斩杀',
+  heal_low_hp: '残血加疗',
+  refund_qi_on_kill: '击杀还元',
+  team_shield: '队友结界',
+  ally_grant_qi: '济元回能',
+};
+
+export function effectKindLabel(kind: string): string {
+  return EFFECT_KIND_LABELS[kind] ?? kind;
 }
