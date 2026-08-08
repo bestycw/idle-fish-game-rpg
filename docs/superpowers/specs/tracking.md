@@ -77,6 +77,7 @@
 | 会话 | 主动玩、不挂机；**10–20 分钟有收获**仅作内部节奏，不进对外 slogan |
 | 对外身份 | **布阵刷装 · 摸鱼深构筑**；见 [positioning-revision](./2026-08-07-positioning-revision-design.md) |
 | 玩法扩展储备 | E1-E8 机制登记（遭遇词缀/阵位共鸣/Rogue Run/破境挑战/完美触发/周回异变/装备铭刻/宿敌）；题材无关；暂不开工；见 [gameplay-expansion-catalog](./2026-08-07-gameplay-expansion-catalog.md) |
+| 属性体系重设计 | 一级5（ATK/DEF/RES/HP/SPD）+ 二级6 Rating（暴击/暴伤/穿透/精通/坚韧/气运）+ 稀有9（可扩展）；删均衡/急速/终伤；攻击合并；防御分力灵；见 [attribute-system-redesign](./2026-08-08-attribute-system-redesign.md) |
 | 技术 | Web + React；monorepo；core/adapter/ui 分层 |
 | 用户 | 上班能开的摸鱼入口；本体要策略深度 |
 | 引擎 vs 皮肤 | 引擎先独立；文字世界观 / AI 外皮是皮肤 |

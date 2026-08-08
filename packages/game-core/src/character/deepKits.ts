@@ -187,7 +187,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           id: 'relentless',
           label: '无尽追斩',
           effects: [
-            { kind: 'rating', stat: 'finalDmgRating', value: 10 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
             { kind: 'enable_follow_up', chance: 0.15, multiplier: 0.5 },
           ],
         },
@@ -227,7 +227,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
         },
       ],
     },
-    { label: '长坂骨', effects: [{ kind: 'rating', stat: 'versRating', value: 10 }] },
+    { label: '长坂骨', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
     {
       label: '震喝三军',
       effects: [
@@ -344,7 +344,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
     },
     {
       label: '齐天大圣',
-      effects: [{ kind: 'rating', stat: 'finalDmgRating', value: 10 }],
+      effects: [{ kind: 'rating', stat: 'penRating', value: 10 }],
       branches: [
         {
           id: 'rampage',
@@ -458,7 +458,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           id: 'execute',
           label: '九日·猎杀',
           effects: [
-            { kind: 'rating', stat: 'finalDmgRating', value: 12 },
+            { kind: 'rating', stat: 'penRating', value: 12 },
             { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.28, multiplier: 1.55 } },
           ],
         },
@@ -490,13 +490,13 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '涅墨亚·荆棘',
           effects: [
             { kind: 'skill_mult', delta: 0.1 },
-            { kind: 'rating', stat: 'versRating', value: 10 },
+            { kind: 'rating', stat: 'tenacityRating', value: 10 },
             { kind: 'rare_stat', stat: 'block', value: 0.03 },
           ],
         },
       ],
     },
-    { label: '不屈功业', effects: [{ kind: 'rating', stat: 'versRating', value: 12 }] },
+    { label: '不屈功业', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 12 }] },
     { label: '省力护体', effects: [{ kind: 'qi_cost', delta: -8 }] },
     {
       label: '十二功业',
@@ -617,7 +617,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '夫人·噬魂',
           effects: [
             { kind: 'status_unlock', status: { statusId: 'bleed', duration: 3, layers: 2, chance: 0.55 } },
-            { kind: 'rating', stat: 'finalDmgRating', value: 8 },
+            { kind: 'rating', stat: 'penRating', value: 8 },
           ],
         },
       ],
@@ -670,7 +670,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '真身·石爆',
           effects: [
             { kind: 'skill_mult', delta: 0.18 },
-            { kind: 'rating', stat: 'finalDmgRating', value: 10 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
           ],
         },
       ],
@@ -708,7 +708,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '神盾·守护',
           effects: [
             { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.5 } },
-            { kind: 'rating', stat: 'versRating', value: 10 },
+            { kind: 'rating', stat: 'tenacityRating', value: 10 },
           ],
         },
         {
@@ -724,7 +724,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
   ]),
   guanyu: track([
     { label: '青龙偃月', effects: [{ kind: 'stat_pct', mainPct: 0.035 }] },
-    { label: '义绝', effects: [{ kind: 'rating', stat: 'finalDmgRating', value: 8 }] },
+    { label: '义绝', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
     {
       label: '过五关',
       effects: [],
@@ -761,7 +761,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '华雄·暴力',
           effects: [
             { kind: 'rating', stat: 'critDmgRating', value: 12 },
-            { kind: 'rating', stat: 'finalDmgRating', value: 8 },
+            { kind: 'rating', stat: 'penRating', value: 8 },
           ],
         },
         {
@@ -810,7 +810,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           id: 'slayer',
           label: '吕布·猎神',
           effects: [
-            { kind: 'rating', stat: 'finalDmgRating', value: 14 },
+            { kind: 'rating', stat: 'penRating', value: 14 },
             { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.25, multiplier: 1.4 } },
           ],
         },
@@ -848,7 +848,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
         },
       ],
     },
-    { label: '双戟厚血', effects: [{ kind: 'rating', stat: 'versRating', value: 10 }] },
+    { label: '双戟厚血', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
     { label: '省力', effects: [{ kind: 'qi_cost', delta: -8 }] },
     {
       label: '古之恶来',
@@ -867,7 +867,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '恶来·死战',
           effects: [
             { kind: 'rare_stat', stat: 'lifesteal', value: 0.06 },
-            { kind: 'rating', stat: 'versRating', value: 12 },
+            { kind: 'rating', stat: 'tenacityRating', value: 12 },
           ],
         },
       ],
@@ -875,7 +875,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
   ]),
   nezha: track([
     { label: '莲花化身', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '风火轮', effects: [{ kind: 'rating', stat: 'hasteRating', value: 10 }] },
+    { label: '风火轮', effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }] },
     {
       label: '三头六臂',
       effects: [],
@@ -918,8 +918,8 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           id: 'flame',
           label: '闹海·焚天',
           effects: [
-            { kind: 'rating', stat: 'finalDmgRating', value: 12 },
-            { kind: 'rating', stat: 'hasteRating', value: 8 },
+            { kind: 'rating', stat: 'penRating', value: 12 },
+            { kind: 'rating', stat: 'fortuneRating', value: 8 },
           ],
         },
       ],
@@ -969,7 +969,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '天狐·业火',
           effects: [
             { kind: 'skill_mult', delta: 0.2 },
-            { kind: 'rating', stat: 'finalDmgRating', value: 10 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
           ],
         },
       ],
@@ -977,7 +977,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
   ]),
   yangjian: track([
     { label: '天眼', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '梅山会神', effects: [{ kind: 'rating', stat: 'finalDmgRating', value: 8 }] },
+    { label: '梅山会神', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
     {
       label: '天眼岔路',
       effects: [],
@@ -1065,7 +1065,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           id: 'breaker',
           label: '雷锤·破盾',
           effects: [
-            { kind: 'rating', stat: 'finalDmgRating', value: 10 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
             { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.3 } },
           ],
         },
@@ -1104,7 +1104,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
         },
       ],
     },
-    { label: '王气', effects: [{ kind: 'rating', stat: 'versRating', value: 10 }] },
+    { label: '王气', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
     { label: '省力', effects: [{ kind: 'qi_cost', delta: -8 }] },
     {
       label: '王者归来',
@@ -1123,7 +1123,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '归来·不破',
           effects: [
             { kind: 'stat_pct', mainPct: 0.06 },
-            { kind: 'rating', stat: 'versRating', value: 10 },
+            { kind: 'rating', stat: 'tenacityRating', value: 10 },
           ],
         },
       ],
@@ -1176,7 +1176,7 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
           label: '捧心·蚀魂',
           effects: [
             { kind: 'status_unlock', status: { statusId: 'havoc', duration: 1, chance: 0.5 } },
-            { kind: 'rating', stat: 'finalDmgRating', value: 10 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
           ],
         },
       ],

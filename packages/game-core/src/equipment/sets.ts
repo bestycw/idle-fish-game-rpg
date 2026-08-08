@@ -26,8 +26,8 @@ export const SET_DEFS: SetDef[] = [
         pieces: 2,
         label: '2件·破军锋',
         apply: (b) => {
-          b.finalDmgRating += 8;
-          b.physAtk += 3;
+          b.penRating += 8;
+          b.atk += 3;
         },
       },
       {
@@ -50,7 +50,7 @@ export const SET_DEFS: SetDef[] = [
         label: '2件·铁壁骨',
         apply: (b) => {
           b.maxHp += 18;
-          b.physDef += 4;
+          b.def += 4;
         },
       },
       {
@@ -58,7 +58,7 @@ export const SET_DEFS: SetDef[] = [
         label: '4件·铁壁心',
         apply: (b) => {
           b.block += 0.06;
-          b.versRating += 8;
+          b.tenacityRating += 8;
         },
       },
     ],
@@ -73,15 +73,15 @@ export const SET_DEFS: SetDef[] = [
         label: '2件·济世脉',
         apply: (b) => {
           b.masteryRating += 10;
-          b.spiritAtk += 3;
+          b.atk += 3;
         },
       },
       {
         pieces: 4,
         label: '4件·济世元',
         apply: (b) => {
-          b.versRating += 10;
-          b.spiritDef += 4;
+          b.tenacityRating += 10;
+          b.res += 4;
         },
       },
     ],

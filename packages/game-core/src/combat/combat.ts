@@ -180,8 +180,8 @@ export function resolveDamageSchool(
   return 'phys';
 }
 
-function attackPower(unit: UnitRuntime, school: DamageSchool): number {
-  return school === 'spirit' ? unit.spiritAtk : unit.physAtk;
+function attackPower(unit: UnitRuntime, _school: DamageSchool): number {
+  return unit.atk;
 }
 
 function effectiveDef(
@@ -189,7 +189,7 @@ function effectiveDef(
   school: DamageSchool,
   pierceReduction = 0,
 ): number {
-  const base = school === 'spirit' ? target.spiritDef : target.physDef;
+  const base = school === 'spirit' ? target.res : target.def;
   let def = base * positionDefMod(target.slot);
   for (const s of target.statuses) {
     if (s.remaining <= 0 || s.value == null) continue;
@@ -219,11 +219,11 @@ function computeDamage(
   rng: Rng,
 ): { amount: number; crit: boolean; blocked: boolean; dodged: boolean } {
   const school = opts.school ?? 'phys';
-  const versPct = ratingToPct(actor.versRating, 'versRating');
-  const finalPct = ratingToPct(actor.finalDmgRating, 'finalDmgRating');
+  const penPct = ratingToPct(actor.penRating, 'penRating');
+  const fortunePct = ratingToPct(actor.fortuneRating, 'fortuneRating');
   const critDmgExtra = ratingToPct(actor.critDmgRating, 'critDmgRating') + burstCritDmgExtra(actor);
 
-  let raw = attackPower(actor, school) * multiplier * positionAtkMod(actor.slot) * (1 + versPct);
+  let raw = attackPower(actor, school) * multiplier * positionAtkMod(actor.slot);
   for (const s of actor.statuses) {
     if (s.remaining <= 0) continue;
     const mult = getStatusDef(s.statusId)?.outgoingDamageMult;
@@ -234,15 +234,15 @@ function computeDamage(
   const crit = rollCrit(actor, target, rng);
   if (crit) raw *= 1.5 + critDmgExtra;
 
-  const pierce = opts.pierce ? pierceDefReduction(actor) : 0;
+  const pierce = opts.pierce ? pierceDefReduction(actor) : penPct;
   const effDef = effectiveDef(target, school, pierce);
   // 防御权重：过低则破甲/厚甲无解法感（曾 0.35）；0.5 让盾墙关能卡「无破甲」
   let afterDef = Math.max(1, raw - effDef * 0.5);
 
-  let middle = afterDef * (1 - versPct);
+  let middle = afterDef;
   middle *= tankDamageTakenMult(target);
 
-  let final = Math.max(1, Math.floor(middle * (1 + finalPct) * outputMasteryMult(actor, opts)));
+  let final = Math.max(1, Math.floor(middle * (1 + actor.finalDmgBonus) * outputMasteryMult(actor, opts)));
 
   let blocked = false;
   if (target.block > 0 && rng.next() < target.block) {
@@ -250,7 +250,8 @@ function computeDamage(
     blocked = true;
   }
 
-  if (target.dodge > 0 && rng.next() < target.dodge) {
+  const effectiveDodge = Math.max(0, target.dodge - penPct * 0.3);
+  if (effectiveDodge > 0 && rng.next() < effectiveDodge) {
     return { amount: 0, crit, blocked: false, dodged: true };
   }
 
@@ -341,7 +342,7 @@ function rollStatusLand(
 ): boolean {
   return (
     rng.next() <
-    statusLandChance(actor.role, actor.masteryRating, target.fortune, statusId)
+    statusLandChance(actor.role, actor.masteryRating, target.fortuneRating, statusId)
   );
 }
 
@@ -514,8 +515,7 @@ function tickStatusesOnAct(unit: UnitRuntime): void {
 }
 
 function applyQiGain(unit: UnitRuntime, amount: number): number {
-  const haste = ratingToPct(unit.hasteRating, 'hasteRating');
-  const scaled = Math.max(0, Math.floor(amount * (1 + haste)));
+  const scaled = Math.max(0, amount);
   const before = unit.qi;
   unit.qi = Math.min(unit.maxQi, unit.qi + scaled);
   return unit.qi - before;
@@ -788,7 +788,7 @@ export function buildDefeatHint(state: BattleState): string {
   const foes = state.enemy.units;
   const allies = state.player.units;
   const highDefFront =
-    foes.filter((u) => rowOf(u.slot) === 'front' && u.physDef >= 14).length >= 2;
+    foes.filter((u) => rowOf(u.slot) === 'front' && u.def >= 14).length >= 2;
   const hadPierceDeath = allies.some((u) => u.dead && rowOf(u.slot) !== 'front');
   const lowHeal = !allies.some((u) => u.role === 'st_heal' && isLiving(u));
   const avgEnemySpd = foes.reduce((s, u) => s + u.spd, 0) / Math.max(1, foes.length);
@@ -866,24 +866,29 @@ function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntim
     slot: spec.slot,
     isHero: false,
     dead: false,
-    physAtk: scaleStat(spec.physAtk, pressure),
-    spiritAtk: scaleStat(spec.spiritAtk, pressure),
-    physDef: scaleStat(spec.physDef, pressure),
-    spiritDef: scaleStat(spec.spiritDef, pressure),
+    damageSchool: spec.damageSchool ?? 'phys',
+    atk: scaleStat(spec.atk, pressure),
+    def: scaleStat(spec.def, pressure),
+    res: scaleStat(spec.res, pressure),
     maxHp,
     hp: maxHp,
     spd: spec.spd,
     critRating: spec.critRating ?? 5,
     critDmgRating: spec.critDmgRating ?? 5,
-    hasteRating: spec.hasteRating ?? 0,
-    versRating: spec.versRating ?? 0,
+    penRating: spec.penRating ?? 0,
     masteryRating: spec.masteryRating ?? 0,
-    finalDmgRating: spec.finalDmgRating ?? 0,
-    fortune: scaleStat(spec.fortune ?? 8, Math.min(pressure, 1.15)),
+    tenacityRating: spec.tenacityRating ?? 0,
+    fortuneRating: spec.fortuneRating ?? 8,
     dodge: 0,
     lifesteal: 0,
     critResist: 0,
     block: 0,
+    counter: 0,
+    resilience: 0,
+    echo: 0,
+    thorns: 0,
+    steal: 0,
+    finalDmgBonus: 0,
     qi: BATTLE_START_QI,
     maxQi: 100,
     skill: getSkill(spec.skillId),

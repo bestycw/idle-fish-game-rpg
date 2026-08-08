@@ -28,10 +28,10 @@ describe('equipment sets', () => {
       'set_pojun',
     ]);
     const bonus = sumEquipmentBonuses(createInitialPlayer(1));
-    const beforeFinal = bonus.finalDmgRating;
+    const beforeFinal = bonus.penRating;
     const beforeCrit = bonus.critRating;
     applyActiveSetBonuses(bonus, counts);
-    assert.ok(bonus.finalDmgRating > beforeFinal);
+    assert.ok(bonus.penRating > beforeFinal);
     assert.ok(bonus.critRating > beforeCrit);
   });
 
@@ -50,6 +50,6 @@ describe('equipment sets', () => {
     const bonus = sumEquipmentBonuses(p);
     // 2件铁壁 +18 hp；第三条词缀 +10 → 至少 28
     assert.ok(bonus.maxHp >= 28);
-    assert.ok(bonus.physDef >= 4);
+    assert.ok(bonus.def >= 4);
   });
 });

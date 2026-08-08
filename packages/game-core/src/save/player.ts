@@ -11,7 +11,7 @@ import { STAMINA_MAX, syncStamina } from '../stamina/stamina.js';
 
 type LegacySave = Omit<Partial<PlayerState>, 'version'> & { version?: number };
 
-const SAVE_VERSION = 10 as const;
+const SAVE_VERSION = 11 as const;
 
 /** 旧占位卡 id；迁移时从 roster/formation 剔除 */
 const REMOVED_TEMPLATE_IDS = new Set([
@@ -122,6 +122,25 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
     }
     if ((migrated.currencies.ticket ?? 0) < 1 && (loadedVersion ?? 0) < 5) {
       migrated.currencies.ticket = Math.max(migrated.currencies.ticket ?? 0, 12);
+    }
+    // v10→v11: attribute system migration (affix stat keys)
+    if ((loadedVersion ?? 0) < 11) {
+      const statRemap: Record<string, string> = {
+        physAtk: 'atk',
+        spiritAtk: 'atk',
+        physDef: 'def',
+        spiritDef: 'res',
+        hasteRating: 'penRating',
+        versRating: 'tenacityRating',
+        finalDmgRating: 'penRating',
+        fortune: 'fortuneRating',
+      };
+      for (const item of migrated.inventory) {
+        for (const affix of item.affixes) {
+          const mapped = statRemap[affix.stat];
+          if (mapped) affix.stat = mapped as any;
+        }
+      }
     }
     // 迁移后若阵容被剔空，回默认
     if (Object.keys(normalizeFormation(migrated.formation)).length === 0) {

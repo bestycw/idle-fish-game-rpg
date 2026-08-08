@@ -1,10 +1,10 @@
 export const RATING_PARAMS = {
   critRating: { k: 80, cap: 0.6 },
   critDmgRating: { k: 100, cap: 0.8 },
-  hasteRating: { k: 90, cap: 0.4 },
-  versRating: { k: 100, cap: 0.2 },
+  penRating: { k: 85, cap: 0.45 },
   masteryRating: { k: 90, cap: 0.35 },
-  finalDmgRating: { k: 120, cap: 0.18 },
+  tenacityRating: { k: 90, cap: 0.4 },
+  fortuneRating: { k: 100, cap: 0.35 },
 } as const;
 
 export type RatingStat = keyof typeof RATING_PARAMS;

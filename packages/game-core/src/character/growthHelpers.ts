@@ -66,10 +66,9 @@ function summarizeAttrDiff(before: DerivedGrowthStats, after: DerivedGrowthStats
     const d = b - a;
     if (d !== 0) parts.push(`${label}+${d}`);
   };
-  push('攻', before.physAtk, after.physAtk);
-  push('灵', before.spiritAtk, after.spiritAtk);
-  push('防', before.physDef, after.physDef);
-  push('灵防', before.spiritDef, after.spiritDef);
+  push('攻', before.atk, after.atk);
+  push('防', before.def, after.def);
+  push('抗', before.res, after.res);
   push('生命', before.maxHp, after.maxHp);
   if (after.block - before.block > 0.0001) {
     parts.push(`格挡+${Math.round((after.block - before.block) * 100)}%`);

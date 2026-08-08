@@ -85,7 +85,7 @@ export const CULTIVATION_NODES_PER_TIER = 4;
 /** 每个已完成小节点折合主属性 */
 export const CULTIVATION_NODE_MAIN_PCT = 0.012;
 
-export const SAVE_ROSTER_VERSION = 10 as const;
+export const SAVE_ROSTER_VERSION = 11 as const;
 
 export function levelCapForTier(tier: number): number {
   const idx = Math.max(0, Math.min(LEVEL_CAP_BY_TIER.length - 1, tier));
@@ -240,23 +240,28 @@ export function getProgress(state: PlayerState, templateId: string): CharacterPr
 }
 
 export interface DerivedGrowthStats {
-  physAtk: number;
-  spiritAtk: number;
-  physDef: number;
-  spiritDef: number;
+  atk: number;
+  def: number;
+  res: number;
   maxHp: number;
   spd: number;
   critRating: number;
   critDmgRating: number;
-  hasteRating: number;
-  versRating: number;
+  penRating: number;
   masteryRating: number;
-  finalDmgRating: number;
-  fortune: number;
+  tenacityRating: number;
+  fortuneRating: number;
   dodge: number;
   lifesteal: number;
   critResist: number;
   block: number;
+  counter: number;
+  resilience: number;
+  echo: number;
+  thorns: number;
+  steal: number;
+  finalDmgBonus: number;
+  damageSchool: 'phys' | 'spirit';
   followUp?: { chance: number; multiplier?: number };
   skillMods: SkillGrowthMods;
   unlockedLabels: string[];
@@ -270,6 +275,12 @@ function applyEffectToAccum(
     lifesteal: number;
     dodge: number;
     block: number;
+    counter: number;
+    resilience: number;
+    echo: number;
+    thorns: number;
+    steal: number;
+    finalDmgBonus: number;
     ratings: Partial<Record<StarRatingStat, number>>;
     followUp?: DerivedGrowthStats['followUp'];
     skillEffects: StarNodeEffect[];
@@ -280,6 +291,11 @@ function applyEffectToAccum(
     if (fx.stat === 'lifesteal') acc.lifesteal += fx.value;
     if (fx.stat === 'dodge') acc.dodge += fx.value;
     if (fx.stat === 'block') acc.block += fx.value;
+    if (fx.stat === 'counter') acc.counter += fx.value;
+    if (fx.stat === 'resilience') acc.resilience += fx.value;
+    if (fx.stat === 'echo') acc.echo += fx.value;
+    if (fx.stat === 'thorns') acc.thorns += fx.value;
+    if (fx.stat === 'steal') acc.steal += fx.value;
   }
   if (fx.kind === 'rating') {
     acc.ratings[fx.stat] = (acc.ratings[fx.stat] ?? 0) + fx.value;
@@ -308,6 +324,12 @@ export function deriveGrowthStats(
     lifesteal: template.lifesteal ?? 0,
     dodge: template.dodge ?? 0,
     block: template.block ?? 0,
+    counter: 0,
+    resilience: 0,
+    echo: 0,
+    thorns: 0,
+    steal: 0,
+    finalDmgBonus: 0,
     ratings: {} as Partial<Record<StarRatingStat, number>>,
     followUp: undefined as DerivedGrowthStats['followUp'],
     skillEffects: [] as StarNodeEffect[],
@@ -330,23 +352,28 @@ export function deriveGrowthStats(
   const r = (stat: StarRatingStat) => acc.ratings[stat] ?? 0;
 
   return {
-    physAtk: Math.max(1, Math.round(template.basePhysAtk * scale)),
-    spiritAtk: Math.max(1, Math.round(template.baseSpiritAtk * scale)),
-    physDef: Math.max(1, Math.round(template.basePhysDef * scale)),
-    spiritDef: Math.max(1, Math.round(template.baseSpiritDef * scale)),
+    atk: Math.max(1, Math.round(template.baseAtk * scale)),
+    def: Math.max(1, Math.round(template.baseDef * scale)),
+    res: Math.max(1, Math.round(template.baseRes * scale)),
     maxHp: Math.max(1, Math.round(template.baseMaxHp * scale)),
     spd: Math.max(1, Math.round(template.baseSpd * (1 + (lv - 1) * 0.01 + tier * 0.01))),
     critRating: template.critRating + Math.floor((lv - 1) * 0.4) + r('critRating'),
     critDmgRating: template.critDmgRating + Math.floor((lv - 1) * 0.3) + r('critDmgRating'),
-    hasteRating: template.hasteRating + Math.floor((lv - 1) * 0.25) + r('hasteRating'),
-    versRating: template.versRating + r('versRating'),
+    penRating: template.penRating + Math.floor((lv - 1) * 0.25) + r('penRating'),
     masteryRating: template.masteryRating + Math.floor((lv - 1) * 0.35) + r('masteryRating'),
-    finalDmgRating: template.finalDmgRating + r('finalDmgRating'),
-    fortune: template.fortune + r('fortune'),
+    tenacityRating: template.tenacityRating + Math.floor((lv - 1) * 0.2) + r('tenacityRating'),
+    fortuneRating: template.fortuneRating + r('fortuneRating'),
     dodge: acc.dodge,
     lifesteal: acc.lifesteal,
     critResist: template.critResist ?? 0,
     block: acc.block,
+    counter: acc.counter ?? 0,
+    resilience: acc.resilience ?? 0,
+    echo: acc.echo ?? 0,
+    thorns: acc.thorns ?? 0,
+    steal: acc.steal ?? 0,
+    finalDmgBonus: acc.finalDmgBonus ?? 0,
+    damageSchool: template.damageSchool,
     followUp: acc.followUp,
     skillMods: accumulateSkillMods(acc.skillEffects),
     unlockedLabels,

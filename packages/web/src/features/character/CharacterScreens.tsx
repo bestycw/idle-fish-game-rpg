@@ -155,19 +155,19 @@ export function CharacterSheet({
   const onField = player.formation[templateId] != null;
 
   const display = {
-    physAtk: derived.physAtk + bonus.physAtk,
-    spiritAtk: derived.spiritAtk + bonus.spiritAtk,
-    physDef: derived.physDef + bonus.physDef,
-    spiritDef: derived.spiritDef + bonus.spiritDef,
+    atk: derived.atk + bonus.atk,
+    def: derived.def + bonus.def,
+    res: derived.res + bonus.res,
+    
     maxHp: derived.maxHp + bonus.maxHp,
     spd: derived.spd + bonus.spd,
     critRating: derived.critRating + bonus.critRating,
     critDmgRating: derived.critDmgRating + bonus.critDmgRating,
-    hasteRating: derived.hasteRating + bonus.hasteRating,
-    versRating: derived.versRating + bonus.versRating,
+    penRating: derived.penRating + bonus.penRating,
+    tenacityRating: derived.tenacityRating + bonus.tenacityRating,
     masteryRating: derived.masteryRating + bonus.masteryRating,
-    finalDmgRating: derived.finalDmgRating + bonus.finalDmgRating,
-    fortune: derived.fortune + bonus.fortune,
+    fortuneRating: derived.fortuneRating + bonus.fortuneRating,
+    
     dodge: derived.dodge + bonus.dodge,
     lifesteal: derived.lifesteal + bonus.lifesteal,
     critResist: derived.critResist + bonus.critResist,
@@ -181,22 +181,21 @@ export function CharacterSheet({
       rating: display.critDmgRating,
       pct: ratingToPct(display.critDmgRating, 'critDmgRating'),
     },
-    { label: '急速', rating: display.hasteRating, pct: ratingToPct(display.hasteRating, 'hasteRating') },
-    { label: '均衡', rating: display.versRating, pct: ratingToPct(display.versRating, 'versRating') },
+    { label: '穿透', rating: display.penRating, pct: ratingToPct(display.penRating, 'penRating') },
+    { label: '坚韧', rating: display.tenacityRating, pct: ratingToPct(display.tenacityRating, 'tenacityRating') },
     {
       label: '精通',
       rating: display.masteryRating,
       pct: ratingToPct(display.masteryRating, 'masteryRating'),
     },
     {
-      label: '终伤',
-      rating: display.finalDmgRating,
-      pct: ratingToPct(display.finalDmgRating, 'finalDmgRating'),
+      label: '气运',
+      rating: display.fortuneRating,
+      pct: ratingToPct(display.fortuneRating, 'fortuneRating'),
     },
   ];
 
   const rareRows = [
-    { label: '幸运', text: String(Math.round(display.fortune)), active: display.fortune > 0 },
     { label: '闪避', text: `${Math.round(display.dodge * 100)}%`, active: display.dodge > 0 },
     {
       label: '吸血',
@@ -382,10 +381,9 @@ export function CharacterSheet({
               <div className="grid grid-cols-3 gap-1.5">
                 {(
                   [
-                    ['攻击', display.physAtk],
-                    ['灵力', display.spiritAtk],
-                    ['防御', display.physDef],
-                    ['灵防', display.spiritDef],
+                    ['攻击', display.atk],
+                    ['防御', display.def],
+                    ['抗性', display.res],
                     ['生命', display.maxHp],
                     ['身法', display.spd],
                   ] as const

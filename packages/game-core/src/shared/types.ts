@@ -176,26 +176,26 @@ export interface SkillDef {
 export type GridSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export type StatKey =
-  | 'physAtk'
-  | 'spiritAtk'
-  | 'physDef'
-  | 'spiritDef'
-  /** @deprecated 旧档词缀；结算时并入 physAtk / physDef */
   | 'atk'
   | 'def'
+  | 'res'
   | 'maxHp'
   | 'spd'
   | 'critRating'
   | 'critDmgRating'
-  | 'hasteRating'
-  | 'versRating'
+  | 'penRating'
   | 'masteryRating'
-  | 'finalDmgRating'
-  | 'fortune'
+  | 'tenacityRating'
+  | 'fortuneRating'
   | 'dodge'
   | 'lifesteal'
   | 'critResist'
-  | 'block';
+  | 'block'
+  | 'counter'
+  | 'resilience'
+  | 'echo'
+  | 'thorns'
+  | 'steal';
 
 export interface AffixDef {
   id: string;
@@ -240,19 +240,19 @@ export interface UnitTemplate {
   rarity: Rarity;
   preferredSlot: GridSlot;
   isHero?: boolean;
-  basePhysAtk: number;
-  baseSpiritAtk: number;
-  basePhysDef: number;
-  baseSpiritDef: number;
+  /** 伤害走力系还是灵系 */
+  damageSchool: DamageSchool;
+  baseAtk: number;
+  baseDef: number;
+  baseRes: number;
   baseMaxHp: number;
   baseSpd: number;
   critRating: number;
   critDmgRating: number;
-  hasteRating: number;
-  versRating: number;
+  penRating: number;
   masteryRating: number;
-  finalDmgRating: number;
-  fortune: number;
+  tenacityRating: number;
+  fortuneRating: number;
   maxQi: number;
   dodge?: number;
   lifesteal?: number;
@@ -272,24 +272,29 @@ export interface UnitRuntime {
   slot: GridSlot;
   isHero: boolean;
   dead: boolean;
-  physAtk: number;
-  spiritAtk: number;
-  physDef: number;
-  spiritDef: number;
+  damageSchool: DamageSchool;
+  atk: number;
+  def: number;
+  res: number;
   maxHp: number;
   hp: number;
   spd: number;
   critRating: number;
   critDmgRating: number;
-  hasteRating: number;
-  versRating: number;
+  penRating: number;
   masteryRating: number;
-  finalDmgRating: number;
-  fortune: number;
+  tenacityRating: number;
+  fortuneRating: number;
   dodge: number;
   lifesteal: number;
   critResist: number;
   block: number;
+  counter: number;
+  resilience: number;
+  echo: number;
+  thorns: number;
+  steal: number;
+  finalDmgBonus: number;
   qi: number;
   maxQi: number;
   skill: SkillDef;

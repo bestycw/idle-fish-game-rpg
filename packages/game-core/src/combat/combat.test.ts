@@ -32,7 +32,7 @@ describe('ratings', () => {
     assert.equal(ratingToPct(0, 'critRating'), 0);
     assert.ok(Math.abs(ratingToPct(80, 'critRating') - 0.5) < 0.001);
     assert.equal(ratingToPct(1000, 'critRating'), 0.6);
-    assert.equal(ratingToPct(120, 'finalDmgRating'), 0.18);
+    assert.ok(Math.abs(ratingToPct(85, 'penRating') - 0.45) < 0.01);
   });
 });
 
@@ -56,7 +56,7 @@ describe('qi', () => {
     const enemy = battle.enemy.units[0]!;
     enemy.maxHp = 9999;
     enemy.hp = 9999;
-    enemy.physDef = 0; enemy.spiritDef = 0;
+    enemy.def = 0; enemy.res = 0;
     enemy.spd = 1;
     battle.player.units[0]!.spd = 99;
     battle.player.units[0]!.qi = 0;
@@ -180,7 +180,7 @@ describe('knife-2 combat', () => {
 
   it('sleep clears on damage', () => {
     const hero = createUnitFromTemplate(getTemplate('hero')!, 2);
-    hero.physAtk = 80; hero.spiritAtk = 80;
+    hero.atk = 80; hero.atk = 80;
     hero.spd = 99;
     hero.qi = 0;
     let battle = createBattle([hero], 3, 1);
@@ -188,7 +188,7 @@ describe('knife-2 combat', () => {
     battle.enemy.units = [battle.enemy.units[0]!];
     const foe = battle.enemy.units[0]!;
     foe.statuses = [{ statusId: 'sleep', remaining: 3 }];
-    foe.physDef = 0; foe.spiritDef = 0;
+    foe.def = 0; foe.res = 0;
     foe.maxHp = 500;
     foe.hp = 500;
     foe.spd = 1;
@@ -227,7 +227,7 @@ describe('knife-2 combat', () => {
     foe.spd = 1;
     foe.maxHp = 9999;
     foe.hp = 9999;
-    foe.fortune = 0;
+    foe.fortuneRating = 0;
     let guard = 0;
     while (
       battle.status === 'ongoing' &&
@@ -301,7 +301,7 @@ describe('dead units', () => {
   it('keeps dead units in array', () => {
     const player = createInitialPlayer(42);
     const party = buildPlayerParty(player).slice(0, 1);
-    party[0]!.physAtk = 999; party[0]!.spiritAtk = 999;
+    party[0]!.atk = 999; party[0]!.atk = 999;
     let battle = createBattle(party, 42, 0);
     battle = runAutoBattle(battle, 42, 80);
     assert.ok(battle.enemy.units.some((u) => u.dead));
@@ -343,12 +343,11 @@ describe('combat enrichment', () => {
     const player = createInitialPlayer(1);
     const party = buildPlayerParty(player).map((u) => ({
       ...u,
-      physAtk: 1,
-      spiritAtk: 1,
+      atk: 1,
       maxHp: 10,
       hp: 10,
-      physDef: 1,
-      spiritDef: 1,
+      def: 1,
+      res: 1,
     }));
     let battle = createBattle(party, 1, 0);
     battle = runAutoBattle(battle, 1);

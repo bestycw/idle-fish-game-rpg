@@ -5,16 +5,15 @@
 import { statusLabel } from '../combat/statusFx.js';
 import type { ApplyStatusDef, SkillEffect } from '../shared/types.js';
 
-export type StarRareStat = 'lifesteal' | 'dodge' | 'block';
+export type StarRareStat = 'lifesteal' | 'dodge' | 'block' | 'counter' | 'resilience' | 'echo' | 'thorns' | 'steal';
 
 export type StarRatingStat =
   | 'critRating'
   | 'critDmgRating'
-  | 'hasteRating'
+  | 'penRating'
   | 'masteryRating'
-  | 'finalDmgRating'
-  | 'versRating'
-  | 'fortune';
+  | 'tenacityRating'
+  | 'fortuneRating';
 
 export type StarNodeEffect =
   | { kind: 'stat_pct'; mainPct: number }
@@ -84,19 +83,26 @@ export function accumulateSkillMods(effects: StarNodeEffect[]): SkillGrowthMods 
 export function summarizeStarEffect(fx: StarNodeEffect): string {
   if (fx.kind === 'stat_pct') return `主属性+${Math.round(fx.mainPct * 100)}%`;
   if (fx.kind === 'rare_stat') {
-    const name =
-      fx.stat === 'lifesteal' ? '吸血' : fx.stat === 'dodge' ? '闪避' : '格挡';
-    return `${name}+${Math.round(fx.value * 100)}%`;
+    const nameMap: Record<string, string> = {
+      lifesteal: '吸血',
+      dodge: '闪避',
+      block: '格挡',
+      counter: '反击',
+      resilience: '不屈',
+      echo: '回响',
+      thorns: '反伤',
+      steal: '偷取',
+    };
+    return `${nameMap[fx.stat] ?? fx.stat}+${Math.round(fx.value * 100)}%`;
   }
   if (fx.kind === 'rating') {
     const map: Record<StarRatingStat, string> = {
       critRating: '暴击',
       critDmgRating: '暴伤',
-      hasteRating: '急速',
+      penRating: '穿透',
       masteryRating: '精通',
-      finalDmgRating: '终伤',
-      versRating: '均衡',
-      fortune: '幸运',
+      tenacityRating: '坚韧',
+      fortuneRating: '气运',
     };
     return `${map[fx.stat]}+${fx.value}`;
   }

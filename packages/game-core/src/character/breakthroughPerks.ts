@@ -20,13 +20,13 @@ export const BREAKTHROUGH_PERKS: BreakthroughPerkDef[] = [
   {
     tier: 2,
     label: '金丹·锋芒',
-    effects: [{ kind: 'rating', stat: 'finalDmgRating', value: 6 }],
+    effects: [{ kind: 'rating', stat: 'penRating', value: 6 }],
   },
   {
     tier: 3,
     label: '元婴·凝神',
     effects: [
-      { kind: 'rating', stat: 'versRating', value: 8 },
+      { kind: 'rating', stat: 'tenacityRating', value: 8 },
       { kind: 'rare_stat', stat: 'block', value: 0.02 },
     ],
   },
@@ -92,7 +92,7 @@ export const BREAKTHROUGH_OVERRIDES: Record<
     1: {
       tier: 1,
       label: '筑基·义贯',
-      effects: [{ kind: 'rating', stat: 'finalDmgRating', value: 5 }],
+      effects: [{ kind: 'rating', stat: 'penRating', value: 5 }],
     },
   },
   lvbu: {
@@ -106,7 +106,7 @@ export const BREAKTHROUGH_OVERRIDES: Record<
     1: {
       tier: 1,
       label: '筑基·莲心',
-      effects: [{ kind: 'rating', stat: 'hasteRating', value: 8 }],
+      effects: [{ kind: 'rating', stat: 'penRating', value: 8 }],
     },
   },
   xishi: {

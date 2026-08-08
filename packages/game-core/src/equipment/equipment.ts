@@ -18,7 +18,7 @@ const RARITY_WEIGHTS: { rarity: Rarity; weight: number; affixCount: number }[] =
   { rarity: 'epic', weight: 10, affixCount: 3 },
 ];
 
-const RARE_STATS: StatKey[] = ['dodge', 'lifesteal', 'critResist', 'block'];
+const RARE_STATS: StatKey[] = ['dodge', 'lifesteal', 'critResist', 'block', 'counter', 'resilience', 'echo', 'thorns', 'steal'];
 
 function rollRarity(rng: Rng): { rarity: Rarity; affixCount: number } {
   const total = RARITY_WEIGHTS.reduce((s, r) => s + r.weight, 0);
@@ -112,56 +112,56 @@ export function generateEquipment(
 }
 
 export type EquipmentBonuses = {
-  physAtk: number;
-  spiritAtk: number;
-  physDef: number;
-  spiritDef: number;
+  atk: number;
+  def: number;
+  res: number;
   maxHp: number;
   spd: number;
   critRating: number;
   critDmgRating: number;
-  hasteRating: number;
-  versRating: number;
+  penRating: number;
   masteryRating: number;
-  finalDmgRating: number;
-  fortune: number;
+  tenacityRating: number;
+  fortuneRating: number;
   dodge: number;
   lifesteal: number;
   critResist: number;
   block: number;
+  counter: number;
+  resilience: number;
+  echo: number;
+  thorns: number;
+  steal: number;
+  finalDmgBonus: number;
 };
 
 export function emptyBonuses(): EquipmentBonuses {
   return {
-    physAtk: 0,
-    spiritAtk: 0,
-    physDef: 0,
-    spiritDef: 0,
+    atk: 0,
+    def: 0,
+    res: 0,
     maxHp: 0,
     spd: 0,
     critRating: 0,
     critDmgRating: 0,
-    hasteRating: 0,
-    versRating: 0,
+    penRating: 0,
     masteryRating: 0,
-    finalDmgRating: 0,
-    fortune: 0,
+    tenacityRating: 0,
+    fortuneRating: 0,
     dodge: 0,
     lifesteal: 0,
     critResist: 0,
     block: 0,
+    counter: 0,
+    resilience: 0,
+    echo: 0,
+    thorns: 0,
+    steal: 0,
+    finalDmgBonus: 0,
   };
 }
 
 function applyAffixStat(bonus: EquipmentBonuses, stat: StatKey, value: number): void {
-  if (stat === 'atk') {
-    bonus.physAtk += value;
-    return;
-  }
-  if (stat === 'def') {
-    bonus.physDef += value;
-    return;
-  }
   const key = stat as keyof EquipmentBonuses;
   if (key in bonus) bonus[key] += value;
 }
@@ -187,22 +187,26 @@ export function applyBonusesToUnit(unit: UnitRuntime, bonus: EquipmentBonuses): 
   const hpRatio = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
   return {
     ...unit,
-    physAtk: unit.physAtk + bonus.physAtk,
-    spiritAtk: unit.spiritAtk + bonus.spiritAtk,
-    physDef: unit.physDef + bonus.physDef,
-    spiritDef: unit.spiritDef + bonus.spiritDef,
+    atk: unit.atk + bonus.atk,
+    def: unit.def + bonus.def,
+    res: unit.res + bonus.res,
     spd: unit.spd + bonus.spd,
     critRating: unit.critRating + bonus.critRating,
     critDmgRating: unit.critDmgRating + bonus.critDmgRating,
-    hasteRating: unit.hasteRating + bonus.hasteRating,
-    versRating: unit.versRating + bonus.versRating,
+    penRating: unit.penRating + bonus.penRating,
     masteryRating: unit.masteryRating + bonus.masteryRating,
-    finalDmgRating: unit.finalDmgRating + bonus.finalDmgRating,
-    fortune: Math.min(50, unit.fortune + bonus.fortune),
+    tenacityRating: unit.tenacityRating + bonus.tenacityRating,
+    fortuneRating: unit.fortuneRating + bonus.fortuneRating,
     dodge: Math.min(0.25, unit.dodge + bonus.dodge),
     lifesteal: Math.min(0.12, unit.lifesteal + bonus.lifesteal),
     critResist: Math.min(0.25, unit.critResist + bonus.critResist),
     block: Math.min(0.3, unit.block + bonus.block),
+    counter: Math.min(0.2, unit.counter + bonus.counter),
+    resilience: Math.min(0.15, unit.resilience + bonus.resilience),
+    echo: Math.min(0.18, unit.echo + bonus.echo),
+    thorns: Math.min(0.15, unit.thorns + bonus.thorns),
+    steal: Math.min(0.12, unit.steal + bonus.steal),
+    finalDmgBonus: unit.finalDmgBonus + bonus.finalDmgBonus,
     maxHp,
     hp: Math.max(1, Math.round(maxHp * hpRatio)),
   };
