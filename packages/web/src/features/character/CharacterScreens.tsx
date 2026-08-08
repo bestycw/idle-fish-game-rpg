@@ -9,6 +9,7 @@ import {
   MAX_PARTY_SIZE,
   applyGrowthTrack,
   breakthroughLabel,
+  chooseStarBranch,
   compareRosterTemplates,
   deriveGrowthStats,
   equipItem,
@@ -27,8 +28,10 @@ import {
   previewStarUp,
   previewStardustExchange,
   ratingToPct,
+  respecStarBranch,
   roleLabel,
   skillDisplayFor,
+  starBranchRespecCost,
   sumEquipmentBonuses,
   tryExchangeStardustForShard,
   unequipSlot,
@@ -89,6 +92,8 @@ export function CharacterSheet({
   const notice = onNotice ?? (() => undefined);
   const [pickingSlot, setPickingSlot] = useState<EquipSlot | null>(null);
   const [tab, setTab] = useState<SheetTab>('stats');
+  /** 升星后待选岔路星；用于高亮技能页 */
+  const [focusBranchStar, setFocusBranchStar] = useState<number | null>(null);
   const template = getTemplate(templateId);
 
   const progress = template ? getProgress(player, templateId) : null;
@@ -106,8 +111,21 @@ export function CharacterSheet({
   );
   const starCap = maxStarForTemplate(templateId);
   const starTrackRows = useMemo(
-    () => listStarTrackRows(templateId, progress?.star ?? 0),
-    [templateId, progress?.star],
+    () =>
+      listStarTrackRows(
+        templateId,
+        progress?.star ?? 0,
+        progress?.starBranch,
+      ),
+    [templateId, progress?.star, progress?.starBranch],
+  );
+  const respecCost = useMemo(() => starBranchRespecCost(player), [player]);
+  const pendingBranchStars = useMemo(
+    () =>
+      starTrackRows
+        .filter((r) => r.unlocked && r.branches?.length && !r.chosenBranch)
+        .map((r) => r.star),
+    [starTrackRows],
   );
   const btRows = useMemo(
     () => listBreakthroughPerkRows(templateId, progress?.breakthroughTier ?? 0),
@@ -207,7 +225,27 @@ export function CharacterSheet({
         return p;
       }
       notice(result.message);
+      if (trackId === 'star' && result.needBranch) {
+        setFocusBranchStar(result.state.roster[templateId]?.star ?? null);
+        setTab('skill');
+      }
       return result.state;
+    });
+  };
+
+  const pickBranch = (star: number, branchId: string) => {
+    setPlayer((p) => {
+      const progressNow = getProgress(p, templateId);
+      const existing = progressNow.starBranch?.[star];
+      const result = existing
+        ? respecStarBranch(p, templateId, star, branchId)
+        : chooseStarBranch(p, templateId, star, branchId);
+      notice(result.message);
+      if (result.ok) {
+        setFocusBranchStar(null);
+        return result.state;
+      }
+      return p;
     });
   };
 
@@ -331,6 +369,7 @@ export function CharacterSheet({
             )}
           >
             {t.label}
+            {t.id === 'skill' && pendingBranchStars.length > 0 ? ' ·选' : ''}
           </button>
         ))}
       </div>
@@ -404,7 +443,20 @@ export function CharacterSheet({
                   </button>
                 </div>
               ) : (
-                tracks.map((track) => {
+                <>
+                {pendingBranchStars.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusBranchStar(pendingBranchStars[0] ?? null);
+                      setTab('skill');
+                    }}
+                    className="w-full rounded-xl border border-primary/45 bg-primary/15 px-3 py-2 text-left text-sm text-primary hover:brightness-110"
+                  >
+                    星章路线待选 · ★{pendingBranchStars.join('、★')} → 去技能页选择
+                  </button>
+                ) : null}
+                {tracks.map((track) => {
                   const preview = track.preview(player, templateId);
                   const isStar = track.id === 'star';
                   return (
@@ -443,12 +495,25 @@ export function CharacterSheet({
                         {preview.effectLine}
                       </p>
                       {isStar && starPreview && starPreview.costKind !== 'max' ? (
-                        <p className="mt-0.5 text-[11px] text-primary/85">
-                          {starPreview.attrDiffLine
-                            ? `预览 ${starPreview.attrDiffLine}`
-                            : ''}
-                          {starPreview.nodeLine ? ` · ${starPreview.nodeLine}` : ''}
-                        </p>
+                        <>
+                          <p className="mt-0.5 text-[11px] text-primary/85">
+                            {starPreview.attrDiffLine
+                              ? `预览 ${starPreview.attrDiffLine}`
+                              : ''}
+                            {starPreview.nodeLine ? ` · ${starPreview.nodeLine}` : ''}
+                          </p>
+                          {starPreview.isBranch && starPreview.branches?.length ? (
+                            <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                              {starPreview.branches.map((b) => (
+                                <li key={b.id}>
+                                  <span className="text-foreground/80">{b.label}</span>
+                                  {' · '}
+                                  {b.effectLine}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </>
                       ) : null}
                       <Progress
                         value={growthPct(preview.current, preview.need)}
@@ -456,7 +521,8 @@ export function CharacterSheet({
                       />
                     </button>
                   );
-                })
+                })}
+                </>
               )}
               {owned && dustExchange ? (
                 <button
@@ -575,32 +641,109 @@ export function CharacterSheet({
                 <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
                   升星轨 · ★{progress.star}/{starCap}
                 </p>
-                <ul className="mt-2 space-y-1.5 text-sm">
-                  {starTrackRows.map((n) => (
-                    <li
-                      key={n.star}
-                      className={cn(
-                        'flex gap-2',
-                        n.unlocked ? 'text-foreground' : 'text-muted-foreground/70',
-                      )}
-                    >
-                      <span
+                {pendingBranchStars.length > 0 ? (
+                  <p className="mt-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2 py-1.5 text-xs text-primary">
+                    请选择星章路线：★{pendingBranchStars.join('、★')}
+                  </p>
+                ) : null}
+                <ul className="mt-2 space-y-2 text-sm">
+                  {starTrackRows.map((n) => {
+                    const isBranch = Boolean(n.branches?.length);
+                    const needsPick =
+                      n.unlocked && isBranch && !n.chosenBranch;
+                    const focused =
+                      focusBranchStar === n.star ||
+                      pendingBranchStars.includes(n.star);
+                    return (
+                      <li
+                        key={n.star}
                         className={cn(
-                          'shrink-0',
-                          n.unlocked ? 'text-primary' : 'text-border',
+                          'rounded-lg px-1 py-0.5',
+                          n.unlocked ? 'text-foreground' : 'text-muted-foreground/70',
+                          focused && 'bg-primary/10 ring-1 ring-primary/30',
                         )}
                       >
-                        ★{n.star}
-                      </span>
-                      <span>
-                        <span className={n.unlocked ? '' : 'opacity-80'}>{n.label}</span>
-                        <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
-                          {n.effectLine}
-                          {!n.unlocked ? ' · 未点亮' : ''}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
+                        <div className="flex gap-2">
+                          <span
+                            className={cn(
+                              'shrink-0',
+                              n.unlocked ? 'text-primary' : 'text-border',
+                            )}
+                          >
+                            ★{n.star}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={n.unlocked ? '' : 'opacity-80'}>
+                              {n.label}
+                              {isBranch && !n.unlocked ? ' · 岔路' : ''}
+                            </span>
+                            {!isBranch || (n.unlocked && n.chosenBranch) ? (
+                              <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
+                                {n.effectLine}
+                                {!n.unlocked ? ' · 未点亮' : ''}
+                              </span>
+                            ) : null}
+                            {needsPick ? (
+                              <span className="mt-0.5 block text-[11px] text-primary">
+                                请选择一条星章路线
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                        {isBranch && n.branches ? (
+                          <div className="mt-1.5 ml-6 space-y-1">
+                            {n.branches.map((b) => {
+                              const chosen = n.chosenBranch === b.id;
+                              const locked = !n.unlocked;
+                              const canPick =
+                                n.unlocked && !chosen && owned;
+                              const respecLabel =
+                                respecCost === 0
+                                  ? '今日首次免费'
+                                  : `${respecCost} 星尘`;
+                              return (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  disabled={!canPick}
+                                  onClick={() => pickBranch(n.star, b.id)}
+                                  className={cn(
+                                    'w-full rounded-lg border px-2 py-1.5 text-left text-[12px] transition',
+                                    chosen
+                                      ? 'border-primary/50 bg-primary/15 text-foreground'
+                                      : locked
+                                        ? 'cursor-default border-border/40 bg-transparent text-muted-foreground/60'
+                                        : n.chosenBranch
+                                          ? 'border-border/60 bg-card/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                          : 'border-primary/35 bg-primary/5 text-foreground hover:bg-primary/10',
+                                    !canPick && !chosen && 'opacity-70',
+                                  )}
+                                >
+                                  <span className="font-medium">
+                                    {chosen ? '✓ ' : ''}
+                                    {b.label}
+                                  </span>
+                                  <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
+                                    {b.effectLine}
+                                  </span>
+                                  {n.unlocked && n.chosenBranch && !chosen ? (
+                                    <span className="mt-0.5 block text-[10px] text-amber-200/80">
+                                      重洗 · {respecLabel}
+                                    </span>
+                                  ) : null}
+                                  {needsPick && canPick ? (
+                                    <span className="mt-0.5 block text-[10px] text-primary">
+                                      点选此支
+                                    </span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               <div className="border-t border-border/50 pt-2">

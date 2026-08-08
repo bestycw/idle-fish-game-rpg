@@ -17,6 +17,8 @@ import {
 } from './starTypes.js';
 import {
   MAX_STAR,
+  getStarBranches,
+  isBranchStar,
   maxStarForRarity,
   resolveStarNode,
   unlockedStarNodes,
@@ -40,6 +42,8 @@ export {
   maxStarForRarity,
   SHARED_STAR_NODES,
   STAR_OVERRIDES,
+  getStarBranches,
+  isBranchStar,
   registerStarTrack,
   resolveStarNode,
   unlockedStarNodes,
@@ -311,7 +315,7 @@ export function deriveGrowthStats(
   const unlockedLabels: string[] = [];
   const breakthroughLabels: string[] = [];
 
-  for (const node of unlockedStarNodes(template.id, progress.star)) {
+  for (const node of unlockedStarNodes(template.id, progress.star, progress.starBranch)) {
     unlockedLabels.push(node.label);
     for (const fx of node.effects) applyEffectToAccum(fx, acc);
   }
@@ -351,7 +355,7 @@ export function deriveGrowthStats(
 }
 
 export type GrowthActionResult =
-  | { ok: true; state: PlayerState; message: string }
+  | { ok: true; state: PlayerState; message: string; needBranch?: boolean }
   | { ok: false; message: string };
 
 export function tryLevelUp(state: PlayerState, templateId: string): GrowthActionResult {
@@ -468,13 +472,111 @@ export function tryStarUp(state: PlayerState, templateId: string): GrowthActionR
   progress.cardShards = shards - shardNeed;
   progress.star = next;
   const node = resolveStarNode(templateId, next);
+  const needBranch = isBranchStar(templateId, next);
   return {
     ok: true,
     state: {
       ...s,
       roster: { ...s.roster, [templateId]: progress },
     },
-    message: node ? `升至 ★${next}，解锁「${node.label}」` : `升至 ★${next}`,
+    message: node
+      ? `升至 ★${next}，解锁「${node.label}」`
+      : `升至 ★${next}`,
+    needBranch,
+  };
+}
+
+/* ─── 升星分支 ─── */
+
+/** 重洗代价：每天首次免费，之后 50/100/150… 递增，次日重置 */
+export function starBranchRespecCost(state: PlayerState): number {
+  const today = new Date().toISOString().slice(0, 10);
+  const count =
+    state.starBranchRespecDay === today ? (state.starBranchRespecToday ?? 0) : 0;
+  if (count === 0) return 0;
+  return count * 50;
+}
+
+/** 选择升星分支（首次选择，免费） */
+export function chooseStarBranch(
+  state: PlayerState,
+  templateId: string,
+  star: number,
+  branchId: string,
+): { ok: boolean; state: PlayerState; message: string } {
+  const s = ensureRoster(state);
+  const progress = { ...getProgress(s, templateId) };
+  if (progress.star < star) {
+    return { ok: false, state: s, message: `未升至 ★${star}，无法选择分支` };
+  }
+  const branches = getStarBranches(templateId, star);
+  if (!branches.length) {
+    return { ok: false, state: s, message: `★${star} 不是岔路节点` };
+  }
+  if (!branches.find((b) => b.id === branchId)) {
+    return { ok: false, state: s, message: `无效分支 ${branchId}` };
+  }
+  const existing = progress.starBranch?.[star];
+  if (existing) {
+    return { ok: false, state: s, message: `已选择「${existing}」，如需更换请走重洗` };
+  }
+  progress.starBranch = { ...progress.starBranch, [star]: branchId };
+  const branch = branches.find((b) => b.id === branchId)!;
+  return {
+    ok: true,
+    state: { ...s, roster: { ...s.roster, [templateId]: progress } },
+    message: `选择分支「${branch.label}」`,
+  };
+}
+
+/** 重洗升星分支：扣星尘，每天首免递增 */
+export function respecStarBranch(
+  state: PlayerState,
+  templateId: string,
+  star: number,
+  newBranchId: string,
+): { ok: boolean; state: PlayerState; message: string } {
+  const s = ensureRoster(state);
+  const progress = { ...getProgress(s, templateId) };
+  if (progress.star < star) {
+    return { ok: false, state: s, message: `未升至 ★${star}，无法重洗` };
+  }
+  const branches = getStarBranches(templateId, star);
+  if (!branches.length) {
+    return { ok: false, state: s, message: `★${star} 不是岔路节点` };
+  }
+  if (!branches.find((b) => b.id === newBranchId)) {
+    return { ok: false, state: s, message: `无效分支 ${newBranchId}` };
+  }
+  const existing = progress.starBranch?.[star];
+  if (!existing) {
+    return { ok: false, state: s, message: `尚未选择，请直接选择而非重洗` };
+  }
+  if (existing === newBranchId) {
+    return { ok: false, state: s, message: `已经是此分支` };
+  }
+  const cost = starBranchRespecCost(s);
+  const dust = s.currencies.stardust ?? 0;
+  if (dust < cost) {
+    return { ok: false, state: s, message: `星尘不足（需 ${cost}，有 ${dust}）` };
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount =
+    s.starBranchRespecDay === today ? (s.starBranchRespecToday ?? 0) : 0;
+  progress.starBranch = { ...progress.starBranch, [star]: newBranchId };
+  const branch = branches.find((b) => b.id === newBranchId)!;
+  return {
+    ok: true,
+    state: {
+      ...s,
+      roster: { ...s.roster, [templateId]: progress },
+      currencies: { ...s.currencies, stardust: dust - cost },
+      starBranchRespecDay: today,
+      starBranchRespecToday: todayCount + 1,
+    },
+    message: cost > 0
+      ? `重洗为「${branch.label}」，消耗 ${cost} 星尘`
+      : `重洗为「${branch.label}」（今日首次免费）`,
   };
 }
 

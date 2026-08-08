@@ -82,10 +82,12 @@ describe('character growth', () => {
       if (r.ok) state = r.state;
     }
     assert.equal(state.roster.zhaoyun!.star, 3);
-    const nodes = unlockedStarNodes('zhaoyun', 3);
-    assert.ok(nodes.some((n) => n.label.includes('七进七出') || n.label.includes('连击')));
+    const branch = { 3: 'rush' };
+    const nodes = unlockedStarNodes('zhaoyun', 3, branch);
+    assert.ok(nodes.some((n) => n.label.includes('突阵') || n.label.includes('连击')));
     const tpl = getTemplate('zhaoyun')!;
-    const derived = deriveGrowthStats(tpl, state.roster.zhaoyun!);
+    const progress = { ...state.roster.zhaoyun!, starBranch: branch };
+    const derived = deriveGrowthStats(tpl, progress);
     assert.ok(derived.followUp);
     assert.ok(derived.critRating > tpl.critRating);
     assert.ok(derived.skillMods.multiplierDelta === 0 || derived.followUp);
@@ -170,9 +172,9 @@ describe('character growth', () => {
   });
 
   it('stack merges shared and override effects', () => {
-    const node = resolveStarNode('wukong', 3);
+    const node = resolveStarNode('wukong', 3, 'evade');
     assert.ok(node);
-    assert.equal(node!.label, '大闹天宫');
+    assert.ok(node!.label.includes('腾云'));
     assert.ok(node!.effects.some((e) => e.kind === 'enable_follow_up'));
     assert.ok(node!.effects.some((e) => e.kind === 'rare_stat' && e.stat === 'dodge'));
   });

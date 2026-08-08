@@ -5,8 +5,7 @@
  */
 import type { Rarity } from '../shared/types.js';
 import { DEEP_STAR_OVERRIDES } from './deepKits.js';
-import type { StarNodeDef, StarNodeEffect } from './starTypes.js';
-
+import type { StarBranchDef, StarNodeDef } from './starTypes.js';
 
 /** 共用缺省阶梯（无个性轨时） */
 export const SHARED_STAR_NODES: StarNodeDef[] = [
@@ -53,26 +52,64 @@ export const STAR_OVERRIDES: Record<string, Partial<Record<number, StarNodeDef>>
   ...DEEP_STAR_OVERRIDES,
 };
 
-/** 解析某星节点：个性轨优先；stack 时与共用轨叠加 */
-export function resolveStarNode(templateId: string, star: number): StarNodeDef | undefined {
+/**
+ * 解析某星节点：个性轨优先；stack 时与共用轨叠加。
+ * 岔路节点：按 branchChoice 返回选中支的 effects，合并节点基础 effects。
+ * 未选/无分支：返回节点本体。
+ */
+export function resolveStarNode(
+  templateId: string,
+  star: number,
+  branchChoice?: string,
+): StarNodeDef | undefined {
   const shared = SHARED_STAR_NODES.find((n) => n.star === star);
   const override = STAR_OVERRIDES[templateId]?.[star];
-  if (!override) return shared;
-  if (override.stack && shared) {
-    return {
+  let node: StarNodeDef | undefined;
+  if (!override) {
+    node = shared;
+  } else if (override.stack && shared) {
+    node = {
       star,
       label: override.label,
       stack: true,
       effects: [...shared.effects, ...override.effects],
+      branches: override.branches,
     };
+  } else {
+    node = override;
   }
-  return override;
+  if (!node) return undefined;
+  if (!node.branches || !branchChoice) return node;
+  const branch = node.branches.find((b) => b.id === branchChoice);
+  if (!branch) return node;
+  return {
+    star,
+    label: branch.label,
+    effects: [...node.effects, ...branch.effects],
+  };
 }
 
-export function unlockedStarNodes(templateId: string, star: number): StarNodeDef[] {
+/** 岔路星是否需要玩家选择 */
+export function isBranchStar(templateId: string, star: number): boolean {
+  return getStarBranches(templateId, star).length >= 2;
+}
+
+/** 获取岔路星的可选分支（若无岔路返回空数组） */
+export function getStarBranches(
+  templateId: string,
+  star: number,
+): StarBranchDef[] {
+  return STAR_OVERRIDES[templateId]?.[star]?.branches ?? [];
+}
+
+export function unlockedStarNodes(
+  templateId: string,
+  star: number,
+  starBranch?: Record<number, string>,
+): StarNodeDef[] {
   const nodes: StarNodeDef[] = [];
   for (let s = 1; s <= star; s += 1) {
-    const n = resolveStarNode(templateId, s);
+    const n = resolveStarNode(templateId, s, starBranch?.[s]);
     if (n) nodes.push(n);
   }
   return nodes;

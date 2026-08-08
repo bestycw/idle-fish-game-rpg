@@ -59,7 +59,7 @@ describe('skillRules hooks', () => {
     assert.equal(qiRefundOnKill(skill, 1), 27);
   });
 
-  it('zhangfei ★3 compose grants team_shield effect', () => {
+  it('zhangfei ★3 compose grants team_shield effect (bulwark branch)', () => {
     const tpl = getTemplate('zhangfei')!;
     const u = createUnitFromTemplate(tpl, 1, {
       templateId: 'zhangfei',
@@ -70,6 +70,7 @@ describe('skillRules hooks', () => {
       star: 3,
       owned: true,
       cardShards: 0,
+      starBranch: { 3: 'bulwark' },
     });
     assert.ok(u.skill.effects?.some((e) => e.kind === 'team_shield'));
   });
@@ -83,6 +84,7 @@ describe('skillRules hooks', () => {
       star: 3,
       owned: true,
       cardShards: 0,
+      starBranch: { 3: 'bulwark' },
     });
     const hero = unit('hero', 2);
     let state = createBattle([zf, hero], 42, 0);

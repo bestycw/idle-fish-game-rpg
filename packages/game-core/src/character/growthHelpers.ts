@@ -22,6 +22,7 @@ import {
   listBreakthroughPerks,
   maxStarForTemplate,
   nextBreakthroughPerk,
+  getStarBranches,
   resolveStarNode,
   skillDiffLines,
   skillWithGrowth,
@@ -35,9 +36,19 @@ import { jobLabel, roleLabel, targetPatternLabel } from './labels.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 import { previewStardustExchange } from './stardustExchange.js';
 
+export interface StarBranchPreview {
+  id: string;
+  label: string;
+  effectLine: string;
+}
+
 export interface StarUpPreview {
   nextStar: number;
   node?: StarNodeDef;
+  /** 下一星是否为岔路 */
+  isBranch?: boolean;
+  /** 岔路两支摘要（仅 isBranch 时有） */
+  branches?: StarBranchPreview[];
   /** 升星只吃碎片；不足为 need_shard */
   costKind: 'shard' | 'need_shard' | 'max' | 'unowned';
   shardsHave: number;
@@ -119,19 +130,38 @@ export function previewStarUp(state: PlayerState, templateId: string): StarUpPre
   }
 
   const nextStar = progress.star + 1;
+  const branchDefs = getStarBranches(templateId, nextStar);
+  const isBranch = branchDefs.length >= 2;
+  const branches: StarBranchPreview[] | undefined = isBranch
+    ? branchDefs.map((b) => {
+        const resolved = resolveStarNode(templateId, nextStar, b.id);
+        return {
+          id: b.id,
+          label: b.label,
+          effectLine: resolved ? effectSummary(resolved) : b.label,
+        };
+      })
+    : undefined;
   const node = resolveStarNode(templateId, nextStar);
   const before = deriveGrowthStats(template, progress);
   const after = deriveGrowthStats(template, { ...progress, star: nextStar });
   const useShard = shardsHave >= shardsNeed;
+  const nodeLine = isBranch
+    ? `解锁岔路「${node?.label ?? `★${nextStar}`}」· 升星后二选一`
+    : node
+      ? `解锁「${node.label}」· ${effectSummary(node)}`
+      : `升至 ★${nextStar}`;
 
   return {
     nextStar,
     node,
+    isBranch,
+    branches,
     costKind: useShard ? 'shard' : 'need_shard',
     shardsHave,
     shardsNeed,
     attrDiffLine: summarizeAttrDiff(before, after),
-    nodeLine: node ? `解锁「${node.label}」· ${effectSummary(node)}` : `升至 ★${nextStar}`,
+    nodeLine,
     ready: useShard,
   };
 }
@@ -167,20 +197,43 @@ export interface StarTrackRow {
   label: string;
   effectLine: string;
   unlocked: boolean;
+  /** 若此星是岔路，列出可选分支 */
+  branches?: StarBranchPreview[];
+  /** 已选分支 id（未选则 undefined） */
+  chosenBranch?: string;
 }
 
 /** ★1–品级上限 星轨预览（未解锁也列出；超品级星章不展示） */
-export function listStarTrackRows(templateId: string, star: number): StarTrackRow[] {
+export function listStarTrackRows(
+  templateId: string,
+  star: number,
+  starBranch?: Record<number, string>,
+): StarTrackRow[] {
   const rows: StarTrackRow[] = [];
   const cap = maxStarForTemplate(templateId);
   for (let s = 1; s <= cap; s += 1) {
-    const node = resolveStarNode(templateId, s);
+    const choice = starBranch?.[s];
+    const node = resolveStarNode(templateId, s, choice);
     if (!node) continue;
+    const branchDefs = getStarBranches(templateId, s);
+    const branches: StarBranchPreview[] | undefined =
+      branchDefs.length >= 2
+        ? branchDefs.map((b) => {
+            const resolved = resolveStarNode(templateId, s, b.id);
+            return {
+              id: b.id,
+              label: b.label,
+              effectLine: resolved ? effectSummary(resolved) : b.label,
+            };
+          })
+        : undefined;
     rows.push({
       star: s,
       label: node.label,
       effectLine: effectSummary(node),
       unlocked: s <= star,
+      branches,
+      chosenBranch: choice,
     });
   }
   return rows;

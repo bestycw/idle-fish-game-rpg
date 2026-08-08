@@ -365,6 +365,8 @@ export interface CharacterProgress {
   owned: boolean;
   /** 重复卡碎片；升星优先消耗 */
   cardShards: number;
+  /** 升星分支选择：{ star: branchId }；缺省=无分支/未选 */
+  starBranch?: Record<number, string>;
 }
 
 /** 账号级货币；可继续往 currencies 里加键 */
@@ -408,6 +410,10 @@ export interface PlayerState {
   stardustExchangeDay?: string;
   /** 当日已兑次数（与 stardustExchangeDay 配对） */
   stardustExchangesToday?: number;
+  /** 升星分支重洗：上次重洗日 YYYY-MM-DD */
+  starBranchRespecDay?: string;
+  /** 当日已重洗次数（与 starBranchRespecDay 配对） */
+  starBranchRespecToday?: number;
 }
 
 export interface SaveAdapter {

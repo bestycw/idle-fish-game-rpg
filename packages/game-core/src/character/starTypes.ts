@@ -32,12 +32,20 @@ export type StarNodeEffect =
   /** 追加非状态效果（purge/cleanse/…） */
   | { kind: 'effect_unlock'; effect: SkillEffect };
 
+export interface StarBranchDef {
+  id: string;
+  label: string;
+  effects: StarNodeEffect[];
+}
+
 export interface StarNodeDef {
   star: number;
   label: string;
   effects: StarNodeEffect[];
   /** true：与共用节点 effects 叠加；默认 false = 整节点替换 */
   stack?: boolean;
+  /** 若存在：该星是岔路节点，玩家须二选一 */
+  branches?: StarBranchDef[];
 }
 
 export interface SkillGrowthMods {

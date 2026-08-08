@@ -88,7 +88,7 @@ export function listSkillModifiers(
   ctx?: SkillComposeContext,
 ): SkillModifier[] {
   const mods: SkillModifier[] = [];
-  for (const node of unlockedStarNodes(template.id, progress.star)) {
+  for (const node of unlockedStarNodes(template.id, progress.star, progress.starBranch)) {
     const m = nodeToModifier('star', node);
     if (m) mods.push(m);
   }

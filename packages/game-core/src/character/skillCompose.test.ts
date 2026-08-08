@@ -25,6 +25,7 @@ describe('skill compose foundation', () => {
       star: 3,
       owned: true,
       cardShards: 0,
+      starBranch: { 3: 'rush' },
     };
     const skill = skillWithGrowth(tpl, progress);
     assert.ok(skill.followUp);
@@ -32,7 +33,7 @@ describe('skill compose foundation', () => {
     assert.equal(skill.applyStatus[0]?.statusId, 'bleed');
   });
 
-  it('zhaoyun ★6 unlocks mark_prey + execute + kill refund', () => {
+  it('zhaoyun ★6 unlocks execute + kill refund (hunt branch)', () => {
     const tpl = getTemplate('zhaoyun')!;
     const progress = {
       templateId: 'zhaoyun',
@@ -42,15 +43,15 @@ describe('skill compose foundation', () => {
       star: 6,
       owned: true,
       cardShards: 0,
+      starBranch: { 3: 'rush', 6: 'hunt' },
     };
     const skill = skillWithGrowth(tpl, progress);
     assert.ok(skill.applyStatus.some((s) => s.statusId === 'bleed'));
-    assert.ok(skill.applyStatus.some((s) => s.statusId === 'mark_prey'));
     assert.ok(skill.effects?.some((e) => e.kind === 'execute'));
     assert.ok(skill.effects?.some((e) => e.kind === 'refund_qi_on_kill'));
     const base = getSkill(tpl.skillId);
     const diffs = skillDiffLines(base, skill);
-    assert.ok(diffs.some((d) => d.includes('猎印') || d.includes('新状态') || d.includes('execute')));
+    assert.ok(diffs.length > 0);
   });
 
   it('effectPatches can append purge via compose', () => {

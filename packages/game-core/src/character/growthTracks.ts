@@ -10,6 +10,7 @@ import {
   levelCapForTier,
   maxStarForTemplate,
   nextBreakthroughPerk,
+  getStarBranches,
   resolveStarNode,
   starShardCost,
   tryBreakthrough,
@@ -177,7 +178,9 @@ function starTrack(): GrowthTrackDef {
       const atMax = progress.star >= starCap;
       const shards = progress.cardShards ?? 0;
       const shardNeed = starShardCost(progress.star);
-      const next = resolveStarNode(templateId, progress.star + 1);
+      const nextStar = progress.star + 1;
+      const next = resolveStarNode(templateId, nextStar);
+      const branchNext = getStarBranches(templateId, nextStar).length >= 2;
       const owned = isOwned(state, templateId);
       const assistCap = Math.min(STARDUST_ASSIST_STAR_CAP, starCap);
       if (!owned) {
@@ -205,11 +208,14 @@ function starTrack(): GrowthTrackDef {
           : starCap > assistCap
             ? ' · 更高需抽卡碎片'
             : '';
+      const effectLine = next
+        ? branchNext
+          ? `★${progress.star} → ★${next.star}「${next.label}」· 二选一`
+          : `★${progress.star} → ★${next.star}「${next.label}」`
+        : `★${progress.star} → ★${nextStar}`;
       return {
         costLine: `碎片 ${shards}/${shardNeed}${useShard ? '' : dustHint}`,
-        effectLine: next
-          ? `★${progress.star} → ★${next.star}「${next.label}」`
-          : `★${progress.star} → ★${progress.star + 1}`,
+        effectLine,
         current: shards,
         need: shardNeed,
         ready: useShard,
