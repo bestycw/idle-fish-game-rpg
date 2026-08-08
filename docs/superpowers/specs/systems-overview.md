@@ -142,7 +142,23 @@
 | 19 | **设置** | 音量、默认手自动、清档入口 | 横切 | 登记 |
 | 20 | **公告 / 热更配置** | 运营改表、公告 | 配置管道；非玩法 | 登记 |
 
-#### 3.7.2 社交与竞技（默认不做或极后置）
+#### 3.7.2 玩法扩展机制（储备 · 暂不开工）
+
+> **详细规格：** [2026-08-07-gameplay-expansion-catalog.md](./2026-08-07-gameplay-expansion-catalog.md)  
+> 全部题材无关（引擎 id + 词表），服务双核，过自检句。
+
+| # | 机制 | 服务核 | 钩子落点 | 状态 |
+|---|------|--------|---------|------|
+| E1 | **遭遇词缀** | 双核 | `createBattle` opts; `registerEncounterModifier` | 登记·一期 |
+| E2 | **阵位共鸣** | 人·解法 | `formation/resonance`; 战前注入 team buff | 登记·一期 |
+| E3 | **Rogue Run（多节点路线副本）** | 双核 | `DungeonDef.runMode: 'rogue'`; 独立 `rogueRunState` | 登记·二期 |
+| E4 | **破境挑战（Solo Trial）** | 人+装 | `tryBreakthrough` → `needTrial` | 登记·二期 |
+| E5 | **完美触发（临时超模）** | 激励优质打法 | battle events 回溯; `nextBattleBuffs` | 登记·三期 |
+| E6 | **周回异变** | 双核 | 复用 E1 `EncounterModifier`; week seed | 登记·随时 |
+| E7 | **装备铭刻** | 装·风格 | `Equipment.inscriptionId`; lifecycle hooks | 登记·三期 |
+| E8 | **宿敌记忆** | 叙事/外皮 | `PlayerState.nemesis`; createBattle 查 | 登记·后置 |
+
+#### 3.7.3 社交与竞技（默认不做或极后置）
 
 | # | 系统 | 说明 | 状态 |
 |---|------|------|------|

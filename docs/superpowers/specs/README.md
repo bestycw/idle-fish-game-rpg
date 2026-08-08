@@ -62,6 +62,8 @@
 
 | 切片 | 文件 | 地位 |
 |------|------|------|
+| 定位修订 | [2026-08-07-positioning-revision-design.md](./2026-08-07-positioning-revision-design.md) | 摸鱼入口 × 深度本体 × AI 外皮；slogan 不写十分钟 |
+| 玩法扩展储备 | [2026-08-07-gameplay-expansion-catalog.md](./2026-08-07-gameplay-expansion-catalog.md) | E1-E8 机制储备；题材无关；钩子预留；暂不开工 |
 | 卡池 100 | [2026-08-02-roster-100-design.md](./2026-08-02-roster-100-design.md) | **100 挂池**；20 深做 / 76 占位 |
 | 技能设计规范 | [2026-08-02-skill-design-spec.md](./2026-08-02-skill-design-spec.md) | **内容规范**：母题→招牌→六星章 |
 | 系数带与命中 | [2026-08-03-skill-coeff-and-status-hit-design.md](./2026-08-03-skill-coeff-and-status-hit-design.md) | 职责系数带；Debuff 双层命中；技能页可读 |
