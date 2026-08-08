@@ -14,6 +14,8 @@ import {
   stepBattle,
   syncStamina,
   trySpendStamina,
+  STAMINA_MAX,
+  UNIT_TEMPLATES,
   type ActionKind,
   type BattleState,
   type DungeonId,
@@ -254,6 +256,32 @@ export default function App() {
     pushNotice('存档已清空，故事从头开始。');
   };
 
+  /** DEV: 给所有角色加满资源，方便测试升星 */
+  const devGrantAll = () => {
+    setPlayer((p) => {
+      const roster = { ...p.roster };
+      for (const t of UNIT_TEMPLATES) {
+        if (roster[t.id]) {
+          roster[t.id] = { ...roster[t.id], owned: true, cardShards: 99, exp: 99999 };
+        }
+      }
+      return {
+        ...p,
+        gold: 999999,
+        stamina: STAMINA_MAX,
+        staminaUpdatedAt: Date.now(),
+        currencies: {
+          ...p.currencies,
+          xiuwei: 99999,
+          stardust: 99999,
+          ticket: 999,
+        },
+        roster,
+      };
+    });
+    pushNotice('🔧 DEV：全角色碎片/经验/修为/星尘/体力已拉满');
+  };
+
   const handleHeroManualAuto = () => {
     setPlayer((p) => ({ ...p, heroManual: false }));
     heroManualRef.current = false;
@@ -307,7 +335,7 @@ export default function App() {
         ? '尘埃落定'
         : screen === 'formation'
           ? '九宫站位'
-          : '摸鱼十分钟 · 布阵刷装';
+          : '布阵刷装 · 摸鱼深构筑';
 
   const showDock = screen !== 'battle' && screen !== 'result';
   const onNav = (tab: NavTab) => {
@@ -346,7 +374,14 @@ export default function App() {
             }}
           />
           {screen === 'hub' ? (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={devGrantAll}
+                className="font-mono text-[10px] tracking-wide text-amber-400 underline-offset-2 hover:text-amber-300 hover:underline"
+              >
+                🔧 资源拉满
+              </button>
               <button
                 type="button"
                 onClick={resetSave}
