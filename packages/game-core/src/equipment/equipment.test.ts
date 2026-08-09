@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createInitialPlayer } from '../save/player.js';
-import { sumEquipmentBonuses } from './equipment.js';
+import { generateEquipment, sumEquipmentBonuses } from './equipment.js';
 import { applyActiveSetBonuses, countEquippedSets, resolveSetId } from './sets.js';
-import type { Equipment } from '../shared/types.js';
+import { createRng } from '../shared/rng.js';
+import type { Equipment, EquipSlot } from '../shared/types.js';
 
 function stubItem(partial: Partial<Equipment> & Pick<Equipment, 'id' | 'slot' | 'setId'>): Equipment {
   return {
     name: '测',
     rarity: 'rare',
+    baseStats: {},
     affixes: [],
+    socketCount: 0,
+    enhanceLevel: 0,
     ...partial,
   };
 }
@@ -35,21 +39,42 @@ describe('equipment sets', () => {
     assert.ok(bonus.critRating > beforeCrit);
   });
 
-  it('sumEquipmentBonuses includes set pieces from equipped', () => {
+  it('sumEquipmentBonuses includes set pieces from per-character equip', () => {
     let p = createInitialPlayer(1);
-    const items = [
-      stubItem({ id: 'a', slot: 'mainHand', setId: 'set_tiebi' }),
+    const items: Equipment[] = [
+      stubItem({ id: 'a', slot: 'weapon', setId: 'set_tiebi' }),
       stubItem({ id: 'b', slot: 'chest', setId: 'set_tiebi' }),
-      stubItem({ id: 'c', slot: 'legs', setId: 'set_tiebi', affixes: [{ defId: 'hp_s', name: '生命', stat: 'maxHp', value: 10 }] }),
+      stubItem({ id: 'c', slot: 'feet', setId: 'set_tiebi', affixes: [{ defId: 'hp', name: '生命', stat: 'maxHp', value: 10 }] }),
     ];
     p = {
       ...p,
       inventory: items,
-      equipped: { mainHand: 'a', chest: 'b', legs: 'c' },
+      characterEquip: { hero: { weapon: 'a', chest: 'b', feet: 'c' } },
     };
-    const bonus = sumEquipmentBonuses(p);
+    const bonus = sumEquipmentBonuses(p, 'hero');
     // 2件铁壁 +18 hp；第三条词缀 +10 → 至少 28
     assert.ok(bonus.maxHp >= 28);
     assert.ok(bonus.def >= 4);
+  });
+
+  it('generateEquipment produces valid Equipment', () => {
+    const rng = createRng(42);
+    const eq = generateEquipment(rng);
+    assert.ok(eq.id);
+    assert.ok(eq.slot);
+    assert.ok(eq.rarity);
+    assert.ok(eq.baseStats);
+    assert.ok(eq.enhanceLevel === 0);
+    assert.ok(eq.socketCount === 0 || eq.socketCount === 1);
+  });
+
+  it('generateEquipment respects no duplicate stat types', () => {
+    const rng = createRng(123);
+    for (let i = 0; i < 50; i++) {
+      const eq = generateEquipment(rng);
+      const stats = eq.affixes.map((a) => a.stat);
+      const unique = new Set(stats);
+      assert.equal(stats.length, unique.size, `Duplicate stats in equipment: ${JSON.stringify(stats)}`);
+    }
   });
 });

@@ -171,6 +171,7 @@ const BASE: Record<Role, RoleBaseline> = {
 /** 凡→绝：略抬面板，绝品不碾压深做卡 */
 const RARITY_SCALE: Record<Rarity, number> = {
   common: 0.92,
+  uncommon: 0.96,
   rare: 1.0,
   epic: 1.06,
   legendary: 1.12,

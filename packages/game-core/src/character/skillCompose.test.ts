@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createInitialPlayer } from '../save/player.js';
-import { withMorph } from '../equipment/morphs.js';
+import { bindMorphStone } from '../equipment/morphs.js';
 import { assertAllCharacterBundlesOrThrow } from './characterBundle.js';
 import {
   composeSkill,
@@ -74,18 +74,15 @@ describe('skill compose foundation', () => {
 
   it('equipment morph changes composed skill on party', () => {
     let state = createInitialPlayer(42);
-    const blade = withMorph({
-      id: 'eq_morph_test',
-      name: '血刃试作',
-      slot: 'mainHand',
-      rarity: 'epic',
-      affixes: [],
-    });
+    // T4 morph is now independent; bind it to zhaoyun
     state = {
       ...state,
-      inventory: [...state.inventory, blade],
-      equipped: { ...state.equipped, mainHand: blade.id },
+      morphStones: ['morph_bleed_edge'],
     };
+    // Bind morph stone to zhaoyun
+    const result = bindMorphStone(state, 'zhaoyun', 'morph_bleed_edge');
+    assert.ok(result.ok);
+    state = result.state;
     const party = buildPlayerParty(state);
     const zy = party.find((u) => u.templateId === 'zhaoyun');
     assert.ok(zy);
