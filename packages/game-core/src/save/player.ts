@@ -1,6 +1,6 @@
 import { equipItem } from '../equipment/equipment.js';
 import { defaultFormation, normalizeFormation } from '../formation/formation.js';
-import type { Equipment, PlayerState, SaveAdapter } from '../shared/types.js';
+import type { Equipment, EquipSlot, PlayerState, SaveAdapter } from '../shared/types.js';
 import {
   defaultCurrencies,
   ensureRoster,
@@ -11,7 +11,7 @@ import { STAMINA_MAX, syncStamina } from '../stamina/stamina.js';
 
 type LegacySave = Omit<Partial<PlayerState>, 'version'> & { version?: number };
 
-const SAVE_VERSION = 11 as const;
+const SAVE_VERSION = 12 as const;
 
 /** 旧占位卡 id；迁移时从 roster/formation 剔除 */
 const REMOVED_TEMPLATE_IDS = new Set([
@@ -70,8 +70,76 @@ export function createInitialPlayer(seed = Date.now() % 1_000_000): PlayerState 
     staminaUpdatedAt: now,
     chapterCleared: 0,
     chapterNodeIndex: 0,
+    characterEquip: {},
   };
   return ensureRoster(base);
+}
+
+/** Migrate old shared `equipped` to per-character `characterEquip` */
+function migrateEquipToPerCharacter(state: PlayerState): PlayerState {
+  if (state.characterEquip && Object.keys(state.characterEquip).length > 0) return state;
+  if (!state.equipped || Object.keys(state.equipped).length === 0) return state;
+
+  // Slot remapping from old 16-slot to new 10-slot
+  const slotRemap: Record<string, EquipSlot> = {
+    mainHand: 'weapon',
+    offHand: 'offhand',
+    head: 'head',
+    shoulder: 'back',
+    back: 'back',
+    chest: 'chest',
+    wrist: 'hands',
+    hands: 'hands',
+    waist: 'chest',
+    legs: 'feet',
+    feet: 'feet',
+    neck: 'neck',
+    finger1: 'ring',
+    finger2: 'ring',
+    trinket1: 'trinket',
+    trinket2: 'trinket',
+  };
+
+  // Give all old equipped items to first deployed character
+  const deployed = Object.keys(state.formation);
+  const firstChar = deployed[0] ?? 'hero';
+  const charSlots: Partial<Record<EquipSlot, string>> = {};
+
+  for (const [oldSlot, eqId] of Object.entries(state.equipped)) {
+    if (!eqId) continue;
+    const newSlot = slotRemap[oldSlot];
+    if (!newSlot) continue;
+    // Only take first item per new slot
+    if (!charSlots[newSlot]) {
+      charSlots[newSlot] = eqId;
+    }
+  }
+
+  // Also remap inventory items to new slot types
+  const inventory = state.inventory.map((item) => {
+    const newSlot = slotRemap[item.slot as string];
+    if (newSlot && newSlot !== item.slot) {
+      return {
+        ...item,
+        slot: newSlot,
+        baseStats: item.baseStats ?? {},
+        socketCount: item.socketCount ?? 0,
+        enhanceLevel: item.enhanceLevel ?? 0,
+      };
+    }
+    return {
+      ...item,
+      baseStats: item.baseStats ?? {},
+      socketCount: item.socketCount ?? 0,
+      enhanceLevel: item.enhanceLevel ?? 0,
+    };
+  });
+
+  return {
+    ...state,
+    inventory,
+    characterEquip: { [firstChar]: charSlots },
+  };
 }
 
 export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
@@ -115,6 +183,14 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       chapterNodeIndex: Math.max(0, loaded.chapterNodeIndex ?? 0),
       lastDailyClaimDay:
         typeof loaded.lastDailyClaimDay === 'string' ? loaded.lastDailyClaimDay : undefined,
+      characterEquip: (loaded as any).characterEquip ?? {},
+      characterMorphs: (loaded as any).characterMorphs,
+      morphStones: (loaded as any).morphStones,
+      enhanceStones: (loaded as any).enhanceStones,
+      gems: (loaded as any).gems,
+      mineCountToday: (loaded as any).mineCountToday,
+      mineDay: (loaded as any).mineDay,
+      mineExtraLimit: (loaded as any).mineExtraLimit,
     };
     if (loadedVersion === 2) {
       migrated.currencies.xiuwei = Math.max(migrated.currencies.xiuwei ?? 0, 80);
@@ -141,6 +217,11 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
           if (mapped) affix.stat = mapped as any;
         }
       }
+    }
+    // v11→v12: migrate shared equipped to per-character
+    if ((loadedVersion ?? 0) < 12) {
+      const migrated2 = migrateEquipToPerCharacter(migrated);
+      Object.assign(migrated, migrated2);
     }
     // 迁移后若阵容被剔空，回默认
     if (Object.keys(normalizeFormation(migrated.formation)).length === 0) {

@@ -21,79 +21,40 @@ export type Job =
   | 'healer'
   | 'adept';
 
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 /** 伙伴稀有度中性显示名（故事皮可后换） */
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: '凡品',
+  uncommon: '精良',
   rare: '良品',
   epic: '珍品',
   legendary: '绝品',
 };
 
 export type EquipSlot =
-  | 'mainHand'
-  | 'offHand'
+  | 'weapon'
+  | 'offhand'
   | 'head'
-  | 'shoulder'
-  | 'back'
   | 'chest'
-  | 'wrist'
   | 'hands'
-  | 'waist'
-  | 'legs'
   | 'feet'
+  | 'back'
   | 'neck'
-  | 'finger1'
-  | 'finger2'
-  | 'trinket1'
-  | 'trinket2';
+  | 'ring'
+  | 'trinket';
 
 /** 正常阵容出战上限（九宫最多 9 格，V1 上限 5） */
 export const MAX_PARTY_SIZE = 5;
 
-/** 16 战斗槽全开（人物面板 2026-07-20 拍板） */
-export const UNLOCKED_EQUIP_SLOTS: EquipSlot[] = [
-  'mainHand',
-  'offHand',
-  'head',
-  'shoulder',
-  'back',
-  'chest',
-  'wrist',
-  'hands',
-  'waist',
-  'legs',
-  'feet',
-  'neck',
-  'finger1',
-  'finger2',
-  'trinket1',
-  'trinket2',
+/** 10 装备槽位列表 */
+export const EQUIP_SLOTS: EquipSlot[] = [
+  'weapon', 'offhand', 'head', 'chest', 'hands',
+  'feet', 'back', 'neck', 'ring', 'trinket',
 ];
 
-/** 魔兽纸娃娃摆放：左列 / 右列 / 底栏双手 */
-export const PAPER_DOLL_LEFT: EquipSlot[] = [
-  'head',
-  'neck',
-  'shoulder',
-  'back',
-  'chest',
-  'wrist',
-  'hands',
-  'waist',
-];
-
-export const PAPER_DOLL_RIGHT: EquipSlot[] = [
-  'legs',
-  'feet',
-  'finger1',
-  'finger2',
-  'trinket1',
-  'trinket2',
-];
-
-export const PAPER_DOLL_HANDS: EquipSlot[] = ['mainHand', 'offHand'];
+/** @deprecated 用 EQUIP_SLOTS */
+export { EQUIP_SLOTS as UNLOCKED_EQUIP_SLOTS };
 
 /** 战中可选行动：普攻 + 招牌技能（无通用防御；承伤由坦克技能/站位负责） */
 export type ActionKind = 'attack' | 'skill';
@@ -153,10 +114,6 @@ export interface SkillDef {
   id: string;
   name: string;
   nameKey?: string;
-  /**
-   * 玩家可见一句说明（母题+机制，勿写纯数值表）。
-   * 例：「穿透后排并附加猎印；对护盾额外伤」
-   */
   blurb?: string;
   targetPattern: TargetPattern;
   tags: string[];
@@ -165,9 +122,7 @@ export interface SkillDef {
   applyStatus: ApplyStatusDef[];
   effects?: SkillEffect[];
   followUp?: FollowUpDef;
-  /** 技能施放时覆盖焦点策略；缺省回落单位/lane */
   focusPolicy?: FocusPolicyId;
-  /** 伤害/治疗走力或灵；缺省见 combat.resolveDamageSchool */
   damageSchool?: DamageSchool;
   aiWeight: number;
 }
@@ -203,6 +158,8 @@ export interface AffixDef {
   stat: StatKey;
   min: number;
   max: number;
+  /** 权重层：high=10, mid=6, low=3, verylow=1 */
+  weight: number;
 }
 
 export interface AffixInstance {
@@ -217,17 +174,30 @@ export interface Equipment {
   name: string;
   slot: EquipSlot;
   rarity: Rarity;
+  /** 基础属性（固定，按槽位+品级） */
+  baseStats: Partial<Record<'atk' | 'def' | 'res' | 'maxHp' | 'spd', number>>;
+  /** 随机词缀（统一池） */
   affixes: AffixInstance[];
+  /** 稀有词缀（额外独立判定） */
+  rareAffixes?: AffixInstance[];
+  /** T3 效果 #1 */
+  effectAffixId?: string;
+  /** T3 效果 #2（传说才可能） */
+  effectAffixId2?: string;
+  /** 套装 */
   setId?: string;
-  /** 形态特技 id（III 档）；见 equipment/morphs.ts；互斥 1 条 */
-  morphId?: string;
+  /** 孔位 */
+  socketCount: 0 | 1;
+  /** 已镶宝石 */
+  gemId?: string;
+  /** 强化等级 */
+  enhanceLevel: number;
 }
 
 export interface StatusInstance {
   statusId: StatusId;
   value?: number;
   layers?: number;
-  /** 剩余行动次数（该单位即将行动时消耗） */
   remaining: number;
 }
 
@@ -236,11 +206,9 @@ export interface UnitTemplate {
   name: string;
   role: Role;
   job: Job;
-  /** 卡面稀有度：定框色；与装备 rarity 共用枚举 */
   rarity: Rarity;
   preferredSlot: GridSlot;
   isHero?: boolean;
-  /** 伤害走力系还是灵系 */
   damageSchool: DamageSchool;
   baseAtk: number;
   baseDef: number;
@@ -259,7 +227,6 @@ export interface UnitTemplate {
   critResist?: number;
   block?: number;
   skillId: string;
-  /** 普攻默认焦点策略；缺省 lane。技能可用 skill.focusPolicy 覆盖 */
   focusPolicy?: FocusPolicyId;
 }
 
@@ -301,13 +268,9 @@ export interface UnitRuntime {
   shield: number;
   statuses: StatusInstance[];
   rank: UnitRank;
-  /** 硬控 DR：按桶 id 独立衰减（见 StatusDef.ccDrBucket） */
   ccDr: Partial<Record<string, CcDrEntry>>;
-  /** 本场各 statusId 成功挂上次数（配合 StatusDef.maxBattleApplies） */
   statusApplyCounts: Record<string, number>;
-  /** 本场已成功施放技能次数（先声 first_cast） */
   skillCastCount?: number;
-  /** 普攻焦点策略；缺省 lane */
   focusPolicy?: FocusPolicyId;
 }
 
@@ -357,30 +320,20 @@ export interface BattleState {
 export interface CharacterProgress {
   templateId: string;
   level: number;
-  /** 角色当前经验（升级消耗） */
   exp: number;
   breakthroughTier: number;
-  /**
-   * 当前境界内已点小节点数（0～CULTIVATION_NODES_PER_TIER）。
-   * 破境后归零；累计战力按 tier×每境节点数+本字段折算。缺省按 0。
-   */
   cultivationNodes?: number;
   star: number;
-  /** 是否已拥有（抽卡解锁；未拥有不可上阵） */
   owned: boolean;
-  /** 重复卡碎片；升星优先消耗 */
   cardShards: number;
-  /** 升星分支选择：{ star: branchId }；缺省=无分支/未选 */
   starBranch?: Record<number, string>;
 }
 
-/** 账号级货币；可继续往 currencies 里加键 */
+/** 账号级货币 */
 export interface PlayerCurrencies {
   xiuwei: number;
   stardust: number;
-  /** 抽卡券（免费闭环） */
   ticket: number;
-  /** 开放扩展：任意 CurrencyId */
   [currencyId: string]: number;
 }
 
@@ -388,6 +341,7 @@ export interface PlayerState {
   version: number;
   gold: number;
   inventory: Equipment[];
+  /** @deprecated 旧共享衣柜；迁移后不再使用 */
   equipped: Partial<Record<EquipSlot, string>>;
   formation: Partial<Record<string, GridSlot>>;
   heroManual: boolean;
@@ -395,30 +349,34 @@ export interface PlayerState {
   seed: number;
   encounterIndex: number;
   currencies: PlayerCurrencies;
-  /** 持有卡成长进度；缺省的模板在读写时补齐 */
   roster: Record<string, CharacterProgress>;
-  /** 爬塔当前层（下一层要打的层号，从 1 起） */
   towerFloor: number;
-  /** 距上次「新卡或保底」的抽数（软保底） */
   gachaPity: number;
-  /** 当前体力 */
   stamina: number;
-  /** 体力时钟锚点（ms）；用于自然恢复 */
   staminaUpdatedAt: number;
-  /** 已通关最高章节 order；0=尚未通关第 1 章 */
   chapterCleared: number;
-  /** 当前章内下一节点下标 */
   chapterNodeIndex: number;
-  /** 上次领取摸鱼补给的本地日 YYYY-MM-DD；未领过为 undefined */
   lastDailyClaimDay?: string;
-  /** 星尘兑碎片：上次兑换的本地日 */
   stardustExchangeDay?: string;
-  /** 当日已兑次数（与 stardustExchangeDay 配对） */
   stardustExchangesToday?: number;
-  /** 升星分支重洗：上次重洗日 YYYY-MM-DD */
   starBranchRespecDay?: string;
-  /** 当日已重洗次数（与 starBranchRespecDay 配对） */
   starBranchRespecToday?: number;
+  /** 每角色独立装备：{ templateId: { slotId: equipmentId } } */
+  characterEquip?: Record<string, Partial<Record<EquipSlot, string>>>;
+  /** T4 形态石绑角色：{ templateId: morphId } */
+  characterMorphs?: Record<string, string>;
+  /** T4 形态石背包 */
+  morphStones?: string[];
+  /** 强化石数量 */
+  enhanceStones?: number;
+  /** 宝石背包 */
+  gems?: { gemId: string; count: number }[];
+  /** 今日已挖矿次数 */
+  mineCountToday?: number;
+  /** 挖矿计数日 */
+  mineDay?: string;
+  /** VIP 额外挖矿上限 */
+  mineExtraLimit?: number;
 }
 
 export interface SaveAdapter {

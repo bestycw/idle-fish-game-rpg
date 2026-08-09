@@ -9,3 +9,4 @@ export * from './gacha/index.js';
 export * from './stamina/index.js';
 export * from './chapter/index.js';
 export * from './save/index.js';
+export * from './mining/index.js';

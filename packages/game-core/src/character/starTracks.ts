@@ -38,6 +38,7 @@ export const MAX_STAR = Math.max(...SHARED_STAR_NODES.map((n) => n.star));
 /** 品级 → 可升星上限（拍板：凡3 / 良4 / 珍5 / 绝6） */
 export const MAX_STAR_BY_RARITY: Record<Rarity, number> = {
   common: 3,
+  uncommon: 3,
   rare: 4,
   epic: 5,
   legendary: 6,

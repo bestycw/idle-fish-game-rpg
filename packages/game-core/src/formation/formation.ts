@@ -49,14 +49,15 @@ export function normalizeFormation(
 }
 
 export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
-  const bonus = sumEquipmentBonuses(state);
-  const composeCtx = { extraModifiers: listEquipmentSkillModifiers(state) };
   const formation = normalizeFormation(state.formation);
   const units: UnitRuntime[] = [];
 
   for (const t of UNIT_TEMPLATES) {
     const slot = formation[t.id];
     if (slot == null) continue;
+    // Per-character equipment bonuses
+    const bonus = sumEquipmentBonuses(state, t.id);
+    const composeCtx = { extraModifiers: listEquipmentSkillModifiers(state, t.id) };
     const progress = state.roster?.[t.id];
     const unit = createUnitFromTemplate(t, slot, progress, composeCtx);
     units.push(applyBonusesToUnit(unit, bonus));
