@@ -1,7 +1,5 @@
 import {
-  PAPER_DOLL_HANDS,
-  PAPER_DOLL_LEFT,
-  PAPER_DOLL_RIGHT,
+  EQUIP_SLOTS,
   RARITY_LABELS,
   SLOT_NAMES,
   SLOT_SHORT_NAMES,
@@ -13,7 +11,10 @@ import {
   compareRosterTemplates,
   deriveGrowthStats,
   equipItem,
+  getEffectAffixDef,
+  getGemDef,
   getProgress,
+  getSetDef,
   getSkill,
   getTemplate,
   grantCurrency,
@@ -25,6 +26,7 @@ import {
   listGrowthTracks,
   listStarTrackRows,
   maxStarForTemplate,
+  MORPH_DEFS,
   previewStarUp,
   previewStardustExchange,
   ratingToPct,
@@ -98,7 +100,7 @@ export function CharacterSheet({
 
   const progress = template ? getProgress(player, templateId) : null;
   const derived = template && progress ? deriveGrowthStats(template, progress) : null;
-  const bonus = useMemo(() => sumEquipmentBonuses(player), [player]);
+  const bonus = useMemo(() => sumEquipmentBonuses(player, templateId), [player, templateId]);
   const owned = template ? isOwned(player, templateId) : false;
   const tracks = useMemo(() => listGrowthTracks(), []);
   const starPreview = useMemo(
@@ -253,8 +255,9 @@ export function CharacterSheet({
       notice('未获得伙伴不可换装。');
       return;
     }
+    const charEquipMap = player.characterEquip?.[templateId] ?? {};
     const list = itemsForSlot(player, slot);
-    if (list.length === 0 && !player.equipped[slot]) {
+    if (list.length === 0 && !charEquipMap[slot]) {
       notice(`背包里没有「${SLOT_NAMES[slot] ?? slot}」可穿。`);
       return;
     }
@@ -262,8 +265,10 @@ export function CharacterSheet({
     setTab('gear');
   };
 
-  const renderSlot = (slot: EquipSlot, wide = false) => {
-    const item = itemById(player, player.equipped[slot]);
+  const charEquipMap = player.characterEquip?.[templateId] ?? {};
+
+  const renderSlot = (slot: EquipSlot) => {
+    const item = itemById(player, charEquipMap[slot]);
     return (
       <button
         key={slot}
@@ -271,8 +276,8 @@ export function CharacterSheet({
         title={item ? item.name : SLOT_NAMES[slot]}
         onClick={() => openSlot(slot)}
         className={cn(
-          'flex flex-col items-center justify-center gap-0.5 rounded-lg border bg-card/80 px-0.5 text-[10px]',
-          wide ? 'h-10 w-14 shrink-0' : 'min-h-0 w-full flex-1',
+          'flex flex-col items-center justify-center gap-0.5 rounded-lg border bg-card/80 px-1 py-1 text-[10px]',
+          'min-h-[2.5rem] w-full',
           item
             ? cn('border-solid', rarityTone(item.rarity))
             : 'border-dashed border-border text-muted-foreground',
@@ -283,7 +288,8 @@ export function CharacterSheet({
         </span>
         {item ? (
           <span className="max-w-full truncate text-[8px] leading-tight text-foreground">
-            {item.name.replace(/^(普通|稀有|史诗)/, '')}
+            {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}
+            {item.name.replace(/^(普通|精良|稀有|史诗|传说)/, '')}
           </span>
         ) : (
           <span className="text-border">+</span>
@@ -778,28 +784,93 @@ export function CharacterSheet({
 
         {tab === 'gear' && (
           <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-            <p className="shrink-0 text-[11px] text-muted-foreground">共用衣柜 · 点槽换装</p>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <div className="grid h-full grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-stretch gap-1.5 sm:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem]">
-                <div className="flex min-h-0 flex-col gap-1">
-                  {PAPER_DOLL_LEFT.map((s) => renderSlot(s))}
+            <p className="shrink-0 text-[11px] text-muted-foreground">
+              {template.name} 装备 · 点槽换装
+              {(() => {
+                const morphId = player.characterMorphs?.[templateId];
+                const morphDef = morphId ? MORPH_DEFS[morphId] : undefined;
+                return morphDef ? ` · 形态石·${morphDef.name}` : '';
+              })()}
+            </p>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {/* 10-slot layout: 2 columns of 5 */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-1">
+                  {(['weapon', 'offhand', 'hands', 'neck', 'ring'] as EquipSlot[]).map((s) => renderSlot(s))}
                 </div>
-                <div className="flex min-h-0 flex-col items-center justify-center rounded-xl border border-border/70 bg-card/40 p-2 text-center">
-                  <div className="flex size-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10 font-display text-2xl text-primary">
-                    {template.name.slice(0, 1)}
-                  </div>
-                  <div className="font-display mt-2 text-lg leading-tight">{template.name}</div>
-                  <div className="mt-1">
-                    <StarRow star={progress.star} max={starCap} />
-                  </div>
-                </div>
-                <div className="flex min-h-0 flex-col gap-1">
-                  {PAPER_DOLL_RIGHT.map((s) => renderSlot(s))}
+                <div className="flex flex-col gap-1">
+                  {(['head', 'chest', 'feet', 'back', 'trinket'] as EquipSlot[]).map((s) => renderSlot(s))}
                 </div>
               </div>
-            </div>
-            <div className="flex shrink-0 justify-center gap-2">
-              {PAPER_DOLL_HANDS.map((s) => renderSlot(s, true))}
+
+              {/* Equipped item detail */}
+              {!pickingSlot && (() => {
+                const equippedItems = EQUIP_SLOTS
+                  .map((s) => charEquipMap[s] ? itemById(player, charEquipMap[s]) : undefined)
+                  .filter(Boolean) as Equipment[];
+                if (equippedItems.length === 0) return (
+                  <p className="mt-3 text-center text-sm text-muted-foreground">尚未穿戴装备</p>
+                );
+                return (
+                  <div className="mt-3 space-y-2">
+                    {equippedItems.map((item) => {
+                      const setDef = item.setId ? getSetDef(item.setId) : undefined;
+                      const effectDef1 = item.effectAffixId ? getEffectAffixDef(item.effectAffixId) : undefined;
+                      const effectDef2 = item.effectAffixId2 ? getEffectAffixDef(item.effectAffixId2) : undefined;
+                      const gemDef = item.gemId ? getGemDef(item.gemId) : undefined;
+                      return (
+                        <div key={item.id} className={cn('rounded-lg border bg-card/60 px-2.5 py-1.5', rarityTone(item.rarity))}>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <strong className="text-xs">
+                              {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
+                            </strong>
+                            <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot]}</span>
+                          </div>
+                          {/* baseStats */}
+                          <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
+                            {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
+                          </div>
+                          {/* affixes */}
+                          {item.affixes.length > 0 && (
+                            <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                              {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
+                            </div>
+                          )}
+                          {/* rareAffixes */}
+                          {item.rareAffixes && item.rareAffixes.length > 0 && (
+                            <div className="mt-0.5 font-mono text-[10px] text-amber-300/90">
+                              {item.rareAffixes.map((a) => `${a.name}+${Math.round(a.value * 100)}%`).join(' · ')}
+                            </div>
+                          )}
+                          {/* T3 effects */}
+                          {effectDef1 && (
+                            <div className="mt-0.5 text-[10px] text-teal-300/90">
+                              T3·{effectDef1.name}：{effectDef1.description}
+                            </div>
+                          )}
+                          {effectDef2 && (
+                            <div className="mt-0.5 text-[10px] text-teal-300/90">
+                              T3·{effectDef2.name}：{effectDef2.description}
+                            </div>
+                          )}
+                          {/* gem */}
+                          {item.socketCount > 0 && (
+                            <div className="mt-0.5 text-[10px] text-sky-300/80">
+                              {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
+                            </div>
+                          )}
+                          {/* set */}
+                          {setDef && (
+                            <div className="mt-0.5 text-[10px] text-primary/80">
+                              套装·{setDef.name}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {pickingSlot && (
@@ -815,12 +886,12 @@ export function CharacterSheet({
                   </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
-                  {player.equipped[pickingSlot] ? (
+                  {charEquipMap[pickingSlot] ? (
                     <button
                       type="button"
                       className="mb-2 w-full rounded-lg border border-border py-1.5 text-sm"
                       onClick={() => {
-                        setPlayer((p) => unequipSlot(p, pickingSlot));
+                        setPlayer((p) => unequipSlot(p, pickingSlot, templateId));
                         setPickingSlot(null);
                       }}
                     >
@@ -832,7 +903,7 @@ export function CharacterSheet({
                   ) : (
                     <ul className="space-y-1.5">
                       {candidates.map((item) => {
-                        const worn = player.equipped[pickingSlot] === item.id;
+                        const worn = charEquipMap[pickingSlot] === item.id;
                         return (
                           <li key={item.id}>
                             <button
@@ -843,17 +914,19 @@ export function CharacterSheet({
                                 worn && 'border-primary bg-primary/10',
                               )}
                               onClick={() => {
-                                setPlayer((p) => equipItem(p, item.id));
+                                setPlayer((p) => equipItem(p, item.id, templateId));
                                 setPickingSlot(null);
                                 notice(`已穿戴 ${item.name}`);
                               }}
                             >
                               <strong className="text-sm">
+                                {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}
                                 {item.name}
                                 {worn ? ' · 已穿' : ''}
                               </strong>
                               <span className="text-[11px] text-muted-foreground">
-                                {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
+                                {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()}+${v}`).join(' ')}
+                                {item.affixes.length > 0 ? ' · ' + item.affixes.map((a) => `${a.name}+${a.value}`).join(' ') : ''}
                               </span>
                             </button>
                           </li>

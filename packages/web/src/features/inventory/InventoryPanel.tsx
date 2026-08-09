@@ -1,7 +1,8 @@
 import {
-  listEquippedSetProgress,
-  setDisplayName,
-  wearLoot,
+  SLOT_NAMES,
+  getEffectAffixDef,
+  getGemDef,
+  getSetDef,
   type Equipment,
   type PlayerState,
 } from '@moyu/game-core';
@@ -18,56 +19,94 @@ type InventoryPanelProps = {
   pushNotice: (msg: string) => void;
 };
 
-function ItemLine({ item }: { item: Equipment }) {
-  const setName = setDisplayName(item.setId);
+/** Collect all equipped item ids across all characters */
+function allEquippedIds(player: PlayerState): Set<string> {
+  const ids = new Set<string>();
+  // Legacy shared equipped
+  for (const id of Object.values(player.equipped)) {
+    if (id) ids.add(id);
+  }
+  // Per-character equipped
+  if (player.characterEquip) {
+    for (const slotMap of Object.values(player.characterEquip)) {
+      if (!slotMap) continue;
+      for (const id of Object.values(slotMap)) {
+        if (id) ids.add(id);
+      }
+    }
+  }
+  return ids;
+}
+
+function ItemDetail({ item }: { item: Equipment }) {
+  const setDef = item.setId ? getSetDef(item.setId) : undefined;
+  const effectDef1 = item.effectAffixId ? getEffectAffixDef(item.effectAffixId) : undefined;
+  const effectDef2 = item.effectAffixId2 ? getEffectAffixDef(item.effectAffixId2) : undefined;
+  const gemDef = item.gemId ? getGemDef(item.gemId) : undefined;
   return (
-    <div className={cn('border-l-2 pl-3 py-1.5', rarityTone(item.rarity))}>
-      <div className="text-sm text-foreground">{item.name}</div>
-      <div className="font-mono text-[11px] text-muted-foreground">
-        {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
-        {setName ? ` · [${setName}]` : ''}
+    <div className={cn('rounded-lg border bg-card/60 px-2.5 py-1.5', rarityTone(item.rarity))}>
+      <div className="flex items-baseline justify-between gap-1">
+        <strong className="text-xs">
+          {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
+        </strong>
+        <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot]}</span>
       </div>
+      {/* baseStats */}
+      <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
+        {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
+      </div>
+      {/* affixes */}
+      {item.affixes.length > 0 && (
+        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+          {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
+        </div>
+      )}
+      {/* rareAffixes */}
+      {item.rareAffixes && item.rareAffixes.length > 0 && (
+        <div className="mt-0.5 font-mono text-[10px] text-amber-300/90">
+          {item.rareAffixes.map((a) => `${a.name}+${Math.round(a.value * 100)}%`).join(' · ')}
+        </div>
+      )}
+      {/* T3 effects */}
+      {effectDef1 && (
+        <div className="mt-0.5 text-[10px] text-teal-300/90">T3·{effectDef1.name}：{effectDef1.description}</div>
+      )}
+      {effectDef2 && (
+        <div className="mt-0.5 text-[10px] text-teal-300/90">T3·{effectDef2.name}：{effectDef2.description}</div>
+      )}
+      {/* gem */}
+      {item.socketCount > 0 && (
+        <div className="mt-0.5 text-[10px] text-sky-300/80">
+          {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
+        </div>
+      )}
+      {/* set */}
+      {setDef && (
+        <div className="mt-0.5 text-[10px] text-primary/80">套装·{setDef.name}</div>
+      )}
     </div>
   );
 }
 
-export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: InventoryPanelProps) {
-  const equippedItems = useMemo(() => {
-    return (Object.entries(player.equipped) as [string, string | undefined][])
-      .map(([, id]) => player.inventory.find((e) => e.id === id))
-      .filter(Boolean) as Equipment[];
-  }, [player]);
+export function InventoryPanel({ player, setPlayer: _setPlayer, onBack, pushNotice }: InventoryPanelProps) {
+  const equippedIds = useMemo(() => allEquippedIds(player), [player]);
 
-  const setProgress = useMemo(
-    () => listEquippedSetProgress(equippedItems.map((i) => i.setId)),
-    [equippedItems],
+  // Only show unequipped items
+  const unequipped = useMemo(
+    () => player.inventory.filter((e) => !equippedIds.has(e.id)),
+    [player.inventory, equippedIds],
   );
 
-  const recent = [...player.inventory].slice(-10).reverse();
-
-  const wearChoices = recent.slice(0, 6).map((item) => ({
-    id: item.id,
-    label: `穿戴 ${item.name}`,
-    hint: [
-      item.affixes.map((a) => `${a.name}+${a.value}`).join(' · '),
-      setDisplayName(item.setId),
-    ]
-      .filter(Boolean)
-      .join(' · '),
-    onSelect: () => {
-      setPlayer((p) => wearLoot(p, item.id));
-      pushNotice(`已穿戴 ${item.name}`);
-    },
-  }));
+  const recent = [...unequipped].slice(-10).reverse();
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <Narrative
           eyebrow="行囊"
-          title="共用衣柜"
+          title="背包"
           paragraphs={[
-            'V1 全队共用一套装备。猎装试炼掉落会进这里；凑齐套装 2/4 件改全队风格。',
+            '未装备的物品在此。装备请在角色详情·装备页操作。',
           ]}
         />
         <button
@@ -80,46 +119,18 @@ export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: Invent
       </div>
 
       <section className="space-y-2">
-        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">已穿戴</p>
-        {equippedItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">还是空手。去猎装试炼碰碰运气。</p>
-        ) : (
-          equippedItems.map((item) => <ItemLine key={item.id} item={item} />)
-        )}
-      </section>
-
-      {setProgress.length > 0 ? (
-        <section className="space-y-2">
-          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">套装</p>
-          {setProgress.map((s) => (
-            <div key={s.id} className="border-l-2 border-primary/40 pl-3 py-1">
-              <div className="text-sm text-foreground">
-                {s.name} · {s.count}/4
-              </div>
-              <div className="font-mono text-[11px] text-muted-foreground">
-                {s.activeLabels.length > 0
-                  ? s.activeLabels.join(' · ')
-                  : `${s.blurb}（再凑 ${Math.max(0, 2 - s.count)} 件激活 2 件）`}
-              </div>
-            </div>
-          ))}
-        </section>
-      ) : null}
-
-      <section className="space-y-2">
         <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-          最近掉落
+          闲置装备 · {unequipped.length}
         </p>
         {recent.length === 0 ? (
           <p className="text-sm text-muted-foreground">背包空空。</p>
         ) : (
-          recent.map((item) => <ItemLine key={item.id} item={item} />)
+          recent.map((item) => <ItemDetail key={item.id} item={item} />)
         )}
       </section>
 
       <ChoiceList
         choices={[
-          ...wearChoices,
           {
             id: 'back',
             label: '回到故事',

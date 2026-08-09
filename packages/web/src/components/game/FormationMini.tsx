@@ -3,12 +3,10 @@ import {
   MAX_PARTY_SIZE,
   UNIT_TEMPLATES,
   getProgress,
-  type Equipment,
   type PlayerState,
 } from '@moyu/game-core';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { rarityTone } from '@/lib/tones';
 
 type FormationMiniProps = {
   player: PlayerState;
@@ -19,7 +17,19 @@ type FormationMiniProps = {
   density?: 'compact' | 'panel';
 };
 
-/** 简易九宫图示 + 已穿摘要（文字游戏的「轻图形」） */
+/** Count total equipped items across all deployed characters */
+function totalEquippedCount(player: PlayerState): number {
+  let count = 0;
+  if (player.characterEquip) {
+    for (const [tid] of Object.entries(player.formation)) {
+      const slotMap = player.characterEquip[tid];
+      if (slotMap) count += Object.keys(slotMap).length;
+    }
+  }
+  return count;
+}
+
+/** 简易九宫图示 + 装备统计 */
 export function FormationMini({
   player,
   onEdit,
@@ -28,11 +38,7 @@ export function FormationMini({
   density = 'panel',
 }: FormationMiniProps) {
   const count = Object.keys(player.formation).length;
-  const equipped = useMemo(() => {
-    return (Object.entries(player.equipped) as [string, string | undefined][])
-      .map(([, id]) => player.inventory.find((e) => e.id === id))
-      .filter(Boolean) as Equipment[];
-  }, [player]);
+  const equippedCount = useMemo(() => totalEquippedCount(player), [player]);
 
   const cell = density === 'compact' ? 'min-h-9 text-[10px]' : 'min-h-11 text-xs';
 
@@ -101,21 +107,14 @@ export function FormationMini({
       {density === 'panel' ? (
         <div className="mt-3 border-t border-border/60 pt-2">
           <p className="mb-1.5 font-mono text-[11px] tracking-[0.14em] text-muted-foreground">
-            已穿 · {equipped.length}
+            出战角色装备 · {equippedCount}
           </p>
-          {equipped.length === 0 ? (
-            <p className="text-xs text-muted-foreground">猎装掉落可穿，改全队风格。</p>
+          {equippedCount === 0 ? (
+            <p className="text-xs text-muted-foreground">角色详情页可穿装备。</p>
           ) : (
-            <ul className="space-y-1">
-              {equipped.slice(0, 4).map((item) => (
-                <li
-                  key={item.id}
-                  className={cn('truncate border-l-2 pl-2 text-xs', rarityTone(item.rarity))}
-                >
-                  {item.name}
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs text-muted-foreground">
+              出战 {count} 角色共穿戴 {equippedCount} 件装备
+            </p>
           )}
         </div>
       ) : null}
