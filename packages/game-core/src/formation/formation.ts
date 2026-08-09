@@ -55,12 +55,25 @@ export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
   for (const t of UNIT_TEMPLATES) {
     const slot = formation[t.id];
     if (slot == null) continue;
-    // Per-character equipment bonuses
-    const bonus = sumEquipmentBonuses(state, t.id);
-    const composeCtx = { extraModifiers: listEquipmentSkillModifiers(state, t.id) };
     const progress = state.roster?.[t.id];
+    const bonus = sumEquipmentBonuses(state, t.id);
+    const morphMods = listEquipmentSkillModifiers(state, t.id);
+    const composeCtx = morphMods.length > 0 ? { extraModifiers: morphMods } : undefined;
     const unit = createUnitFromTemplate(t, slot, progress, composeCtx);
-    units.push(applyBonusesToUnit(unit, bonus));
+    const finalUnit = applyBonusesToUnit(unit, bonus);
+
+    // Collect T3 effect affix ids from per-character equipment
+    const charEquip = state.characterEquip?.[t.id] ?? {};
+    const effectIds: string[] = [];
+    for (const itemId of Object.values(charEquip)) {
+      if (!itemId) continue;
+      const item = state.inventory.find((e) => e.id === itemId);
+      if (item?.effectAffixId) effectIds.push(item.effectAffixId);
+      if (item?.effectAffixId2) effectIds.push(item.effectAffixId2);
+    }
+    if (effectIds.length > 0) finalUnit.effectAffixIds = effectIds;
+
+    units.push(finalUnit);
   }
   return units;
 }

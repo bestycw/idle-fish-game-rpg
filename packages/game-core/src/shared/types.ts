@@ -272,6 +272,10 @@ export interface UnitRuntime {
   statusApplyCounts: Record<string, number>;
   skillCastCount?: number;
   focusPolicy?: FocusPolicyId;
+  /** T3 效果词缀 ID 列表（来自装备） */
+  effectAffixIds?: string[];
+  /** T3 死亡保命已用（每场 1 次） */
+  effectAffixDeathSaveUsed?: boolean;
 }
 
 export interface BattleSide {

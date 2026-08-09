@@ -51,6 +51,19 @@ import {
 import { runSkillEffects } from './effectRegistry.js';
 import { runStatusTicksOnAct } from './tickRegistry.js';
 import {
+  attackDamageBonus,
+  ccDurationReduction,
+  onBattleStart,
+  onBlock,
+  onCritHit,
+  onHealApplied,
+  onHitTarget,
+  onKill,
+  onLethalDamage,
+  onTakeDamage,
+  onTurnStart as fxTurnStart,
+} from './effectAffixRuntime.js';
+import {
   pickAllyHealFocus,
   pickEnemyFocus,
   resolveFocusPolicy,
