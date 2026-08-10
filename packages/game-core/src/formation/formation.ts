@@ -2,6 +2,7 @@ import { createUnitFromTemplate } from '../character/factory.js';
 import { isOwned } from '../character/growth.js';
 import { UNIT_TEMPLATES, getTemplate } from '../character/templates.js';
 import { applyBonusesToUnit, sumEquipmentBonuses } from '../equipment/equipment.js';
+import { getChainBonus, getTeamChainBonus } from '../equipment/enhance.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
 import { MAX_PARTY_SIZE, type GridSlot, type PlayerState, type UnitRuntime } from '../shared/types.js';
 
@@ -75,6 +76,21 @@ export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
 
     units.push(finalUnit);
   }
+
+  // ─── Chain bonus integration ────────────────────────────────
+  const teamChain = getTeamChainBonus(state);
+  for (const unit of units) {
+    const charChain = getChainBonus(state, unit.templateId);
+    const totalBonus = 1 + (charChain.bonus + teamChain.bonus);
+    if (totalBonus > 1) {
+      unit.atk = Math.round(unit.atk * totalBonus);
+      unit.def = Math.round(unit.def * totalBonus);
+      unit.res = Math.round(unit.res * totalBonus);
+      unit.maxHp = Math.round(unit.maxHp * totalBonus);
+      unit.hp = unit.maxHp;
+    }
+  }
+
   return units;
 }
 

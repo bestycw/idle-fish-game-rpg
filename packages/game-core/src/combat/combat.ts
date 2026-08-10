@@ -280,6 +280,7 @@ function applyDamageToTarget(
   crit: boolean,
   blocked: boolean,
   dodged: boolean,
+  rng?: Rng,
 ): number {
   if (dodged) {
     emit(state, 'dodge', { actor: actor.name, target: target.name });
@@ -292,6 +293,7 @@ function applyDamageToTarget(
 
   if (blocked) {
     emit(state, 'block', { actor: actor.name, target: target.name, amount });
+    if (rng) onBlock(state, target, rng);
   } else if (crit) {
     emit(state, 'crit', {
       actor: actor.name,
@@ -299,6 +301,7 @@ function applyDamageToTarget(
       amount,
       knockdown,
     });
+    if (rng) onCritHit(state, actor, target, rng);
   } else {
     emit(state, 'hit', {
       actor: actor.name,
@@ -333,16 +336,74 @@ function applyDamageToTarget(
   }
 
   const dealt = amount;
+
+  // ─── 致死判定：T3 death_save → resilience → 死亡 ───
   if (target.hp <= 0 && !target.dead) {
-    markDeadIfNeeded(target);
-    emit(state, 'unit_down', { target: target.name });
+    if (rng && onLethalDamage(state, target, rng)) {
+      // T3 saved
+    } else if (target.resilience > 0 && rng && rng.next() < target.resilience && !target.effectAffixDeathSaveUsed) {
+      target.hp = 1;
+      target.effectAffixDeathSaveUsed = true;
+      state.log.push(`${target.name}【不屈】绝处逢生，存活！`);
+    } else {
+      markDeadIfNeeded(target);
+      emit(state, 'unit_down', { target: target.name });
+      // T3 onKill
+      if (rng) onKill(state, actor, target, rng);
+    }
   }
 
+  // ─── 吸血 ───
   if (dealt > 0 && actor.lifesteal > 0 && !dodged) {
     const heal = Math.floor(dealt * actor.lifesteal);
     if (heal > 0) {
       actor.hp = Math.min(actor.maxHp, actor.hp + heal);
     }
+  }
+
+  // ─── 反伤 (thorns) ───
+  if (dealt > 0 && target.thorns > 0 && isLiving(target) && rng) {
+    const thornsDmg = Math.max(1, Math.floor(dealt * target.thorns));
+    actor.hp = Math.max(0, actor.hp - thornsDmg);
+    state.log.push(`${target.name}【反伤】反弹 ${thornsDmg} 伤害给 ${actor.name}。`);
+    if (actor.hp <= 0 && !actor.dead) {
+      markDeadIfNeeded(actor);
+      emit(state, 'unit_down', { target: actor.name });
+    }
+  }
+
+  // ─── 反击 (counter) ───
+  if (dealt > 0 && target.counter > 0 && isLiving(target) && isLiving(actor) && rng) {
+    if (rng.next() < target.counter) {
+      const counterDmg = Math.max(1, Math.floor(target.atk * 0.5));
+      actor.hp = Math.max(0, actor.hp - counterDmg);
+      state.log.push(`${target.name}【反击】反手攻击 ${actor.name}，伤害 ${counterDmg}。`);
+      emit(state, 'hit', { actor: target.name, target: actor.name, amount: counterDmg, knockdown: actor.hp <= 0 });
+      if (actor.hp <= 0 && !actor.dead) {
+        markDeadIfNeeded(actor);
+        emit(state, 'unit_down', { target: actor.name });
+      }
+    }
+  }
+
+  // ─── 偷取 (steal) ───
+  if (dealt > 0 && actor.steal > 0 && isLiving(target) && rng) {
+    if (rng.next() < actor.steal) {
+      const buffs = target.statuses.filter((s) => s.remaining > 0 && getStatusDef(s.statusId)?.kind === 'buff');
+      if (buffs.length > 0) {
+        const stolen = rng.pick(buffs);
+        target.statuses = target.statuses.filter((s) => s !== stolen);
+        actor.statuses.push({ ...stolen });
+        state.log.push(`${actor.name}【偷取】窃取了 ${target.name} 的 ${statusLabel(stolen.statusId)}！`);
+      }
+    }
+  }
+
+  // ─── T3 onTakeDamage + onHitTarget ───
+  if (dealt > 0 && isLiving(target) && rng) {
+    onTakeDamage(state, actor, target, dealt, rng);
+    const foes = state.player.units.includes(target) ? state.player.units : state.enemy.units;
+    onHitTarget(state, actor, target, dealt, foes, rng);
   }
 
   return dealt;
@@ -653,7 +714,7 @@ function applyAttack(
   if (!target) return;
 
   const result = computeDamage(actor, target, 1, { single: true, school: 'phys' }, rng);
-  applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged);
+  applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng);
   gainQi(state, actor, 20);
 }
 
@@ -731,7 +792,17 @@ function applySkill(
       { pierce, aoe, single: !aoe, school, skill },
       rng,
     );
-    applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged);
+    applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng);
+  }
+
+  // ─── echo（回响）：技能后概率再次触发（50%伤害）───
+  if (actor.echo > 0 && rng.next() < actor.echo && targets.length > 0) {
+    const echoTarget = targets.find((t) => isLiving(t));
+    if (echoTarget) {
+      const echoResult = computeDamage(actor, echoTarget, skill.multiplier * 0.5, { pierce, aoe: false, single: true, school, skill }, rng);
+      state.log.push(`${actor.name}【回响】技能再次爆发！`);
+      applyDamageToTarget(state, actor, echoTarget, echoResult.amount, echoResult.crit, echoResult.blocked, echoResult.dodged, rng);
+    }
   }
 
   applyStatuses(state, actor, targets, skill, rng);
@@ -749,7 +820,7 @@ function applySkill(
         { pierce, aoe: false, single: true, school, skill },
         rng,
       );
-      applyDamageToTarget(state, actor, focus, result.amount, result.crit, result.blocked, result.dodged);
+      applyDamageToTarget(state, actor, focus, result.amount, result.crit, result.blocked, result.dodged, rng);
       emit(state, 'follow_up', {
         actor: actor.name,
         target: focus.name,
