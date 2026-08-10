@@ -3,6 +3,7 @@ import {
   getEffectAffixDef,
   getGemDef,
   getSetDef,
+  tryDisassemble,
   type Equipment,
   type PlayerState,
 } from '@moyu/game-core';
@@ -47,14 +48,16 @@ function ItemDetail({ item }: { item: Equipment }) {
     <div className={cn('rounded-lg border bg-card/60 px-2.5 py-1.5', rarityTone(item.rarity))}>
       <div className="flex items-baseline justify-between gap-1">
         <strong className="text-xs">
-          {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
+          {(item.enhanceLevel ?? 0) > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
         </strong>
-        <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot]}</span>
+        <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot] ?? item.slot}</span>
       </div>
       {/* baseStats */}
-      <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
-        {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
-      </div>
+      {item.baseStats && Object.keys(item.baseStats).length > 0 && (
+        <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
+          {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
+        </div>
+      )}
       {/* affixes */}
       {item.affixes.length > 0 && (
         <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
@@ -75,7 +78,7 @@ function ItemDetail({ item }: { item: Equipment }) {
         <div className="mt-0.5 text-[10px] text-teal-300/90">T3·{effectDef2.name}：{effectDef2.description}</div>
       )}
       {/* gem */}
-      {item.socketCount > 0 && (
+      {(item.socketCount ?? 0) > 0 && (
         <div className="mt-0.5 text-[10px] text-sky-300/80">
           {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
         </div>
@@ -88,7 +91,7 @@ function ItemDetail({ item }: { item: Equipment }) {
   );
 }
 
-export function InventoryPanel({ player, setPlayer: _setPlayer, onBack, pushNotice }: InventoryPanelProps) {
+export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: InventoryPanelProps) {
   const equippedIds = useMemo(() => allEquippedIds(player), [player]);
 
   // Only show unequipped items
@@ -98,6 +101,14 @@ export function InventoryPanel({ player, setPlayer: _setPlayer, onBack, pushNoti
   );
 
   const recent = [...unequipped].slice(-10).reverse();
+
+  const onDisassemble = (itemId: string) => {
+    setPlayer((p) => {
+      const r = tryDisassemble(p, itemId);
+      pushNotice(r.message);
+      return r.ok ? r.state : p;
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -125,7 +136,20 @@ export function InventoryPanel({ player, setPlayer: _setPlayer, onBack, pushNoti
         {recent.length === 0 ? (
           <p className="text-sm text-muted-foreground">背包空空。</p>
         ) : (
-          recent.map((item) => <ItemDetail key={item.id} item={item} />)
+          recent.map((item) => (
+            <div key={item.id} className="flex items-start gap-1.5">
+              <div className="min-w-0 flex-1">
+                <ItemDetail item={item} />
+              </div>
+              <button
+                type="button"
+                onClick={() => onDisassemble(item.id)}
+                className="mt-1 shrink-0 rounded border border-red-400/40 bg-red-400/10 px-1.5 py-0.5 text-[10px] text-red-300"
+              >
+                分解
+              </button>
+            </div>
+          ))
         )}
       </section>
 

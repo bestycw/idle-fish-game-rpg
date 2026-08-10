@@ -5,3 +5,6 @@ export * from './enhance.js';
 export * from './disassemble.js';
 export * from './gemSocket.js';
 export * from './reforge.js';
+export * from './effectAffixes.js';
+export * from './morphs.js';
+export * from './sets.js';

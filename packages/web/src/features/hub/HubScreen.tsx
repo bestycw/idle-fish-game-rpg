@@ -6,18 +6,24 @@ import {
   STAMINA_COST_TOWER,
   advanceStoryNode,
   canClaimDaily,
+  canMine,
   chapterProgressLabel,
   climbTower,
+  doMine,
   getChapterView,
   getTowerFloor,
   isContentUnlocked,
   isTowerMilestone,
+  MINE_DAILY_LIMIT,
+  MINE_DEFS,
+  MINE_STAMINA_COST,
   runStardustRealm,
   tryClaimDaily,
   trySpendStamina,
   xiuweiForFloor,
   type PlayerState,
 } from '@moyu/game-core';
+import { useState } from 'react';
 import { EntryCard } from '@/components/game/EntryCard';
 
 type HubScreenProps = {
@@ -50,6 +56,7 @@ export function HubScreen({
   onOpenFormation,
   pushNotice,
 }: HubScreenProps) {
+  const [showMinePicker, setShowMinePicker] = useState(false);
   const chapter = getChapterView(player);
   const gearUnlocked = isContentUnlocked(player, 'dungeon', 'gear_trial');
   const abyssUnlocked = isContentUnlocked(player, 'dungeon', 'abyss_mirror');
@@ -59,6 +66,27 @@ export function HubScreen({
   const node = chapter.node;
   const playing = chapter.playing;
   const dailyReady = canClaimDaily(player);
+  const mineCount = (() => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return player.mineDay === todayStr ? (player.mineCountToday ?? 0) : 0;
+  })();
+  const mineReady = canMine(player);
+
+  const onMine = () => {
+    setShowMinePicker(true);
+  };
+
+  const onMineSelect = (mineId: string) => {
+    const result = doMine(player, mineId);
+    if (!result.ok) {
+      pushNotice(result.message);
+    } else {
+      setPlayer(result.state);
+      pushNotice(result.message);
+    }
+    setShowMinePicker(false);
+  };
 
   const chapterTitle = playing?.name ?? '旅途';
   const nodeTitle = node?.title;
@@ -215,6 +243,15 @@ export function HubScreen({
             onClick={onTower}
             wide
           />
+          <EntryCard
+            title="挖矿"
+            subtitle={`体力 ${MINE_STAMINA_COST} · 今日 ${mineCount}/${MINE_DAILY_LIMIT}`}
+            mark="矿"
+            accent="amber"
+            disabled={!mineReady}
+            onClick={onMine}
+            wide
+          />
         </div>
       </div>
 
@@ -254,6 +291,35 @@ export function HubScreen({
     <div className="mx-auto w-full max-w-6xl space-y-3 pb-4 sm:space-y-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-5 lg:space-y-0">
       {storyPanel}
       {playPanel}
+      {showMinePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-72 rounded-xl border border-border bg-card p-4 shadow-xl">
+            <p className="mb-3 text-sm font-medium">选择矿脉</p>
+            <div className="space-y-2">
+              {MINE_DEFS.filter((m) => player.chapterCleared >= m.unlockChapter).map((mine) => (
+                <button
+                  key={mine.id}
+                  type="button"
+                  onClick={() => onMineSelect(mine.id)}
+                  className="w-full rounded-lg border border-border/60 bg-card/80 px-3 py-2 text-left text-sm hover:border-primary/40"
+                >
+                  <strong>{mine.name}</strong>
+                  <span className="ml-2 text-[11px] text-muted-foreground">
+                    强化石 {mine.stoneRange[0]}-{mine.stoneRange[1]} · 宝石概率 {Math.round(mine.gemBaseChance * 100)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMinePicker(false)}
+              className="mt-3 w-full rounded-lg border border-border py-1.5 text-sm text-muted-foreground"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

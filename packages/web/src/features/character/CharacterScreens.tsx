@@ -37,6 +37,15 @@ import {
   sumEquipmentBonuses,
   tryExchangeStardustForShard,
   unequipSlot,
+  tryEnhance,
+  enhanceCost,
+  socketGem,
+  canSocketGem,
+  reforgeT3,
+  canReforgeT3,
+  tryDisassemble,
+  bindMorphStone,
+  GEM_DEFS,
   type EquipSlot,
   type Equipment,
   type GrowthTrackId,
@@ -82,6 +91,220 @@ type CharacterSheetProps = {
   onGoGacha?: () => void;
 };
 
+/* ─── Equipment Action Panel ─────────────────────────────────── */
+
+function EquipActionPanel({
+  player,
+  item,
+  templateId,
+  setPlayer,
+  notice,
+  showGemPicker,
+  setShowGemPicker,
+}: {
+  player: PlayerState;
+  item: Equipment;
+  templateId: string;
+  setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
+  notice: (msg: string) => void;
+  showGemPicker: boolean;
+  setShowGemPicker: (v: boolean) => void;
+}) {
+  const cost = enhanceCost(item.enhanceLevel);
+  const canGem = canSocketGem(player, item.id).ok;
+  const canReforge = canReforgeT3(player, item.id).ok;
+  const playerGems = player.gems?.filter((g) => g.count > 0) ?? [];
+
+  const onEnhance = () => {
+    setPlayer((p) => {
+      const result = tryEnhance(p, item.id);
+      notice(result.message);
+      return result.ok ? result.state : p;
+    });
+  };
+
+  const onReforge = () => {
+    setPlayer((p) => {
+      const result = reforgeT3(p, item.id);
+      notice(result.message);
+      return result.ok ? result.state : p;
+    });
+  };
+
+  const onUnequip = () => {
+    setPlayer((p) => unequipSlot(p, item.slot, templateId));
+    notice(`已卸下 ${item.name}`);
+  };
+
+  const onDisassemble = () => {
+    setPlayer((p) => {
+      const r = tryDisassemble(p, item.id);
+      notice(r.message);
+      return r.ok ? r.state : p;
+    });
+  };
+
+  const onSelectGem = (gemId: string) => {
+    setPlayer((p) => {
+      const r = socketGem(p, item.id, gemId);
+      notice(r.message);
+      return r.ok ? r.state : p;
+    });
+    setShowGemPicker(false);
+  };
+
+  return (
+    <div className="mt-1 rounded-lg border border-border/60 bg-card/40 px-2 py-2 space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={onEnhance}
+          className="rounded border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+        >
+          强化+1 ({cost.stones}石{cost.gold}金)
+        </button>
+        {canGem && (
+          <button
+            type="button"
+            onClick={() => setShowGemPicker(!showGemPicker)}
+            className="rounded border border-sky-400/40 bg-sky-400/10 px-2 py-1 text-[11px] text-sky-300"
+          >
+            镶宝石
+          </button>
+        )}
+        {canReforge && (
+          <button
+            type="button"
+            onClick={onReforge}
+            className="rounded border border-teal-400/40 bg-teal-400/10 px-2 py-1 text-[11px] text-teal-300"
+          >
+            重铸T3 (8石800金)
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onUnequip}
+          className="rounded border border-border/60 bg-card/40 px-2 py-1 text-[11px] text-muted-foreground"
+        >
+          卸下
+        </button>
+        <button
+          type="button"
+          onClick={onDisassemble}
+          className="rounded border border-red-400/40 bg-red-400/10 px-2 py-1 text-[11px] text-red-300"
+        >
+          分解
+        </button>
+      </div>
+      {showGemPicker && (
+        <div className="space-y-1 rounded border border-sky-400/30 bg-card/60 p-2">
+          <p className="text-[10px] text-sky-300/80">选择宝石镶嵌：</p>
+          {playerGems.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">无可用宝石</p>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {playerGems.map((g) => {
+                const def = GEM_DEFS.find((d) => d.id === g.gemId);
+                if (!def) return null;
+                return (
+                  <button
+                    key={g.gemId}
+                    type="button"
+                    onClick={() => onSelectGem(g.gemId)}
+                    className="rounded border border-sky-400/30 bg-sky-400/5 px-1.5 py-0.5 text-[10px] text-sky-200"
+                  >
+                    {def.name}×{g.count} ({def.stat}+{def.value})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Morph Stone Section ─────────────────────────────────────── */
+
+function MorphStoneSection({
+  player,
+  templateId,
+  setPlayer,
+  notice,
+  showMorphPicker,
+  setShowMorphPicker,
+}: {
+  player: PlayerState;
+  templateId: string;
+  setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
+  notice: (msg: string) => void;
+  showMorphPicker: boolean;
+  setShowMorphPicker: (v: boolean) => void;
+}) {
+  const currentMorphId = player.characterMorphs?.[templateId];
+  const currentMorph = currentMorphId ? MORPH_DEFS[currentMorphId] : undefined;
+  const morphStones = player.morphStones ?? [];
+
+  if (morphStones.length === 0 && !currentMorph) return null;
+
+  const onSelectMorph = (morphId: string) => {
+    setPlayer((p) => {
+      const r = bindMorphStone(p, templateId, morphId);
+      notice(r.message);
+      return r.ok ? r.state : p;
+    });
+    setShowMorphPicker(false);
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-purple-400/30 bg-card/40 px-2.5 py-2">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px]">
+          <span className="text-purple-300/90">形态石</span>
+          {currentMorph ? (
+            <span className="ml-1.5 text-foreground/90">
+              ◆ {currentMorph.name}（{currentMorph.description}）
+            </span>
+          ) : (
+            <span className="ml-1.5 text-muted-foreground">未绑定</span>
+          )}
+        </div>
+        {morphStones.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowMorphPicker(!showMorphPicker)}
+            className="rounded border border-purple-400/40 bg-purple-400/10 px-1.5 py-0.5 text-[10px] text-purple-300"
+          >
+            更换
+          </button>
+        )}
+      </div>
+      {showMorphPicker && (
+        <div className="mt-2 space-y-1 rounded border border-purple-400/20 bg-card/60 p-2">
+          <p className="text-[10px] text-purple-300/80">选择形态石绑定：</p>
+          <div className="flex flex-wrap gap-1">
+            {morphStones.map((morphId, idx) => {
+              const def = MORPH_DEFS[morphId];
+              if (!def) return null;
+              return (
+                <button
+                  key={`${morphId}-${idx}`}
+                  type="button"
+                  onClick={() => onSelectMorph(morphId)}
+                  className="rounded border border-purple-400/30 bg-purple-400/5 px-1.5 py-0.5 text-[10px] text-purple-200"
+                >
+                  {def.name}（{def.description}）
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** 伙伴详情 · 布局 A：立绘位 + 属性/技能/装备；养成按钮在属性页 */
 export function CharacterSheet({
   player,
@@ -96,6 +319,11 @@ export function CharacterSheet({
   const [tab, setTab] = useState<SheetTab>('stats');
   /** 升星后待选岔路星；用于高亮技能页 */
   const [focusBranchStar, setFocusBranchStar] = useState<number | null>(null);
+  /** Equipment action panel: selected item */
+  const [actionItemId, setActionItemId] = useState<string | null>(null);
+  /** Sub-panel state for gem/morph selection */
+  const [showGemPicker, setShowGemPicker] = useState(false);
+  const [showMorphPicker, setShowMorphPicker] = useState(false);
   const template = getTemplate(templateId);
 
   const progress = template ? getProgress(player, templateId) : null;
@@ -818,52 +1046,79 @@ export function CharacterSheet({
                       const effectDef1 = item.effectAffixId ? getEffectAffixDef(item.effectAffixId) : undefined;
                       const effectDef2 = item.effectAffixId2 ? getEffectAffixDef(item.effectAffixId2) : undefined;
                       const gemDef = item.gemId ? getGemDef(item.gemId) : undefined;
+                      const isSelected = actionItemId === item.id;
                       return (
-                        <div key={item.id} className={cn('rounded-lg border bg-card/60 px-2.5 py-1.5', rarityTone(item.rarity))}>
-                          <div className="flex items-baseline justify-between gap-1">
-                            <strong className="text-xs">
-                              {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
-                            </strong>
-                            <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot]}</span>
-                          </div>
-                          {/* baseStats */}
-                          <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
-                            {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
-                          </div>
-                          {/* affixes */}
-                          {item.affixes.length > 0 && (
-                            <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                              {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
+                        <div key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActionItemId(isSelected ? null : item.id);
+                              setShowGemPicker(false);
+                              setShowMorphPicker(false);
+                            }}
+                            className={cn(
+                              'w-full rounded-lg border bg-card/60 px-2.5 py-1.5 text-left',
+                              rarityTone(item.rarity),
+                              isSelected && 'ring-1 ring-primary/50',
+                            )}
+                          >
+                            <div className="flex items-baseline justify-between gap-1">
+                              <strong className="text-xs">
+                                {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
+                              </strong>
+                              <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot]}</span>
                             </div>
-                          )}
-                          {/* rareAffixes */}
-                          {item.rareAffixes && item.rareAffixes.length > 0 && (
-                            <div className="mt-0.5 font-mono text-[10px] text-amber-300/90">
-                              {item.rareAffixes.map((a) => `${a.name}+${Math.round(a.value * 100)}%`).join(' · ')}
+                            {/* baseStats */}
+                            <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
+                              {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
                             </div>
-                          )}
-                          {/* T3 effects */}
-                          {effectDef1 && (
-                            <div className="mt-0.5 text-[10px] text-teal-300/90">
-                              T3·{effectDef1.name}：{effectDef1.description}
-                            </div>
-                          )}
-                          {effectDef2 && (
-                            <div className="mt-0.5 text-[10px] text-teal-300/90">
-                              T3·{effectDef2.name}：{effectDef2.description}
-                            </div>
-                          )}
-                          {/* gem */}
-                          {item.socketCount > 0 && (
-                            <div className="mt-0.5 text-[10px] text-sky-300/80">
-                              {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
-                            </div>
-                          )}
-                          {/* set */}
-                          {setDef && (
-                            <div className="mt-0.5 text-[10px] text-primary/80">
-                              套装·{setDef.name}
-                            </div>
+                            {/* affixes */}
+                            {item.affixes.length > 0 && (
+                              <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                                {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
+                              </div>
+                            )}
+                            {/* rareAffixes */}
+                            {item.rareAffixes && item.rareAffixes.length > 0 && (
+                              <div className="mt-0.5 font-mono text-[10px] text-amber-300/90">
+                                {item.rareAffixes.map((a) => `${a.name}+${Math.round(a.value * 100)}%`).join(' · ')}
+                              </div>
+                            )}
+                            {/* T3 effects */}
+                            {effectDef1 && (
+                              <div className="mt-0.5 text-[10px] text-teal-300/90">
+                                T3·{effectDef1.name}：{effectDef1.description}
+                              </div>
+                            )}
+                            {effectDef2 && (
+                              <div className="mt-0.5 text-[10px] text-teal-300/90">
+                                T3·{effectDef2.name}：{effectDef2.description}
+                              </div>
+                            )}
+                            {/* gem */}
+                            {item.socketCount > 0 && (
+                              <div className="mt-0.5 text-[10px] text-sky-300/80">
+                                {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
+                              </div>
+                            )}
+                            {/* set */}
+                            {setDef && (
+                              <div className="mt-0.5 text-[10px] text-primary/80">
+                                套装·{setDef.name}
+                              </div>
+                            )}
+                          </button>
+                          {/* Action panel */}
+                          {isSelected && (
+                            <EquipActionPanel
+                              player={player}
+                              item={item}
+                              templateId={templateId}
+                              setPlayer={setPlayer}
+                              notice={notice}
+                              showGemPicker={showGemPicker}
+                              setShowGemPicker={setShowGemPicker}
+                            />
                           )}
                         </div>
                       );
@@ -871,6 +1126,18 @@ export function CharacterSheet({
                   </div>
                 );
               })()}
+
+              {/* T4 Morph stone section */}
+              {!pickingSlot && (
+                <MorphStoneSection
+                  player={player}
+                  templateId={templateId}
+                  setPlayer={setPlayer}
+                  notice={notice}
+                  showMorphPicker={showMorphPicker}
+                  setShowMorphPicker={setShowMorphPicker}
+                />
+              )}
             </div>
 
             {pickingSlot && (
