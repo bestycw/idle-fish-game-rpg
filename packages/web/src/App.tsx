@@ -276,10 +276,26 @@ export default function App() {
           stardust: 99999,
           ticket: 999,
         },
+        enhanceStones: 9999,
+        gems: [
+          { gemId: 'gem_atk', count: 99 },
+          { gemId: 'gem_def', count: 99 },
+          { gemId: 'gem_res', count: 99 },
+          { gemId: 'gem_hp', count: 99 },
+          { gemId: 'gem_crit', count: 99 },
+          { gemId: 'gem_pen', count: 99 },
+          { gemId: 'gem_mastery', count: 99 },
+          { gemId: 'gem_tenacity', count: 99 },
+        ],
+        morphStones: [
+          'morph_bleed_edge', 'morph_frost_touch', 'morph_life_drain',
+          'morph_shield_break', 'morph_chain', 'morph_guard_up',
+          'morph_echo_strike', 'morph_cleanse_heal',
+        ],
         roster,
       };
     });
-    pushNotice('🔧 DEV：全角色碎片/经验/修为/星尘/体力已拉满');
+    pushNotice('🔧 DEV：全资源拉满（含强化石/宝石/形态石）');
   };
 
   const handleHeroManualAuto = () => {

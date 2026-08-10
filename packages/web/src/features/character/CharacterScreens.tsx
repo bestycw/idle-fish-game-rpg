@@ -39,6 +39,9 @@ import {
   unequipSlot,
   tryEnhance,
   enhanceCost,
+  inheritEnhance,
+  getChainBonus,
+  getTeamChainBonus,
   socketGem,
   canSocketGem,
   reforgeT3,
@@ -136,6 +139,24 @@ function EquipActionPanel({
     notice(`已卸下 ${item.name}`);
   };
 
+  const onInherit = () => {
+    // Find another item in same slot with higher enhance level in inventory (unequipped)
+    setPlayer((p) => {
+      const candidates = p.inventory.filter(
+        (e) => e.slot === item.slot && e.id !== item.id && e.enhanceLevel > 0,
+      );
+      if (candidates.length === 0) {
+        notice('无可继承的同槽位装备（需有其他已强化的同槽装备）');
+        return p;
+      }
+      // Pick highest enhance level one
+      const source = candidates.sort((a, b) => b.enhanceLevel - a.enhanceLevel)[0]!;
+      const r = inheritEnhance(p, source.id, item.id);
+      notice(r.message);
+      return r.ok ? r.state : p;
+    });
+  };
+
   const onDisassemble = () => {
     setPlayer((p) => {
       const r = tryDisassemble(p, item.id);
@@ -181,6 +202,13 @@ function EquipActionPanel({
             重铸T3 (8石800金)
           </button>
         )}
+        <button
+          type="button"
+          onClick={onInherit}
+          className="rounded border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-300"
+        >
+          继承强化
+        </button>
         <button
           type="button"
           onClick={onUnequip}
@@ -1018,6 +1046,14 @@ export function CharacterSheet({
                 const morphId = player.characterMorphs?.[templateId];
                 const morphDef = morphId ? MORPH_DEFS[morphId] : undefined;
                 return morphDef ? ` · 形态石·${morphDef.name}` : '';
+              })()}
+              {(() => {
+                const chain = getChainBonus(player, templateId);
+                const teamChain = getTeamChainBonus(player);
+                const parts: string[] = [];
+                if (chain.level > 0) parts.push(`连锁Lv${chain.level}(+${Math.round(chain.bonus * 100)}%)`);
+                if (teamChain.level > 0) parts.push(`全队连锁Lv${teamChain.level}(+${Math.round(teamChain.bonus * 100)}%)`);
+                return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
               })()}
             </p>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
