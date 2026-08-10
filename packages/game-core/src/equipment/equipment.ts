@@ -50,10 +50,12 @@ const BASE_STATS_DEF: Record<EquipSlot, Partial<Record<'atk' | 'def' | 'res' | '
   chest: { maxHp: 25, def: 8, res: 8 },
   hands: { atk: 12, def: 8 },
   feet: { spd: 2, maxHp: 25, def: 8 },
-  back: { res: 8, maxHp: 25 },
+  legs: { maxHp: 25, def: 8, res: 8 },
   neck: { atk: 12, spd: 2 },
-  ring: { atk: 12, maxHp: 25 },
-  trinket: { maxHp: 25, def: 8, res: 8 },
+  ring1: { atk: 12, maxHp: 25 },
+  ring2: { atk: 12, maxHp: 25 },
+  trinket1: { maxHp: 25, def: 8, res: 8 },
+  trinket2: { maxHp: 25, def: 8, res: 8 },
 };
 
 function rollRarity(rng: Rng): { rarity: Rarity; affixCount: number } {
@@ -81,7 +83,7 @@ function roundRarePercent(value: number): number {
 
 function pickAffixFromPool(rng: Rng, pool: AffixDef[], slot: EquipSlot): AffixDef {
   const preferred = SLOT_PREFERRED_POOL[slot];
-  const isTrinket = slot === 'trinket';
+  const isTrinket = slot === 'trinket1' || slot === 'trinket2';
   const weights = pool.map((d) => {
     let w = d.weight;
     if (preferred.length > 0) {

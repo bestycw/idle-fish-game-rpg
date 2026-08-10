@@ -69,10 +69,12 @@ const SLOT_GROUP: Record<EquipSlot, 'weapon' | 'armor' | 'accessory'> = {
   chest: 'armor',
   hands: 'armor',
   feet: 'armor',
-  back: 'armor',
+  legs: 'armor',
   neck: 'accessory',
-  ring: 'accessory',
-  trinket: 'accessory',
+  ring1: 'accessory',
+  ring2: 'accessory',
+  trinket1: 'accessory',
+  trinket2: 'accessory',
 };
 
 export function getEffectPool(slot: EquipSlot): EffectAffixDef[] {

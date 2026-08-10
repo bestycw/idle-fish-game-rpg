@@ -80,24 +80,24 @@ function migrateEquipToPerCharacter(state: PlayerState): PlayerState {
   if (state.characterEquip && Object.keys(state.characterEquip).length > 0) return state;
   if (!state.equipped || Object.keys(state.equipped).length === 0) return state;
 
-  // Slot remapping from old 16-slot to new 10-slot
+  // Slot remapping from old 16-slot to new 12-slot
   const slotRemap: Record<string, EquipSlot> = {
     mainHand: 'weapon',
     offHand: 'offhand',
     head: 'head',
-    shoulder: 'back',
-    back: 'back',
+    shoulder: 'chest',
+    back: 'legs',
     chest: 'chest',
     wrist: 'hands',
     hands: 'hands',
-    waist: 'chest',
-    legs: 'feet',
+    waist: 'legs',
+    legs: 'legs',
     feet: 'feet',
     neck: 'neck',
-    finger1: 'ring',
-    finger2: 'ring',
-    trinket1: 'trinket',
-    trinket2: 'trinket',
+    finger1: 'ring1',
+    finger2: 'ring2',
+    trinket1: 'trinket1',
+    trinket2: 'trinket2',
   };
 
   // Give all old equipped items to first deployed character

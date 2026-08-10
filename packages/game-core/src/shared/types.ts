@@ -39,18 +39,20 @@ export type EquipSlot =
   | 'chest'
   | 'hands'
   | 'feet'
-  | 'back'
+  | 'legs'
   | 'neck'
-  | 'ring'
-  | 'trinket';
+  | 'ring1'
+  | 'ring2'
+  | 'trinket1'
+  | 'trinket2';
 
 /** 正常阵容出战上限（九宫最多 9 格，V1 上限 5） */
 export const MAX_PARTY_SIZE = 5;
 
-/** 10 装备槽位列表 */
+/** 12 装备槽位列表 */
 export const EQUIP_SLOTS: EquipSlot[] = [
   'weapon', 'offhand', 'head', 'chest', 'hands',
-  'feet', 'back', 'neck', 'ring', 'trinket',
+  'feet', 'legs', 'neck', 'ring1', 'ring2', 'trinket1', 'trinket2',
 ];
 
 /** @deprecated 用 EQUIP_SLOTS */

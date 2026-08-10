@@ -48,10 +48,12 @@ export const SLOT_PREFERRED_POOL: Record<EquipSlot, string[]> = {
   chest: ['hp', 'def', 'res', 'tenacityRating'],
   hands: ['atk', 'critRating', 'critDmgRating', 'penRating'],
   feet: ['spd', 'hp', 'penRating', 'masteryRating'],
-  back: ['res', 'hp', 'masteryRating', 'tenacityRating'],
+  legs: ['hp', 'def', 'res', 'tenacityRating'],
   neck: ['atk', 'penRating', 'critDmgRating', 'masteryRating'],
-  ring: ['atk', 'critRating', 'penRating', 'critDmgRating'],
-  trinket: [], // 均匀
+  ring1: ['atk', 'critRating', 'penRating', 'critDmgRating'],
+  ring2: ['atk', 'critRating', 'penRating', 'critDmgRating'],
+  trinket1: [], // 均匀（稀有词缀额外 +50%）
+  trinket2: [], // 均匀
 };
 
 export const SLOT_NAMES: Record<EquipSlot, string> = {
@@ -61,10 +63,12 @@ export const SLOT_NAMES: Record<EquipSlot, string> = {
   chest: '胸甲',
   hands: '手套',
   feet: '靴子',
-  back: '裤子',
+  legs: '裤子',
   neck: '项链',
-  ring: '戒指',
-  trinket: '饰品',
+  ring1: '戒指一',
+  ring2: '戒指二',
+  trinket1: '饰品一',
+  trinket2: '饰品二',
 };
 
 /** 纸娃娃槽上短名 */
@@ -75,8 +79,10 @@ export const SLOT_SHORT_NAMES: Record<EquipSlot, string> = {
   chest: '胸',
   hands: '手',
   feet: '鞋',
-  back: '裤',
+  legs: '裤',
   neck: '链',
-  ring: '戒',
-  trinket: '饰',
+  ring1: '戒①',
+  ring2: '戒②',
+  trinket1: '饰①',
+  trinket2: '饰②',
 };
