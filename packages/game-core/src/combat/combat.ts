@@ -60,6 +60,7 @@ import {
   onHitTarget,
   onKill,
   onLethalDamage,
+  onStatusApplied,
   onTakeDamage,
   onTurnStart as fxTurnStart,
 } from './effectAffixRuntime.js';
@@ -484,6 +485,9 @@ function applyOneStatus(
     status: label,
     duration,
   });
+
+  // T3 hook: onStatusApplied (handles fx_heal_on_cc, fx_debuff_reflect)
+  onStatusApplied(state, actor, target, def.statusId, rng);
 }
 
 function applySkillEffects(

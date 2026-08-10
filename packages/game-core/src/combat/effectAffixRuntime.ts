@@ -53,6 +53,18 @@ export function onBattleStart(state: BattleState, unit: UnitRuntime, _rng: Rng):
       logFx(state, `${unit.name}【先天蓄能】能量 +${gained}。`);
     }
   }
+
+  // fx_start_qi_team: 开战→全队回能+5
+  if (hasEffectAffix(unit, 'fx_start_qi_team')) {
+    const side = state.player.units.includes(unit) ? state.player.units : state.enemy.units;
+    for (const ally of livingUnits(side)) {
+      const gained = clampQi(ally, 5);
+      if (gained > 0) {
+        emitFx(state, 'qi_gain', { actor: ally.name, qiGain: gained, qi: ally.qi, maxQi: ally.maxQi });
+      }
+    }
+    logFx(state, `${unit.name}【全队聚气】全队能量 +5。`);
+  }
 }
 
 // ─── Hook: onTurnStart ────────────────────────────────────
@@ -65,6 +77,26 @@ export function onTurnStart(state: BattleState, unit: UnitRuntime, _rng: Rng): v
     unit.hp = Math.min(unit.maxHp, unit.hp + heal);
     emitFx(state, 'heal', { actor: unit.name, target: unit.name, amount: heal });
     logFx(state, `${unit.name}【绝境回春】回复 ${heal} 点生命。`);
+  }
+
+  // fx_self_cleanse: 每3回合自动净化自身1个debuff
+  if (hasEffectAffix(unit, 'fx_self_cleanse') && state.turn % 3 === 0) {
+    const debuffs = unit.statuses.filter((s) => {
+      if (s.remaining <= 0) return false;
+      const def = getStatusDef(s.statusId);
+      return def?.cleanseable === true;
+    });
+    if (debuffs.length > 0) {
+      // Pick the oldest debuff (first in list)
+      const pick = debuffs[0]!;
+      unit.statuses = unit.statuses.filter((s) => s.statusId !== pick.statusId);
+      emitFx(state, 'status_remove', {
+        target: unit.name,
+        status: statusLabel(pick.statusId),
+        reason: '自净',
+      });
+      logFx(state, `${unit.name}【自净】净化了 ${statusLabel(pick.statusId)}。`);
+    }
   }
 }
 
@@ -101,7 +133,7 @@ export function onCritHit(state: BattleState, actor: UnitRuntime, target: UnitRu
 // ─── Hook: onKill ─────────────────────────────────────────
 
 /** Hook: on kill */
-export function onKill(state: BattleState, actor: UnitRuntime, _target: UnitRuntime, _rng: Rng): void {
+export function onKill(state: BattleState, actor: UnitRuntime, _target: UnitRuntime, rng: Rng): void {
   // fx_kill_qi: 击杀→回能+20
   if (hasEffectAffix(actor, 'fx_kill_qi')) {
     const gained = clampQi(actor, 20);
@@ -117,6 +149,58 @@ export function onKill(state: BattleState, actor: UnitRuntime, _target: UnitRunt
     actor.hp = Math.min(actor.maxHp, actor.hp + heal);
     emitFx(state, 'heal', { actor: actor.name, target: actor.name, amount: heal });
     logFx(state, `${actor.name}【嗜杀汲命】击杀回血 ${heal}。`);
+  }
+
+  // fx_bleed_spread: 击杀流血目标→流血扩散给相邻1人
+  if (hasEffectAffix(actor, 'fx_bleed_spread')) {
+    const targetHadBleed = _target.statuses.some((s) => s.statusId === 'bleed' && (s.remaining > 0 || _target.dead));
+    if (targetHadBleed) {
+      const actorSide = state.player.units.includes(actor) ? state.player.units : state.enemy.units;
+      const foes = actorSide === state.player.units ? state.enemy.units : state.player.units;
+      const adjacent = livingUnits(foes).filter((u) => u.uid !== _target.uid);
+      if (adjacent.length > 0) {
+        const spreadTarget = rng.pick(adjacent);
+        const existing = spreadTarget.statuses.find((s) => s.statusId === 'bleed');
+        const maxLayers = 3;
+        const layers = Math.min(maxLayers, (existing?.layers ?? 0) + 1);
+        spreadTarget.statuses = spreadTarget.statuses.filter((s) => s.statusId !== 'bleed');
+        spreadTarget.statuses.push({ statusId: 'bleed', layers, remaining: 2, value: 0.03 });
+        emitFx(state, 'status_apply', {
+          actor: actor.name,
+          target: spreadTarget.name,
+          status: statusLabel('bleed'),
+          duration: 2,
+        });
+        logFx(state, `${actor.name}【溅血】流血扩散→${spreadTarget.name}（${layers}层）。`);
+      }
+    }
+  }
+
+  // fx_kill_debuff_spread: 击杀时目标身上的debuff扩散给相邻
+  if (hasEffectAffix(actor, 'fx_kill_debuff_spread')) {
+    const targetDebuffs = _target.statuses.filter((s) => {
+      const def = getStatusDef(s.statusId);
+      return def && (def.kind === 'debuff' || def.kind === 'cc') && def.cleanseable;
+    });
+    if (targetDebuffs.length > 0) {
+      const actorSide = state.player.units.includes(actor) ? state.player.units : state.enemy.units;
+      const foes = actorSide === state.player.units ? state.enemy.units : state.player.units;
+      const adjacent = livingUnits(foes).filter((u) => u.uid !== _target.uid);
+      if (adjacent.length > 0) {
+        const spreadTarget = rng.pick(adjacent);
+        for (const debuff of targetDebuffs) {
+          spreadTarget.statuses = spreadTarget.statuses.filter((s) => s.statusId !== debuff.statusId);
+          spreadTarget.statuses.push({ statusId: debuff.statusId, remaining: debuff.remaining, value: debuff.value, layers: debuff.layers });
+          emitFx(state, 'status_apply', {
+            actor: actor.name,
+            target: spreadTarget.name,
+            status: statusLabel(debuff.statusId),
+            duration: debuff.remaining,
+          });
+        }
+        logFx(state, `${actor.name}【灭口】debuff扩散→${spreadTarget.name}（${targetDebuffs.length}个）。`);
+      }
+    }
   }
 }
 
@@ -167,7 +251,7 @@ export function onLethalDamage(state: BattleState, unit: UnitRuntime, _rng: Rng)
 // ─── Hook: attackDamageBonus ──────────────────────────────
 
 /** Hook: compute damage bonus for attacker based on T3. Returns additive multiplier (0 = no bonus). */
-export function attackDamageBonus(actor: UnitRuntime, target: UnitRuntime): number {
+export function attackDamageBonus(actor: UnitRuntime, target: UnitRuntime, state?: BattleState): number {
   let bonus = 0;
 
   // fx_first_hit: 首击→伤害+30%
@@ -186,6 +270,33 @@ export function attackDamageBonus(actor: UnitRuntime, target: UnitRuntime): numb
   if (hasEffectAffix(actor, 'fx_mark_amp')) {
     const hasMark = target.statuses.some((s) => s.statusId === 'mark_prey' && s.remaining > 0);
     if (hasMark) bonus += 0.15;
+  }
+
+  // fx_debuff_amp: 对有2个+debuff的目标+10%伤害
+  if (hasEffectAffix(actor, 'fx_debuff_amp')) {
+    const debuffCount = target.statuses.filter((s) => {
+      if (s.remaining <= 0) return false;
+      const def = getStatusDef(s.statusId);
+      return def && (def.kind === 'debuff' || def.kind === 'cc');
+    }).length;
+    if (debuffCount >= 2) bonus += 0.10;
+  }
+
+  // fx_last_stand: 自身HP<30%时伤害+15%
+  if (hasEffectAffix(actor, 'fx_last_stand') && actor.hp / actor.maxHp < 0.30) {
+    bonus += 0.15;
+  }
+
+  // fx_consecutive: 目标有猎印或2层+流血→+12%伤害
+  if (hasEffectAffix(actor, 'fx_consecutive')) {
+    const hasMark = target.statuses.some((s) => s.statusId === 'mark_prey' && s.remaining > 0);
+    const bleedLayers = target.statuses.find((s) => s.statusId === 'bleed' && s.remaining > 0)?.layers ?? 0;
+    if (hasMark || bleedLayers >= 2) bonus += 0.12;
+  }
+
+  // fx_combat_veteran: 第4回合后伤害+5%
+  if (hasEffectAffix(actor, 'fx_combat_veteran') && state && state.turn >= 4) {
+    bonus += 0.05;
   }
 
   return bonus;
@@ -247,6 +358,21 @@ export function onHitTarget(
     target.shield = 0;
     logFx(state, `${actor.name}【破灵一击】驱散 ${target.name} 护盾 ${removed}。`);
   }
+
+  // fx_slow_hit: 攻击时15%概率附带迟缓1回合
+  if (hasEffectAffix(actor, 'fx_slow_hit') && damage > 0 && isLiving(target)) {
+    if (rng.next() < 0.15) {
+      target.statuses = target.statuses.filter((s) => s.statusId !== 'slow');
+      target.statuses.push({ statusId: 'slow', remaining: 1 });
+      emitFx(state, 'status_apply', {
+        actor: actor.name,
+        target: target.name,
+        status: statusLabel('slow'),
+        duration: 1,
+      });
+      logFx(state, `${actor.name}【凝滞之触】附带迟缓 1 回合。`);
+    }
+  }
 }
 
 // ─── Hook: onHealApplied (for heal_cleanse) ──────────────
@@ -271,6 +397,15 @@ export function onHealApplied(state: BattleState, healer: UnitRuntime, target: U
       logFx(state, `${healer.name}【净疗】净化了 ${target.name} 的 ${statusLabel(pick.statusId)}。`);
     }
   }
+
+  // fx_heal_boost_low: 治疗HP<50%队友时+15%（额外追加治疗）
+  if (hasEffectAffix(healer, 'fx_heal_boost_low') && target.hp / target.maxHp < 0.60) {
+    // target was low before/after heal; grant bonus healing equal to 15% of 10% maxHp
+    const bonusHeal = Math.floor(target.maxHp * 0.05);
+    target.hp = Math.min(target.maxHp, target.hp + bonusHeal);
+    emitFx(state, 'heal', { actor: healer.name, target: target.name, amount: bonusHeal });
+    logFx(state, `${healer.name}【回春妙手】额外回复 ${target.name} ${bonusHeal} 点生命。`);
+  }
 }
 
 // ─── Hook: ccDurationReduction (for fx_cc_cut) ────────────
@@ -281,5 +416,49 @@ export function ccDurationReduction(target: UnitRuntime, duration: number): numb
     return Math.max(1, duration - 1);
   }
   return duration;
+}
+
+// ─── Hook: onStatusApplied (for fx_heal_on_cc / fx_debuff_reflect) ──
+
+/**
+ * Hook: called after a status is successfully applied to a target.
+ * Handles fx_heal_on_cc and fx_debuff_reflect.
+ * Returns true if the status should also be reflected to the actor.
+ */
+export function onStatusApplied(
+  state: BattleState,
+  actor: UnitRuntime,
+  target: UnitRuntime,
+  statusId: string,
+  rng: Rng,
+): void {
+  const statusMeta = getStatusDef(statusId);
+  if (!statusMeta) return;
+
+  // fx_heal_on_cc: 被控时回5%最大生命
+  if (hasEffectAffix(target, 'fx_heal_on_cc') && statusMeta.kind === 'cc' && isLiving(target)) {
+    const heal = Math.floor(target.maxHp * 0.05);
+    target.hp = Math.min(target.maxHp, target.hp + heal);
+    emitFx(state, 'heal', { actor: target.name, target: target.name, amount: heal });
+    logFx(state, `${target.name}【逆境重生】被控回复 ${heal} 点生命。`);
+  }
+
+  // fx_debuff_reflect: 被施debuff时15%反弹给施加者
+  if (hasEffectAffix(target, 'fx_debuff_reflect') && (statusMeta.kind === 'debuff' || statusMeta.kind === 'cc')) {
+    if (rng.next() < 0.15 && isLiving(actor) && actor.uid !== target.uid) {
+      // Apply the same status to the actor
+      const existing = actor.statuses.find((s) => s.statusId === statusId);
+      if (!existing) {
+        actor.statuses.push({ statusId, remaining: 1 });
+        emitFx(state, 'status_apply', {
+          actor: target.name,
+          target: actor.name,
+          status: statusLabel(statusId),
+          duration: 1,
+        });
+        logFx(state, `${target.name}【因果报应】反弹 ${statusLabel(statusId)} 给 ${actor.name}。`);
+      }
+    }
+  }
 }
 
