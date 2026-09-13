@@ -13,7 +13,13 @@ import type {
 import { statusLabel } from '../combat/statusFx.js';
 import { listBreakthroughPerks } from './breakthroughPerks.js';
 import { getSkill } from './skills.js';
-import { EFFECT_KIND_LABELS, type StarNodeDef, type StarNodeEffect } from './starTypes.js';
+import {
+  proseSkillEffect,
+  proseSkillEffectDelta,
+  summarizeApplyStatus,
+  type StarNodeDef,
+  type StarNodeEffect,
+} from './starTypes.js';
 import { unlockedStarNodes } from './starTracks.js';
 
 export type SkillModifierSource = 'star' | 'breakthrough' | 'equipment' | 'awaken';
@@ -31,6 +37,10 @@ export interface SkillModifier {
   statusPatches?: ApplyStatusDef[];
   /** 追加非状态效果（purge/cleanse/…） */
   effectPatches?: SkillEffect[];
+  tagMults?: { tag: string; delta: number }[];
+  focusPolicy?: string;
+  targetPattern?: string;
+  addTags?: string[];
   /** 装备形态互斥 id */
   morphId?: string;
 }
@@ -70,6 +80,18 @@ function effectsToModifier(
     } else if (fx.kind === 'effect_unlock') {
       mod.effectPatches = [...(mod.effectPatches ?? []), { ...fx.effect }];
       any = true;
+    } else if (fx.kind === 'tag_mult') {
+      mod.tagMults = [...(mod.tagMults ?? []), { tag: fx.tag, delta: fx.delta }];
+      any = true;
+    } else if (fx.kind === 'focus_policy') {
+      mod.focusPolicy = fx.policy;
+      any = true;
+    } else if (fx.kind === 'pattern') {
+      mod.targetPattern = fx.pattern;
+      any = true;
+    } else if (fx.kind === 'tag_add') {
+      mod.addTags = [...(mod.addTags ?? []), fx.tag];
+      any = true;
     }
   }
   return any ? mod : null;
@@ -81,7 +103,7 @@ function nodeToModifier(source: SkillModifierSource, node: StarNodeDef): SkillMo
   return effectsToModifier(source, label, node.effects);
 }
 
-/** 收集升星 / 破境 / 额外（装）修正；不改 targetPattern / tags */
+/** 收集升星 / 破境 / 额外（装）修正；可改倍率、状态、焦点、形状与 tag */
 export function listSkillModifiers(
   template: UnitTemplate,
   progress: CharacterProgress,
@@ -143,10 +165,14 @@ export function composeSkill(base: SkillDef, mods: SkillModifier[]): SkillDef {
   let followUp: FollowUpDef | undefined = base.followUp
     ? { ...base.followUp }
     : undefined;
+  let tags = [...base.tags];
+  let focusPolicy = base.focusPolicy;
+  let targetPattern = base.targetPattern;
 
   let boostDuration = 0;
   let boostLayers = 0;
   let boostValueMult = 1;
+  const tagMults: { tag: string; delta: number }[] = [];
 
   for (const m of mods) {
     if (m.multiplierDelta) multiplier += m.multiplierDelta;
@@ -177,11 +203,34 @@ export function composeSkill(base: SkillDef, mods: SkillModifier[]): SkillDef {
     }
     if (m.effectPatches) {
       for (const e of m.effectPatches) {
-        if (!effects.some((x) => x.kind === e.kind)) {
+        const existing = effects.find((x) => x.kind === e.kind);
+        if (!existing) {
           effects.push({ ...e });
+        } else {
+          if ((e.multiplier ?? 0) > (existing.multiplier ?? 0)) {
+            existing.multiplier = e.multiplier;
+          }
+          if (e.value != null) existing.value = e.value;
+          if (e.chance != null) existing.chance = e.chance;
         }
       }
     }
+    if (m.tagMults) tagMults.push(...m.tagMults);
+    if (m.focusPolicy) focusPolicy = m.focusPolicy;
+    if (m.targetPattern) targetPattern = m.targetPattern;
+    if (m.addTags) {
+      for (const t of m.addTags) {
+        if (!tags.includes(t)) tags.push(t);
+      }
+    }
+  }
+
+  for (const tm of tagMults) {
+    const hit =
+      tm.tag === 'single'
+        ? targetPattern === 'single'
+        : tags.includes(tm.tag);
+    if (hit) multiplier += tm.delta;
   }
 
   applyStatus = applyStatusBoost(applyStatus, {
@@ -195,6 +244,9 @@ export function composeSkill(base: SkillDef, mods: SkillModifier[]): SkillDef {
     multiplier: Math.max(0.1, multiplier),
     qiCost: Math.max(15, Math.round(qiCost)),
     applyStatus,
+    tags,
+    targetPattern,
+    focusPolicy,
   };
   if (effects.length > 0) next.effects = effects;
   else delete (next as { effects?: SkillEffect[] }).effects;
@@ -207,44 +259,58 @@ export function composeSkill(base: SkillDef, mods: SkillModifier[]): SkillDef {
 export function skillDiffLines(before: SkillDef, after: SkillDef): string[] {
   const lines: string[] = [];
   if (Math.abs(after.multiplier - before.multiplier) > 0.001) {
-    const d = after.multiplier - before.multiplier;
-    lines.push(`倍率${d >= 0 ? '+' : ''}${d.toFixed(2)} → ${after.multiplier.toFixed(2)}`);
+    const up = after.multiplier > before.multiplier;
+    lines.push(
+      `本招伤害由×${before.multiplier.toFixed(2)}${up ? '提高' : '降低'}至×${after.multiplier.toFixed(2)}`,
+    );
   }
   if (after.qiCost !== before.qiCost) {
-    const d = after.qiCost - before.qiCost;
-    lines.push(`耗能${d >= 0 ? '+' : ''}${d} → ${after.qiCost}`);
+    lines.push(
+      `耗能由${before.qiCost}${after.qiCost < before.qiCost ? '降至' : '增至'}${after.qiCost}`,
+    );
   }
   const beforeIds = before.applyStatus.map((s) => s.statusId).join(',');
   const afterIds = after.applyStatus.map((s) => s.statusId).join(',');
   if (beforeIds !== afterIds) {
     const added = after.applyStatus
       .filter((s) => !before.applyStatus.some((b) => b.statusId === s.statusId))
-      .map((s) => statusLabel(s.statusId));
-    if (added.length) lines.push(`新状态 ${added.join('·')}`);
+      .map((s) => summarizeApplyStatus(s));
+    if (added.length) lines.push(`并附加${added.join('，')}`);
   }
   for (const a of after.applyStatus) {
     const b = before.applyStatus.find((s) => s.statusId === a.statusId);
     if (!b) continue;
     const bits: string[] = [];
     if ((a.duration ?? 0) !== (b.duration ?? 0)) {
-      bits.push(`时长${b.duration ?? 0}→${a.duration ?? 0}`);
+      bits.push(
+        `由${b.duration ?? 0}回${(a.duration ?? 0) > (b.duration ?? 0) ? '延长' : '缩短'}至${a.duration ?? 0}回`,
+      );
     }
     if ((a.layers ?? 0) !== (b.layers ?? 0)) {
-      bits.push(`层${b.layers ?? 0}→${a.layers ?? 0}`);
+      bits.push(
+        `由${b.layers ?? 0}层${(a.layers ?? 0) > (b.layers ?? 0) ? '增' : '减'}至${a.layers ?? 0}层`,
+      );
     }
     if ((a.value ?? 0) !== (b.value ?? 0) && a.value != null) {
-      bits.push(`强度→${a.value}`);
+      bits.push(`强度由${b.value ?? 0}${(a.value ?? 0) > (b.value ?? 0) ? '提高' : '降低'}至${a.value}`);
     }
-    if (bits.length) lines.push(`${statusLabel(a.statusId)} ${bits.join('·')}`);
+    if (bits.length) lines.push(`${statusLabel(a.statusId)}${bits.join('，')}`);
   }
-  const beforeFx = new Set((before.effects ?? []).map((e) => e.kind));
-  const addedFx = (after.effects ?? [])
-    .filter((e) => !beforeFx.has(e.kind))
-    .map((e) => EFFECT_KIND_LABELS[e.kind] ?? e.kind);
-  if (addedFx.length) lines.push(`效果 ${addedFx.join('·')}`);
+  const beforeFx = before.effects ?? [];
+  const afterFx = after.effects ?? [];
+  const addedFx = afterFx
+    .filter((e) => !beforeFx.some((b) => b.kind === e.kind))
+    .map((e) => proseSkillEffect(e));
+    if (addedFx.length) lines.push(addedFx.join('。'));
+  for (const a of afterFx) {
+    const b = beforeFx.find((e) => e.kind === a.kind);
+    if (!b) continue;
+    if (a.multiplier === b.multiplier && a.value === b.value && a.chance === b.chance) continue;
+    lines.push(proseSkillEffectDelta(b, a));
+  }
   if (!before.followUp && after.followUp) {
     lines.push(
-      `连击${Math.round(after.followUp.chance * 100)}%×${after.followUp.multiplier ?? 1}`,
+      `有${Math.round(after.followUp.chance * 100)}%几率追加一击（×${after.followUp.multiplier ?? 1}）`,
     );
   } else if (
     before.followUp &&
@@ -253,7 +319,7 @@ export function skillDiffLines(before: SkillDef, after: SkillDef): string[] {
       before.followUp.multiplier !== after.followUp.multiplier)
   ) {
     lines.push(
-      `连击${Math.round(after.followUp.chance * 100)}%×${after.followUp.multiplier ?? 1}`,
+      `有${Math.round(after.followUp.chance * 100)}%几率追加一击（×${after.followUp.multiplier ?? 1}）`,
     );
   }
   return lines;

@@ -25,7 +25,7 @@
 - **本系统不做：** 每日次数上限、套装 2/4 结算、章节地图（章节 → chapter-progress）。  
 - **体力：** 已由 stamina B2 接入（猎装开战扣 10、塔扣 5、星尘秘境扣 8）；本分册不定义数值。  
 - **摸鱼补给：** 每日一次体力+券（`tryClaimDaily`）；日戳在存档 `lastDailyClaimDay`。  
-- 套装：只加深掉落 `setId`；**2/4 结算**见 equipment，**等内容后置**。
+- 套装：只加深掉落 `setId`；2/4 结算见 [equipment.md](./equipment.md)。
 
 ## 数据钩子（勿写死在 Hub）
 
@@ -46,10 +46,14 @@ LootTable  { guaranteeEquipment, setIdChance, setIdWeights, gold/xiuwei/stardust
 | 后排弓 `archers` | 脆后排高输出 → 穿透或切前排 |
 | 速攻 `raiders` | 高 spd 穿透 → 控制 / 更快秒后排 |
 
-## 软关卡压力（愿景）
+## 软关卡压力（已落地）
 
-> 总图：[build-dual-core-design](../2026-07-21-build-dual-core-design.md)。  
-> 用解法/风格施压，不用纯战力锁。战败提示对准缺破甲 / 禁疗 / 抗压等。
+> 总图：[build-dual-core-design](../2026-07-21-build-dual-core-design.md)。章档权威：[chapter-progress.md](./chapter-progress.md) / `chapter/bands.ts`。
+
+- 敌人：`章档 enemyMult × 本种 pressure`（猎装 1 / 镜渊 1.3）。不按玩家战力刷怪，不硬锁进门。  
+- Hub 展示建议战力，按钮不锁。  
+- **塔**仍是 instant 修为产口，不进战斗、不跟敌方档。  
+- 战败提示仍对准缺破甲 / 禁疗 / 抗压等解法。
 
 ## 与套装 / 装备推进
 

@@ -1,6 +1,7 @@
 export * from './skills.js';
 export * from './deepKits.js';
 export * from './templates.js';
+export * from './intros.js';
 export * from './factory.js';
 export * from './growth.js';
 export * from './labels.js';
@@ -12,4 +13,5 @@ export * from './breakthroughPerks.js';
 export * from './skillCompose.js';
 export * from './characterBundle.js';
 export * from './stardustExchange.js';
+export * from './termLexicon.js';
 export * from './roster/index.js';

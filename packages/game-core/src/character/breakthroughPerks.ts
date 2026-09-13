@@ -1,46 +1,18 @@
 /**
- * 破境被动表（扩展口）。
- * 全局每境一行；个性用 BREAKTHROUGH_OVERRIDES[templateId][tier]。
+ * 破境：职能肉身轨 + 深做卡个性替换（不叠加全员表）。
+ * 升星改招式；破境只给评级 / 稀有属性。
  */
-import type { StarNodeEffect } from './starTypes.js';
+import { getTemplate } from './templates.js';
+import {
+  ROLE_BREAKTHROUGH_LADDERS,
+  roleBreakthroughPerk,
+  type BreakthroughPerkDef,
+} from './roleBreakthroughTracks.js';
 
-export interface BreakthroughPerkDef {
-  tier: number;
-  label: string;
-  effects: StarNodeEffect[];
-}
+export type { BreakthroughPerkDef };
+export { ROLE_BREAKTHROUGH_LADDERS, roleBreakthroughPerk };
 
-/** 全局破境被动（tier 升到该档时解锁，累计生效） */
-export const BREAKTHROUGH_PERKS: BreakthroughPerkDef[] = [
-  {
-    tier: 1,
-    label: '筑基·通脉',
-    effects: [{ kind: 'rating', stat: 'masteryRating', value: 8 }],
-  },
-  {
-    tier: 2,
-    label: '金丹·锋芒',
-    effects: [{ kind: 'rating', stat: 'penRating', value: 6 }],
-  },
-  {
-    tier: 3,
-    label: '元婴·凝神',
-    effects: [
-      { kind: 'rating', stat: 'tenacityRating', value: 8 },
-      { kind: 'rare_stat', stat: 'block', value: 0.02 },
-    ],
-  },
-  {
-    tier: 4,
-    label: '化神·破妄',
-    effects: [
-      { kind: 'rating', stat: 'critRating', value: 10 },
-      { kind: 'skill_mult', delta: 0.08 },
-    ],
-  },
-];
-
-/** 角色个性破境（与全局叠加） */
+/** 角色个性破境：替换该境的职能轨，不与职能轨叠两条 */
 export const BREAKTHROUGH_OVERRIDES: Record<
   string,
   Partial<Record<number, BreakthroughPerkDef>>
@@ -53,8 +25,8 @@ export const BREAKTHROUGH_OVERRIDES: Record<
     },
   },
   zhaoyun: {
-    2: {
-      tier: 2,
+    4: {
+      tier: 4,
       label: '金丹·龙胆魄',
       effects: [{ kind: 'rating', stat: 'critDmgRating', value: 8 }],
     },
@@ -63,43 +35,49 @@ export const BREAKTHROUGH_OVERRIDES: Record<
     1: {
       tier: 1,
       label: '筑基·青囊诀',
-      effects: [{ kind: 'skill_mult', delta: 0.1 }],
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
     },
   },
   heracles: {
-    2: {
-      tier: 2,
+    4: {
+      tier: 4,
       label: '金丹·狮心',
       effects: [{ kind: 'rare_stat', stat: 'block', value: 0.04 }],
     },
   },
   zhuge: {
-    2: {
-      tier: 2,
+    4: {
+      tier: 4,
       label: '金丹·星落',
-      effects: [{ kind: 'status_boost', valueMult: 0.92 }],
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
     },
   },
   athena: {
     1: {
       tier: 1,
       label: '筑基·神盾',
-      effects: [{ kind: 'skill_mult', delta: 0.08 }],
+      effects: [{ kind: 'rare_stat', stat: 'block', value: 0.04 }],
     },
   },
-  // +10 批次个性破境挂在同表
+  wukong: {
+    6: {
+      tier: 6,
+      label: '化神·金睛',
+      effects: [{ kind: 'rating', stat: 'critRating', value: 10 }],
+    },
+  },
   guanyu: {
     1: {
       tier: 1,
       label: '筑基·义贯',
-      effects: [{ kind: 'rating', stat: 'penRating', value: 5 }],
+      effects: [{ kind: 'rating', stat: 'penRating', value: 8 }],
     },
   },
   lvbu: {
-    2: {
-      tier: 2,
+    4: {
+      tier: 4,
       label: '金丹·无双',
-      effects: [{ kind: 'rating', stat: 'critRating', value: 8 }],
+      effects: [{ kind: 'rating', stat: 'critRating', value: 10 }],
     },
   },
   nezha: {
@@ -113,24 +91,115 @@ export const BREAKTHROUGH_OVERRIDES: Record<
     1: {
       tier: 1,
       label: '筑基·沉鱼',
-      effects: [{ kind: 'status_boost', duration: 1 }],
+      effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }],
+    },
+  },
+  robin: {
+    1: {
+      tier: 1,
+      label: '筑基·绿林',
+      effects: [{ kind: 'rating', stat: 'critRating', value: 8 }],
+    },
+  },
+  change: {
+    1: {
+      tier: 1,
+      label: '筑基·月华',
+      effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }],
     },
   },
   sunbin: {
-    2: {
-      tier: 2,
+    4: {
+      tier: 4,
       label: '金丹·兵势',
-      effects: [{ kind: 'status_boost', valueMult: 0.92 }],
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
     },
   },
   beowulf: {
     1: {
       tier: 1,
       label: '筑基·熊力',
-      effects: [{ kind: 'skill_mult', delta: 0.08 }],
+      effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }],
+    },
+  },
+  dianwei: {
+    5: {
+      tier: 5,
+      label: '元婴·恶来',
+      effects: [{ kind: 'rare_stat', stat: 'resilience', value: 0.1 }],
+    },
+  },
+  yangjian: {
+    6: {
+      tier: 6,
+      label: '化神·天眼',
+      effects: [{ kind: 'rating', stat: 'critRating', value: 8 }, { kind: 'rating', stat: 'penRating', value: 6 }],
+    },
+  },
+  zhouyu: {
+    4: {
+      tier: 4,
+      label: '金丹·火攻',
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
+    },
+  },
+  xiangyu: {
+    4: {
+      tier: 4,
+      label: '金丹·霸王',
+      effects: [{ kind: 'rating', stat: 'critRating', value: 10 }],
+    },
+  },
+  nuwa: {
+    1: {
+      tier: 1,
+      label: '筑基·补天',
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
+    },
+  },
+  hades: {
+    4: {
+      tier: 4,
+      label: '金丹·冥冠',
+      effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }],
+    },
+  },
+  zeus: {
+    6: {
+      tier: 6,
+      label: '化神·雷座',
+      effects: [{ kind: 'rating', stat: 'critRating', value: 10 }],
+    },
+  },
+  odin: {
+    4: {
+      tier: 4,
+      label: '金丹·卢恩',
+      effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }],
+    },
+  },
+  yuefei: {
+    4: {
+      tier: 4,
+      label: '金丹·精忠',
+      effects: [{ kind: 'rating', stat: 'penRating', value: 8 }],
+    },
+  },
+  jiangziya: {
+    4: {
+      tier: 4,
+      label: '金丹·封神',
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
     },
   },
 };
+
+function resolvePerk(templateId: string, t: number): BreakthroughPerkDef | undefined {
+  const ov = BREAKTHROUGH_OVERRIDES[templateId]?.[t];
+  if (ov) return ov;
+  const role = getTemplate(templateId)?.role ?? 'flex';
+  return roleBreakthroughPerk(role, t);
+}
 
 export function listBreakthroughPerks(
   templateId: string,
@@ -138,21 +207,23 @@ export function listBreakthroughPerks(
 ): BreakthroughPerkDef[] {
   const out: BreakthroughPerkDef[] = [];
   for (let t = 1; t <= tier; t += 1) {
-    const global = BREAKTHROUGH_PERKS.find((p) => p.tier === t);
-    const ov = BREAKTHROUGH_OVERRIDES[templateId]?.[t];
-    if (global) out.push(global);
-    if (ov) out.push(ov);
+    const perk = resolvePerk(templateId, t);
+    if (perk) out.push(perk);
   }
   return out;
+}
+
+export function listNextBreakthroughPerks(
+  templateId: string,
+  currentTier: number,
+): BreakthroughPerkDef[] {
+  const perk = resolvePerk(templateId, currentTier + 1);
+  return perk ? [perk] : [];
 }
 
 export function nextBreakthroughPerk(
   templateId: string,
   currentTier: number,
 ): BreakthroughPerkDef | undefined {
-  const next = currentTier + 1;
-  return (
-    BREAKTHROUGH_OVERRIDES[templateId]?.[next] ??
-    BREAKTHROUGH_PERKS.find((p) => p.tier === next)
-  );
+  return listNextBreakthroughPerks(templateId, currentTier)[0];
 }

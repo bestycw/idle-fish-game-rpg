@@ -25,7 +25,7 @@ import {
 } from './statusFx.js';
 import { listSkillEffectKinds, registerSkillEffect, runSkillEffects } from './effectRegistry.js';
 import { listStatusTickKinds, registerStatusTick } from './tickRegistry.js';
-import type { GridSlot, UnitRuntime } from '../shared/types.js';
+import type { BattleEvent, GridSlot, UnitRuntime } from '../shared/types.js';
 
 describe('ratings', () => {
   it('ratingToPct respects K and cap', () => {
@@ -246,7 +246,17 @@ describe('extension registries', () => {
     assert.ok(listSkillEffectKinds().includes('purge'));
     assert.ok(listSkillEffectKinds().includes('cleanse'));
     assert.ok(listSkillEffectKinds().includes('grant_qi'));
+    assert.ok(listSkillEffectKinds().includes('revive_ally'));
     assert.ok(listStatusTickKinds().includes('bleed_hp_pct'));
+    assert.ok(listStatusTickKinds().includes('regen_hp_pct'));
+    assert.ok(listStatusTickKinds().includes('stagger_hp'));
+    assert.ok(listSkillEffectKinds().includes('self_atk_up'));
+    assert.ok(listSkillEffectKinds().includes('heal_on_kill'));
+    assert.ok(listSkillEffectKinds().includes('self_stagger'));
+    assert.equal(getStatusDef('atk_up')?.outgoingDamageMult, 1.15);
+    assert.equal(getStatusDef('regen')?.tickKind, 'regen_hp_pct');
+    assert.equal(getStatusDef('stagger')?.deferIncomingRatio, 0.4);
+    assert.equal(getStatusDef('unstable')?.backlashOnCleanse, true);
   });
 
   it('registerSkillEffect can add a new kind without combat loop change', () => {
@@ -267,6 +277,41 @@ describe('extension registries', () => {
       shieldMasteryMult: () => 1,
     });
     assert.equal(hits, 1);
+  });
+
+  it('skill effect chance is a self-roll and emits one miss line', () => {
+    let hits = 0;
+    const events: { code: string; payload: Record<string, unknown> }[] = [];
+    registerSkillEffect('test_proc_chance', () => {
+      hits += 1;
+    });
+    const ctx = (rng: ReturnType<typeof createRng>) => ({
+      state: { turn: 1 } as never,
+      actor: { name: '刘备' } as never,
+      targets: [],
+      allies: [],
+      rng,
+      emit: (_state: unknown, code: BattleEvent['code'], payload: Record<string, unknown>) => {
+        events.push({ code, payload });
+      },
+      grantQi: () => {},
+      attackPower: () => 10,
+      shieldMasteryMult: () => 1,
+    });
+    runSkillEffects([{ kind: 'test_proc_chance', chance: 0.25 }], {
+      ...ctx({ next: () => 0.9, int: () => 0, pick: <T>(xs: readonly T[]) => xs[0]! }),
+    });
+    assert.equal(hits, 0);
+    assert.equal(events[0]?.code, 'effect_miss');
+    assert.equal(events[0]?.payload.actor, '刘备');
+    runSkillEffects([{ kind: 'test_proc_chance', chance: 0.25 }], {
+      ...ctx({ next: () => 0.1, int: () => 0, pick: <T>(xs: readonly T[]) => xs[0]! }),
+    });
+    assert.equal(hits, 1);
+    runSkillEffects([{ kind: 'test_proc_chance' }], {
+      ...ctx(createRng(1)),
+    });
+    assert.equal(hits, 2);
   });
 
   it('registerStatusTick can add poison-like tick', () => {
@@ -294,6 +339,73 @@ describe('extension registries', () => {
     enforceStatusSoftCap(unit);
     assert.equal(unit.statuses.length, STATUS_SOFT_CAP);
     assert.ok(unit.statuses.some((s) => s.statusId === 'stun'));
+  });
+});
+
+describe('nirvana and revive', () => {
+  it('stands once at 30% hp then stays down', () => {
+    const hero = createUnitFromTemplate(getTemplate('hero')!, 2);
+    hero.maxHp = 100;
+    hero.hp = 100;
+    hero.def = 0;
+    hero.res = 0;
+    hero.spd = 1;
+    hero.qi = 0;
+    hero.nirvanaHpRatio = 0.3;
+    let battle = createBattle([hero], 3, 1);
+    const live = battle.player.units[0]!;
+    live.nirvanaHpRatio = 0.3;
+    live.maxHp = 100;
+    live.hp = 100;
+    live.def = 0;
+    live.res = 0;
+    live.spd = 1;
+    live.dodge = 0;
+    live.block = 0;
+    battle.enemy.units = [battle.enemy.units[0]!];
+    const foe = battle.enemy.units[0]!;
+    foe.atk = 999;
+    foe.spd = 99;
+    foe.qi = 0;
+    battle = stepBattle(battle, 3, { heroManual: false });
+    const after = battle.player.units[0]!;
+    assert.equal(after.dead, false);
+    assert.equal(after.hp, 30);
+    assert.ok(battle.events.some((e) => e.code === 'unit_revive'));
+    let guard = 0;
+    while (!battle.player.units[0]!.dead && battle.status === 'ongoing' && guard < 20) {
+      battle = stepBattle(battle, 3, { heroManual: false });
+      guard += 1;
+    }
+    assert.equal(battle.player.units[0]!.dead, true);
+    assert.equal(battle.events.filter((e) => e.code === 'unit_revive').length, 1);
+  });
+
+  it('revive_ally raises one fallen ally', () => {
+    const healer = createUnitFromTemplate(getTemplate('huatuo')!, 8);
+    healer.skill = {
+      ...healer.skill,
+      aiWeight: 1,
+      effects: [...(healer.skill.effects ?? []), { kind: 'revive_ally', value: 0.35 }],
+    };
+    const ally = createUnitFromTemplate(getTemplate('zhangfei')!, 1);
+    let battle = createBattle([healer, ally], 5, 1);
+    const doc = battle.player.units.find((u) => u.templateId === 'huatuo')!;
+    const fallen = battle.player.units.find((u) => u.templateId === 'zhangfei')!;
+    doc.qi = 100;
+    doc.spd = 99;
+    doc.skill = { ...doc.skill, aiWeight: 1 };
+    fallen.hp = 0;
+    fallen.dead = true;
+    for (const e of battle.enemy.units) {
+      e.spd = 1;
+      e.atk = 1;
+    }
+    battle = stepBattle(battle, 5, { heroManual: false });
+    const raised = battle.player.units.find((u) => u.templateId === 'zhangfei')!;
+    assert.equal(raised.dead, false);
+    assert.ok(raised.hp >= Math.floor(raised.maxHp * 0.35));
+    assert.ok(battle.events.some((e) => e.code === 'unit_revive'));
   });
 });
 
@@ -355,5 +467,70 @@ describe('combat enrichment', () => {
       assert.ok(battle.defeatHint);
       assert.match(battle.defeatHint!, /战败提示/);
     }
+  });
+});
+
+describe('encounter pressure', () => {
+  it('scales enemy hp/atk/def but not speed', () => {
+    const player = createInitialPlayer(1);
+    const party = buildPlayerParty(player);
+    const base = createBattle(party, 1, 0, { pressure: 1 });
+    const hard = createBattle(party, 1, 0, { pressure: 2 });
+    const a = base.enemy.units[0]!;
+    const b = hard.enemy.units[0]!;
+    assert.equal(b.maxHp, a.maxHp * 2);
+    assert.equal(b.atk, a.atk * 2);
+    assert.equal(b.def, a.def * 2);
+    assert.equal(b.spd, a.spd);
+  });
+});
+
+describe('T3 hooks', () => {
+  it('fx_start_shield grants opening shield via onBattleStart', () => {
+    const tpl = getTemplate('zhangfei')!;
+    const unit = createUnitFromTemplate(tpl, 1);
+    unit.effectAffixIds = ['fx_start_shield'];
+    const battle = createBattle([unit], 1, 0);
+    const live = battle.player.units[0]!;
+    assert.ok(live.shield >= Math.floor(live.maxHp * 0.08));
+    assert.ok(battle.log.some((line) => line.includes('先手结界')));
+  });
+});
+
+describe('ability pool hooks', () => {
+  it('taunt forces focus onto source', () => {
+    const actor = createUnitFromTemplate(getTemplate('zhaoyun')!, 8);
+    const tank = createUnitFromTemplate(getTemplate('zhangfei')!, 1);
+    const back = createUnitFromTemplate(getTemplate('huatuo')!, 8);
+    actor.statuses = [{ statusId: 'taunt', remaining: 2, sourceUid: tank.uid }];
+    const rng = createRng(1);
+    const focus = pickEnemyFocus([back, tank], actor, { pierce: true, policy: 'backline', rng });
+    assert.equal(focus?.uid, tank.uid);
+  });
+
+  it('qi drought blocks energy gain', () => {
+    const hero = createUnitFromTemplate(getTemplate('hero')!, 2);
+    let battle = createBattle([hero], 7, 0);
+    const uid = battle.player.units[0]!.uid;
+    const name = battle.player.units[0]!.name;
+    battle.player.units[0]!.statuses = [{ statusId: 'qi_drought', remaining: 8 }];
+    battle.player.units[0]!.qi = 10;
+    for (let i = 0; i < 24 && battle.status === 'ongoing'; i++) {
+      battle = stepBattle(battle, 7 + i);
+      const start = battle.events.find((e) => e.code === 'turn_start' && e.payload.actor === name);
+      if (start) {
+        assert.equal(start.payload.qiGain, 0);
+        assert.equal(battle.player.units.find((u) => u.uid === uid)?.qi, 10);
+        return;
+      }
+    }
+    assert.fail('hero never started a turn');
+  });
+
+  it('start qi bonus applies at battle create', () => {
+    const hero = createUnitFromTemplate(getTemplate('hero')!, 2);
+    hero.startQiBonus = 15;
+    const battle = createBattle([hero], 1, 0);
+    assert.equal(battle.player.units[0]!.qi, BATTLE_START_QI + 15);
   });
 });

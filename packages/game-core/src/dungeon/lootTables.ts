@@ -1,4 +1,6 @@
 import { generateEquipment, type GenerateEquipmentOptions } from '../equipment/equipment.js';
+import { itemLevelFromProgress } from '../equipment/catalog/rarity.js';
+import { deployedT3Ids } from '../equipment/loadout.js';
 import { createRng } from '../shared/rng.js';
 import type { Equipment, PlayerState, Rng } from '../shared/types.js';
 import {
@@ -114,6 +116,7 @@ export function grantDungeonReward(
   const equipOpts: GenerateEquipmentOptions = {
     setIdChance: table.setIdChance,
     setIdWeights: table.setIdWeights,
+    itemLevel: itemLevelFromProgress(state.chapterCleared ?? 0, state.chapterNodeIndex ?? 0),
   };
 
   let loot: Equipment | null = null;
@@ -133,6 +136,17 @@ export function grantDungeonReward(
   };
 
   const deployed = Object.keys(next.formation);
+  const t3Ids = deployedT3Ids(state);
+  if (t3Ids.has('fx_lucky_stone')) {
+    next = { ...next, enhanceStones: (next.enhanceStones ?? 0) + 1 };
+  }
+  if (t3Ids.has('fx_gold_find')) {
+    const extra = Math.floor((next.gold - state.gold) * 0.12);
+    next = { ...next, gold: next.gold + extra };
+  }
+  if (t3Ids.has('fx_dust_find') && rng.next() < 0.08) {
+    next = { ...next, rerollDust: (next.rerollDust ?? 0) + 1 };
+  }
   const exp = rangeRoll(rng, table.characterExp);
   if (exp > 0) {
     for (const id of deployed) {

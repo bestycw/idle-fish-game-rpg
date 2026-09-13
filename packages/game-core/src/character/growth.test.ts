@@ -7,9 +7,13 @@ import {
   tryStarUp,
   tryCultivateNode,
   grantCharacterExp,
+  BREAKTHROUGH_LABELS,
+  LEVEL_CAP_BY_TIER,
+  migrateLegacyRealmTier,
+  resolveStarNode,
+  roleStarNode,
   grantCurrency,
   unlockedStarNodes,
-  resolveStarNode,
   starShardCost,
 } from './growth.js';
 import {
@@ -22,7 +26,10 @@ import {
   listBreakthroughPerkRows,
   listStarTrackRows,
   previewStarUp,
+  cultivationGainLine,
+  previewBreakthroughStep,
 } from './growthHelpers.js';
+import { ROLE_BREAKTHROUGH_LADDERS } from './breakthroughPerks.js';
 import { createInitialPlayer } from '../save/player.js';
 import { getTemplate } from './templates.js';
 import { MAX_STAR } from './starTracks.js';
@@ -51,14 +58,14 @@ describe('character growth', () => {
           level: 1,
           exp: 0,
           breakthroughTier: 0,
-          cultivationNodes: 4,
+          cultivationNodes: 10,
           star: 0,
           owned: true,
           cardShards: 0,
         },
       },
     };
-    state = grantCurrency(state, 'xiuwei', 200);
+    state = grantCurrency(state, 'xiuwei', 800);
     const r = tryBreakthrough(state, 'zhaoyun');
     assert.equal(r.ok, true);
     if (r.ok) {
@@ -124,14 +131,14 @@ describe('character growth', () => {
           level: 1,
           exp: 0,
           breakthroughTier: 0,
-          cultivationNodes: 4,
+          cultivationNodes: 10,
           star: 0,
           owned: true,
           cardShards: 0,
         },
       },
     };
-    state = grantCurrency(state, 'xiuwei', 200);
+    state = grantCurrency(state, 'xiuwei', 800);
     const r = tryBreakthrough(state, 'zhangfei');
     assert.equal(r.ok, true);
     if (r.ok) {
@@ -159,13 +166,13 @@ describe('character growth', () => {
       },
     };
     assert.equal(tryCultivateNode(state, 'huatuo').ok, false);
-    state = grantCurrency(state, 'xiuwei', 200);
-    for (let i = 0; i < 4; i += 1) {
+    state = grantCurrency(state, 'xiuwei', 900);
+    for (let i = 0; i < 10; i += 1) {
       const r = tryCultivateNode(state, 'huatuo');
       assert.equal(r.ok, true);
       if (r.ok) state = r.state;
     }
-    assert.equal(state.roster.huatuo!.cultivationNodes, 4);
+    assert.equal(state.roster.huatuo!.cultivationNodes, 10);
     assert.equal(tryCultivateNode(state, 'huatuo').ok, false);
     const bt = tryBreakthrough(state, 'huatuo');
     assert.equal(bt.ok, true);
@@ -279,16 +286,80 @@ describe('character growth', () => {
     assert.match(r3.message, /★4|抽卡/);
   });
 
+  it('keeps early ladder stable and appends 太乙 / 大罗', () => {
+    assert.equal(BREAKTHROUGH_LABELS[5], '元婴');
+    assert.equal(BREAKTHROUGH_LABELS[6], '化神');
+    assert.equal(BREAKTHROUGH_LABELS[7], '炼虚');
+    assert.equal(BREAKTHROUGH_LABELS[14], '金仙');
+    assert.equal(BREAKTHROUGH_LABELS[15], '太乙');
+    assert.equal(BREAKTHROUGH_LABELS[16], '大罗');
+    assert.equal(BREAKTHROUGH_LABELS.length, LEVEL_CAP_BY_TIER.length);
+    assert.equal(BREAKTHROUGH_LABELS[BREAKTHROUGH_LABELS.length - 1], '大罗');
+    assert.equal(migrateLegacyRealmTier(0), 0);
+    assert.equal(migrateLegacyRealmTier(2), 4);
+    assert.equal(migrateLegacyRealmTier(4), 6);
+  });
+
+  it('gives every default star a role passive from the ability pool', () => {
+    const tank = roleStarNode('tank', 3);
+    assert.ok(tank?.effects.some((e) => e.kind === 'effect_unlock'));
+    const tank5 = roleStarNode('tank', 5);
+    assert.ok(tank5?.effects.some((e) => e.kind === 'nirvana'));
+    const burst = roleStarNode('st_burst', 6);
+    assert.ok(burst?.effects.some((e) => e.kind === 'effect_unlock' && e.effect.kind === 'execute'));
+    const heal5 = roleStarNode('st_heal', 5);
+    assert.ok(heal5?.effects.some((e) => e.kind === 'effect_unlock' && e.effect.kind === 'revive_ally'));
+    const ctrl6 = roleStarNode('st_ctrl', 6);
+    assert.ok(ctrl6?.effects.some((e) => e.kind === 'status_unlock' && e.status.statusId === 'stun'));
+    const stub = resolveStarNode('menghuo', 3);
+    assert.ok(stub);
+    assert.notEqual(stub.label, '主属性强化');
+    assert.ok(stub.effects.some((e) => e.kind !== 'stat_pct'));
+    const wukong1 = resolveStarNode('wukong', 1);
+    assert.ok(wukong1);
+    assert.ok(wukong1.effects.some((e) => e.kind === 'stat_pct'));
+    assert.ok(wukong1.effects.some((e) => e.kind !== 'stat_pct' && e.kind !== 'rare_stat' && e.kind !== 'rating'));
+    const zy2 = resolveStarNode('zhaoyun', 2);
+    assert.ok(zy2);
+    assert.ok(zy2.effects.some((e) => e.kind === 'stat_pct'));
+    assert.ok(zy2.effects.some((e) => e.kind === 'rating' && e.stat === 'critRating'));
+  });
+
+  it('shows numbered cultivation and role-colored realm perks', () => {
+    assert.match(cultivationGainLine(), /主属性\+1\.2%/);
+    for (const role of ['tank', 'st_burst', 'aoe_dps', 'st_ctrl', 'aoe_ctrl', 'group_amp', 'st_heal', 'aoe_heal', 'flex'] as const) {
+      const ladder = ROLE_BREAKTHROUGH_LADDERS[role];
+      assert.equal(ladder.length, BREAKTHROUGH_LABELS.length - 1);
+      assert.ok(ladder.every((p) => p.effects.every((e) => e.kind === 'rating' || e.kind === 'rare_stat')));
+    }
+    const burst = previewBreakthroughStep('zhaoyun', 0);
+    assert.ok(burst);
+    assert.equal(burst.toLabel, '筑基');
+    assert.match(burst.mainLine, /主属性\+4%/);
+    assert.match(burst.perkLine, /暴击约\+/);
+    const tank = previewBreakthroughStep('menghuo', 0);
+    assert.ok(tank);
+    assert.match(tank.perkLine, /坚韧/);
+    assert.notEqual(burst.perkLine, tank.perkLine);
+    const open = previewBreakthroughStep('hero', 1);
+    assert.ok(open);
+    assert.match(open.perkLine, /暴击|气运/);
+    const zf = previewBreakthroughStep('zhangfei', 0);
+    assert.ok(zf);
+    assert.match(zf.perkLabel, /虎侯/);
+  });
+
   it('lists full star track and breakthrough rows', () => {
     const rows = listStarTrackRows('zhaoyun', 2);
     assert.equal(rows.length, MAX_STAR); // legendary → ★6
     assert.equal(rows.filter((r) => r.unlocked).length, 2);
     assert.ok(rows.every((r) => r.effectLine.length > 0));
-    assert.equal(listStarTrackRows('huatuo', 0).length, 4); // rare
-    assert.equal(listStarTrackRows('zhangfei', 0).length, 5); // epic
+    assert.match(rows[1]!.effectLine, /主属性\+3%|状态\+|穿透/);
+    assert.equal(listStarTrackRows('huatuo', 0).length, 6); // legendary
+    assert.equal(listStarTrackRows('zhangfei', 0).length, 6); // legendary
     const bt = listBreakthroughPerkRows('zhangfei', 0);
     assert.ok(bt.next);
-    assert.equal(UNIT_TEMPLATES.length, 100);
+    assert.equal(UNIT_TEMPLATES.length, 200);
   });
 
   it('star cap follows rarity (凡3/良4/珍5/绝6)', () => {
@@ -297,8 +368,8 @@ describe('character growth', () => {
       ...state,
       roster: {
         ...state.roster,
-        huatuo: {
-          ...state.roster.huatuo!,
+        xushu: {
+          ...state.roster.xushu!,
           owned: true,
           star: 4,
           cardShards: 99,
@@ -315,9 +386,9 @@ describe('character growth', () => {
         },
       },
     };
-    assert.equal(tryStarUp(state, 'huatuo').ok, false); // rare max ★4
+    assert.equal(tryStarUp(state, 'xushu').ok, false); // rare max ★4
     assert.equal(tryStarUp(state, 'menghuo').ok, false); // common max ★3
-    assert.match(tryStarUp(state, 'huatuo').message, /良品|上限/);
+    assert.match(tryStarUp(state, 'xushu').message, /良品|上限/);
   });
 
   it('formationHints flags missing tank/heal', () => {

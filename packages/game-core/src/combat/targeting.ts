@@ -1,5 +1,6 @@
 import { colOf, rowOf } from '../formation/grid.js';
 import { livingUnits } from './lifecycle.js';
+import { getStatusDef } from './statusRegistry.js';
 import type {
   FocusPolicyId,
   GridSlot,
@@ -150,6 +151,14 @@ export function pickEnemyFocus(
   actor: UnitRuntime,
   opts: { pierce?: boolean; policy?: FocusPolicyId; rng: Rng },
 ): UnitRuntime | null {
+  const taunt = actor.statuses.find((s) => {
+    if (s.remaining <= 0 || !s.sourceUid) return false;
+    return Boolean(getStatusDef(s.statusId)?.forcesFocus);
+  });
+  if (taunt?.sourceUid) {
+    const locked = livingUnits(foes).find((u) => u.uid === taunt.sourceUid);
+    if (locked) return locked;
+  }
   const policyId = opts.policy ?? DEFAULT_FOCUS_POLICY;
   const fn = focusPolicies.get(policyId) ?? focusPolicies.get(DEFAULT_FOCUS_POLICY)!;
   return fn({

@@ -258,7 +258,7 @@ pct = rating / (rating + K)
 | multiplier | 倍率（群体时对集合内**每人**乘同一倍率；不做距离衰减，V1） |
 | **qiCost** | 能量消耗（字段名 `qi`；显示名随皮） |
 | **applyStatus** | `{ statusId, chance?, duration?, value?, layers? }[]` — 状态扩展点 |
-| **effects** | 可选；非状态类效果列表（见 §4.15.1）。刀一可空，**字段要留** |
+| **effects** | 可选；非状态类效果列表（见 §4.15.1）。每条可配 `chance`（0～1，省略=必发）：**触发**自己掷骰，不吃精通/幸运，整条效果掷一次。口径见 [效果触发率](../2026-08-30-effect-proc-chance-design.md) |
 | **followUp** | 可选；连击配置（见 §4.9.1）。刀一可不用，**类型要留** |
 | aiWeight | 0~1；须能量足够 |
 
@@ -343,6 +343,7 @@ pct(rating) = min(cap, rating / (rating + K))
 - V1 主属性**不转化**成副属性。  
 - 调参：太容易满 → 加大 K 或降 cap；堆了没感觉 → 减小 K。  
 - 禁止混用旧「直给减伤%」与均衡双通道。
+- **星章/破境文案：** `暴击约+7%` 按「这一笔评分从 0 起换算」写，方便星与星比；属性页仍显示当前总评级进公式后的真实%。装越多，同一笔 +6 的边际越薄。
 
 #### 4.12.2 伤害流水线（顺序锁死）
 
@@ -507,12 +508,12 @@ crit = rng.next() < p
 | `berserk` | 狂 | 狂乱 | Debuff | 只能普攻，索敌含友军，攻击 ×1.3 | **已实现** |
 | `shred` | 破 | 破甲 | Debuff | 防御 × shredFactor | **已实现** |
 | `vuln` | 伤 | 易伤 | Debuff | 最终伤害 ×(1+0.15) | **规格预留** |
-| `bleed` | 血 | 流血 | DoT | 行动开始掉血；最多 3 层 | **已实现** |
+| `bleed` | 血 | 流血 | DoT | 每动扣目标生命上限 3% × 层数；最多 3 层 | **已实现** |
 | `poison` | 毒 | 中毒 | DoT | 不叠层；可后置 | **规格预留**（新 tickKind） |
 | `slow` | 缓 | 迟缓 | Debuff | **身法** ×0.75（削先手） | **已实现** |
 | `confuse` | 惑 | 迷惑 | Debuff | 仅敌对阵营内随机索敌 | **规格预留** |
 
-**现网已注册：** stun、sleep、silence、havoc、berserk、shred、bleed、slow、heal_block、shield。  
+**现网已注册：** stun、sleep、silence、havoc、berserk、shred、bleed、slow、heal_block、shield、poison、burn、frostbite、atk_down、freeze、root、taunt、disarm、crit_up、immortal、stealth_next、oath、cover、qi_drought、fate_lock、dmg_cap、dao、reflect_cc、corruption、cell_lock、domain。  
 **规格预留（须 `registerStatus`，禁止主循环写死 id）：** crit_up、hit_up、atk_up、def_up、haste_up、open_edge、vuln、poison、confuse、immune_ctrl。  
 **Boss：** 免疫 stun/sleep/havoc/berserk；仍吃破甲/流血/禁疗/迟缓（见 `StatusDef.rankGate`）。  
 **软顶 6 个不同 id：** `STATUS_SOFT_CAP=6` **已落地**（超顶挤掉优先低价值状态）。
@@ -582,12 +583,12 @@ crit = rng.next() < p
 
 | # | 项 | 冻结结论 |
 |---|----|----------|
-| 1 | 装备归属 | **出战共用一套 equipped** |
-| 2 | 槽位节奏 | 模型 16；**现露 16 全开**（细则见 [equipment.md](./equipment.md)；人物面板见 character-panel-wow-layout） |
+| 1 | 装备归属 | **每角色独立装备栏** |
+| 2 | 槽位节奏 | **12 槽全开**（`EQUIP_SLOTS`；细则见 [equipment.md](./equipment.md)） |
 | 3 | 技能数据 | **`applyStatus[]` + tags + `targetPattern`**；不靠无限 kind |
 | 4 | 状态主表 | §4.13；**不再扩主表 id**（新效果优先装备特效） |
 | 5 | 伤害链顺序 | §4.12.2 **锁死** |
-| 6 | 能量 qi | 开战 20；行动 +5；普攻 +20；技能耗 40–60；无受击回能、无技能 CD |
+| 6 | 能量 qi | 开战 20；回合初 +5；普攻 +20；技能约 45–55；气轴 **2 攒第 3 放**；词缀不得买回合（见 [equipment.md](./equipment.md)） |
 | 7 | 存档 | **bump 即作废旧档** |
 | 8 | RNG | 单机种子；core 不用 `Math.random` |
 | 9 | 终伤 | **保留第六副属性** finalDmgRating；开锋 Buff 数值保守 |
@@ -663,7 +664,7 @@ Hub 布阵/装备 → CreateBattle
 | 6 | **V1 只交 `neutral` 皮** | core 不渗题材词 | |
 | 7 | **仓库名与题材脱钩** | 改包名贵 | 可不改仓库 |
 | 8 | **比例两位小数、评级整数** | 序列化统一 | |
-| 9 | **共用衣柜** | 分柜=半重构 | |
+| 9 | **每角色独立装备栏** | 已落地；勿改回共用衣柜 | |
 | 10 | **role / job 枚举一次写全** | 中途加枚举动面大 | 池可缺卡 |
 | 11 | **扩展钩子 §4.15.1** | 后加能力不掀战斗循环 | **必须按表留口** |
 | 12 | **状态注册表 §4.15.2** | Buff/Debuff 后加 | `registerStatus` + flag；禁止主循环写死 id |
@@ -745,11 +746,11 @@ Hub 布阵/装备 → CreateBattle
 
 | 类别 | 怎么加 | 现网钩子 | 后续可能例 |
 |------|--------|----------|------------|
-| **Buff / Debuff / CC** | `registerStatus({ id, flags… })` + 技能 `applyStatus` | `StatusDef`：`blocksAct` / `blocksSkill` / `forceRandomTarget` / `forceBasicAttack` / `wakeOnDamage` / `healBlocked` / `purgeable` / `cleanseable` / `ccDrBucket` / `tickKind` / `outgoingDamageMult` / `actionWeightMult` / `incomingDefMultFromValue` / `maxBattleApplies` / `stack` / `appliesAsShield` / `rankGate` | 冰冻、嘲讽、护盾易伤、DOT 毒、减暴击、增疗 |
+| **Buff / Debuff / CC** | `registerStatus({ id, flags… })` + 技能 `applyStatus` | `StatusDef`：`blocksAct` / `blocksSkill` / `blocksBasic` / `blocksQiGain` / `forceRandomTarget` / `forceBasicAttack` / `wakeOnDamage` / `healBlocked` / `preventLethal` / `forcesFocus` / `shareDamage` / `coverFront` / `reflectCc` / `purgeable` / `cleanseable` / `ccDrBucket` / `tickKind` / `outgoingDamageMult` / `actionWeightMult` / `incomingDefMultFromValue` / `incomingDamageTakenMult` / `maxBattleApplies` / `stack` / `appliesAsShield` / `rankGate`；现网另有 `atk_up` / `def_up` / `spd_up` / `regen` / 毒灼霜 / 嘲讽缴械 | 新 flag 仍走本表 |
 | **目标形状** | `registerTargetPattern` | `TargetPattern = string` | 菱形、邻格、随机 N |
 | **焦点策略** | `registerFocusPolicy` | `FocusPolicyId = string` | 嘲讽锁、斩杀残血 |
-| **非状态效果** | `registerSkillEffect(kind, handler)` + 技能 `effects[]` | 内置 purge / cleanse / grant_qi | revive、steal_qi、redirect |
-| **状态跳字 DoT** | `registerStatusTick(kind, handler)` + `StatusDef.tickKind` | 内置 `bleed_hp_pct` | 毒、燃、回复跳字 |
+| **非状态效果** | `registerSkillEffect(kind, handler)` + 技能 `effects[]` | 内置 purge / cleanse / grant_qi / 自身短 Buff；乘区类走 `skillRules`（随精通长）；扫尾/追亡/战疗走 `abilityRuntime` | 新 kind 先 register |
+| **状态跳字 DoT** | `registerStatusTick(kind, handler)` + `StatusDef.tickKind` | 内置 `bleed_hp_pct` / `regen_hp_pct` / `stagger_hp` / `corruption_tick` | 新 tickKind |
 | **战报事件** | 新 `emit(code)`；UI 只认 code | §4.15.1 C | 击杀赏、套装触发 |
 | **词表 / 皮** | `t(key)` + skin | status/job/skill nameKey | 新题材皮 |
 | **套装 / 词缀** | 表驱动；进战短 Buff 挂 `applyStatus` | 装备 effects 后置 | 2/4 件套 |

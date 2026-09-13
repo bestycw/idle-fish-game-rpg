@@ -1,4 +1,5 @@
 import { grantCurrency } from '../character/growth.js';
+import { deployedHasT3 } from '../equipment/loadout.js';
 import type { PlayerState } from '../shared/types.js';
 
 /** 当前层数（从 1 起）；缺省按 1 */
@@ -40,7 +41,9 @@ export type ClimbTowerResult = {
  */
 export function climbTower(state: PlayerState): ClimbTowerResult {
   const clearedFloor = getTowerFloor(state);
-  const gainedXiuwei = xiuweiForFloor(clearedFloor);
+  const gainedXiuwei = Math.round(
+    xiuweiForFloor(clearedFloor) * (deployedHasT3(state, 'fx_tower_xp') ? 1.1 : 1),
+  );
   const milestone = isTowerMilestone(clearedFloor);
   const gainedStardust = milestone ? TOWER_MILESTONE_STARDUST : 0;
   const nextFloor = clearedFloor + 1;

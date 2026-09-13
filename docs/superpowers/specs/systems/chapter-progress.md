@@ -1,26 +1,29 @@
 # 章节进度系统
 
 > 系统骨架 #6。  
-> 配置权威：`packages/game-core/src/chapter/defs.ts`（**改内容只改该表**）。  
-> **实现状态（2026-07-26）：** B4 框架已落地（章表 + 解锁查询 + Hub 推进）；文案占位。
+> 配置权威：内容/解锁 `packages/game-core/src/chapter/defs.ts`；强度档 `packages/game-core/src/chapter/bands.ts`。  
+> **实现状态（2026-08-25）：** B4 框架 + 六章强度档 + Hub **关卡条**（场地列表，不是地图）。文案占位。
 
 ## 边界
 
 | 本章管 | 不管 |
 |--------|------|
-| 章骨架、节点（story/battle）、通关解锁内容池 | 战斗公式、猎装掉落主循环、抽卡概率 |
+| 章骨架、节点（story/battle）、通关解锁内容池 | 战斗伤害公式、猎装掉落主循环、抽卡概率 |
 | `isContentUnlocked` 供各系统查询 | 硬战力锁关、卖通关权 |
+| 章档：敌人倍率 + 底线/建议/碾压战力（展示） | 按玩家当前战力刷怪；塔 instant 不跟档 |
+| Hub 关卡条（当前章场地：已过 / 此地 / 未到） | 真地图、可走动格子、Rogue 多路线 |
 
 **剧情推进遇敌**属本章；刷本入口属 [dungeon.md](./dungeon.md)，但遭遇池可被本章 `encounter` 解锁过滤。
 
 ## 框架怎么用（后续改内容）
 
-只改 `chapter/defs.ts`：
+只改内容表 `chapter/defs.ts`；改强度数字只改 `chapter/bands.ts`：
 
 | 表/常量 | 作用 |
 |---------|------|
 | `START_UNLOCKS` | 开局即有的 `dungeon` / `gacha_unit` / `encounter` |
-| `CHAPTERS` | 章顺序、节点、通关后 `unlocksOnClear` |
+| `CHAPTERS` | 章顺序、节点（`title` / `place` / story|battle）、通关后 `unlocksOnClear` |
+| `CHAPTER_BANDS` | 正在打的章的敌人倍率与建议战力（`chapter/bands.ts`） |
 
 解锁 kind：
 
@@ -28,20 +31,38 @@
 - `gacha_unit` — 可进抽卡池的模板 id  
 - `encounter` — 猎装遭遇池里会出现的遭遇 id  
 
-API（`chapter/progress.ts`）：
+API（`chapter/progress.ts` / `chapter/bands.ts`）：
 
 ```
 collectUnlocks / isContentUnlocked / listUnlockedIds
-getChapterView / advanceStoryNode / completeChapterBattle
+getChapterView / getChapterRoute / advanceStoryNode / completeChapterBattle
 pickUnlockedEncounterIndex  // 刷本用已解锁遭遇
+getChapterBand / battlePressure  // 章档 × 本种压力
 ```
 
-存档：`chapterCleared` + `chapterNodeIndex`（存档总版本见 [save.md](./save.md)，当前 **v10**）。
+Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此地 / 未到。按钮「进入 · 场地」。未到站点不进去。故事皮只换 `place` 与过场文案。
+
+开战：`createBattle(..., { pressure: battlePressure(chapterCleared, dungeonPressure) })`。  
+`chapterCleared === 0` 打第一章。塔不进战斗、不乘章档。
+
+存档：`chapterCleared` + `chapterNodeIndex`（存档总版本见 [save.md](./save.md)，现网 **v15**；中土卡池迁完 **v16**）。
+
+## 强度档（已落地）
+
+每章三道线，数字可再调表，**不锁按钮**：
+
+| | 含义 |
+|--|------|
+| 底线 `floorPower` | 低于此站位也很难过 |
+| 建议 `recommendedPower` | Hub 展示；猎装同档，镜渊再乘本种 1.3 |
+| 碾压 `crushPower` | 通常能碾；错队仍可能卡机制 |
+
+循环：章节卡住 → 塔养肉身 / 猎装养装 / 升星养招 → 再推章。解法窗口在底线～碾压之间，不是万能。敌人只跟**正在打的章**走，不读 `partyPower` 缩放。
 
 ## V1 骨架（已写入 defs）
 
 - 主线 **6 章**占位；节点为 story / battle 混排。  
-- 示例门锁：开局有猎装/塔/**星尘秘境**/基础公版池；**清第 1 章**开 `raiders`；**清第 2–5 章**依次开白骨精/美杜莎/诸葛亮/雅典娜。  
+- 示例门锁：开局有猎装/塔/**星尘秘境**/开局圈（蜀汉·取经凡良 + 关羽/典韦/后羿）；其后按圈解锁，见 [中土故事圈 §6](../2026-08-26-zhongtu-roster-circles-design.md)。迁完前代码仍走旧 `expandIdsByUnlock`。  
 - 文案可整包替换；**结构与解锁表必须真实。**
 
 ### 5.5 剧情与进度（产品约束）

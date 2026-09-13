@@ -2,8 +2,9 @@
  * 挖矿系统：每日 5 次，消耗体力 6/次。
  * 主产：强化石。副产：宝石（概率，受气运影响）。
  */
-import type { PlayerState, Rng } from '../shared/types.js';
+import type { PlayerState } from '../shared/types.js';
 import { createRng } from '../shared/rng.js';
+import { characterHasT3, deployedHasT3 } from '../equipment/loadout.js';
 
 export const MINE_STAMINA_COST = 6;
 export const MINE_DAILY_LIMIT = 5;
@@ -79,7 +80,7 @@ export interface MineResult {
   message: string;
 }
 
-export function doMine(state: PlayerState, mineId: string): MineResult {
+export function doMine(state: PlayerState, mineId: string, templateId?: string): MineResult {
   const mine = MINE_DEFS.find((m) => m.id === mineId);
   if (!mine) return { ok: false, state, stones: 0, message: '矿脉不存在' };
   if (state.chapterCleared < mine.unlockChapter) {
@@ -98,10 +99,12 @@ export function doMine(state: PlayerState, mineId: string): MineResult {
   const rng = createRng(state.seed + count * 7 + mineId.length);
   const stones = rng.int(mine.stoneRange[0], mine.stoneRange[1]);
 
-  // Fortune influences gem drop chance
-  // TODO: compute fortune from character stats; for now use 0
   const fortunePct = 0;
-  const actualGemChance = mine.gemBaseChance * (1 + fortunePct * 0.8);
+  const probe =
+    templateId != null
+      ? characterHasT3(state, templateId, 'fx_mine_gem')
+      : deployedHasT3(state, 'fx_mine_gem');
+  const actualGemChance = mine.gemBaseChance * (1 + fortunePct * 0.8) * (probe ? 1.25 : 1);
   let gem: string | undefined;
   if (rng.next() < actualGemChance && mine.gemPool.length > 0) {
     gem = rng.pick(mine.gemPool);

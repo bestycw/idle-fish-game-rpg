@@ -62,10 +62,41 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    color-scheme: dark;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(232, 228, 220, 0.22) transparent;
+  }
+
   html,
   body,
   #root {
     min-height: 100%;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(232, 228, 220, 0.2);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(226, 160, 74, 0.45);
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   body {
@@ -148,5 +179,102 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes gear-pick-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes gear-picked {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(226, 160, 74, 0.95),
+      0 0 10px rgba(226, 160, 74, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(255, 224, 170, 1),
+      0 0 18px rgba(226, 160, 74, 0.75);
+  }
+}
+
+.gear-cell-picked {
+  z-index: 2;
+  animation:
+    gear-pick-pop 0.28s ease-out both,
+    gear-picked 1.15s ease-in-out 0.28s infinite;
+}
+
+@keyframes gear-slot-dash {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+.gear-slot-dash {
+  animation: gear-slot-dash 0.7s linear infinite;
+}
+
+@keyframes realm-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(226, 160, 74, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(226, 160, 74, 0);
+  }
+}
+
+.realm-breathe {
+  animation: realm-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes skill-star-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+.skill-star-pulse {
+  animation: skill-star-pulse 1.6s ease-in-out infinite;
+}
+
+.realm-rail {
+  background:
+    linear-gradient(180deg, rgba(226, 160, 74, 0.05), transparent 18%, transparent 82%, rgba(226, 160, 74, 0.04));
+}
+
+@keyframes realm-ring-spin {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.realm-ring {
+  stroke-dasharray: 3 2.2;
+  animation: realm-ring-spin 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .realm-breathe,
+  .realm-ring,
+  .skill-star-pulse {
+    animation: none;
   }
 }

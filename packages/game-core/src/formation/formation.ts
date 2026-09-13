@@ -2,6 +2,7 @@ import { createUnitFromTemplate } from '../character/factory.js';
 import { isOwned } from '../character/growth.js';
 import { UNIT_TEMPLATES, getTemplate } from '../character/templates.js';
 import { applyBonusesToUnit, sumEquipmentBonuses } from '../equipment/equipment.js';
+import { loadoutConditions, loadoutT3Ids } from '../equipment/loadout.js';
 import { getChainBonus, getTeamChainBonus } from '../equipment/enhance.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
 import { MAX_PARTY_SIZE, type GridSlot, type PlayerState, type UnitRuntime } from '../shared/types.js';
@@ -62,17 +63,10 @@ export function buildPlayerParty(state: PlayerState): UnitRuntime[] {
     const composeCtx = morphMods.length > 0 ? { extraModifiers: morphMods } : undefined;
     const unit = createUnitFromTemplate(t, slot, progress, composeCtx);
     const finalUnit = applyBonusesToUnit(unit, bonus);
-
-    // Collect T3 effect affix ids from per-character equipment
-    const charEquip = state.characterEquip?.[t.id] ?? {};
-    const effectIds: string[] = [];
-    for (const itemId of Object.values(charEquip)) {
-      if (!itemId) continue;
-      const item = state.inventory.find((e) => e.id === itemId);
-      if (item?.effectAffixId) effectIds.push(item.effectAffixId);
-      if (item?.effectAffixId2) effectIds.push(item.effectAffixId2);
-    }
+    const effectIds = loadoutT3Ids(state, t.id);
+    const conditions = loadoutConditions(state, t.id);
     if (effectIds.length > 0) finalUnit.effectAffixIds = effectIds;
+    if (conditions.length > 0) finalUnit.conditionAffixes = conditions;
 
     units.push(finalUnit);
   }

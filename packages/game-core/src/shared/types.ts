@@ -55,9 +55,6 @@ export const EQUIP_SLOTS: EquipSlot[] = [
   'feet', 'legs', 'neck', 'ring1', 'ring2', 'trinket1', 'trinket2',
 ];
 
-/** @deprecated 用 EQUIP_SLOTS */
-export { EQUIP_SLOTS as UNLOCKED_EQUIP_SLOTS };
-
 /** 战中可选行动：普攻 + 招牌技能（无通用防御；承伤由坦克技能/站位负责） */
 export type ActionKind = 'attack' | 'skill';
 
@@ -96,6 +93,8 @@ export interface SkillEffect {
   kind: SkillEffectKind;
   multiplier?: number;
   value?: number;
+  /** 触发率 0～1；省略或 1 = 必发。自己掷骰，不吃精通/幸运。 */
+  chance?: number;
 }
 
 export interface FollowUpDef {
@@ -112,6 +111,32 @@ export interface ApplyStatusDef {
   layers?: number;
 }
 
+/** 软模式：同一 skillId 随战场条件变招（见 legendary-signature-kit） */
+export type SoftModeWhen =
+  | { kind: 'target_has_status'; statusId: StatusId }
+  | { kind: 'target_under_cc' }
+  | { kind: 'self_hp_below'; value: number }
+  | { kind: 'target_hp_below'; value: number }
+  | { kind: 'first_cast' }
+  | { kind: 'target_has_shield' }
+  | { kind: 'ally_downed' };
+
+export interface SoftModeThen {
+  multiplierDelta?: number;
+  effectPatches?: SkillEffect[];
+  statusPatches?: ApplyStatusDef[];
+  followUp?: FollowUpDef;
+  /** 等价追加 revive_ally 效果 */
+  reviveAlly?: { hpRatio: number };
+}
+
+export interface SoftModeDef {
+  when: SoftModeWhen;
+  then: SoftModeThen;
+  /** 玩家一句，如「猎印目标：斩杀加重」 */
+  copy: string;
+}
+
 export interface SkillDef {
   id: string;
   name: string;
@@ -124,6 +149,8 @@ export interface SkillDef {
   applyStatus: ApplyStatusDef[];
   effects?: SkillEffect[];
   followUp?: FollowUpDef;
+  /** 出手时按条件叠加的变招包；不改技能栏 */
+  softModes?: SoftModeDef[];
   focusPolicy?: FocusPolicyId;
   damageSchool?: DamageSchool;
   aiWeight: number;
@@ -152,7 +179,9 @@ export type StatKey =
   | 'resilience'
   | 'echo'
   | 'thorns'
-  | 'steal';
+  | 'steal'
+  | 'qiSiphon'
+  | 'qiRefund';
 
 export interface AffixDef {
   id: string;
@@ -171,29 +200,53 @@ export interface AffixInstance {
   value: number;
 }
 
+export type ConditionId =
+  | 'skill_power'
+  | 'basic_attack'
+  | 'vs_front'
+  | 'vs_back'
+  | 'vs_healthy'
+  | 'vs_wounded'
+  | 'vs_status'
+  | 'while_shielded'
+  | 'dmg_taken_reduce'
+  | 'dmg_taken_from_back';
+
+export interface ConditionAffix {
+  defId: ConditionId;
+  name: string;
+  /** 0.08 = 8% */
+  value: number;
+  min: number;
+  max: number;
+  extreme?: boolean;
+}
+
 export interface Equipment {
   id: string;
   name: string;
   slot: EquipSlot;
   rarity: Rarity;
-  /** 基础属性（固定，按槽位+品级） */
+  /** 装等：只抬底子 */
+  itemLevel: number;
+  /** 基础属性（固定，按槽位+品级+装等） */
   baseStats: Partial<Record<'atk' | 'def' | 'res' | 'maxHp' | 'spd', number>>;
-  /** 随机词缀（统一池） */
+  /** 随机词缀 */
   affixes: AffixInstance[];
-  /** 稀有词缀（额外独立判定） */
+  /** 条件词 0–2 */
+  conditions?: ConditionAffix[];
+  /** 稀有词缀（纯概率） */
   rareAffixes?: AffixInstance[];
-  /** T3 效果 #1 */
+  /** T3，最多 1 */
   effectAffixId?: string;
-  /** T3 效果 #2（传说才可能） */
-  effectAffixId2?: string;
-  /** 套装 */
   setId?: string;
-  /** 孔位 */
   socketCount: 0 | 1;
-  /** 已镶宝石 */
   gemId?: string;
-  /** 强化等级 */
   enhanceLevel: number;
+  /** 锁定可洗的随机行下标；未选则第一次洗时选定 */
+  rerollAffixIndex?: number;
+  /** 锁定可洗的条件行下标 */
+  rerollConditionIndex?: number;
 }
 
 export interface StatusInstance {
@@ -201,6 +254,8 @@ export interface StatusInstance {
   value?: number;
   layers?: number;
   remaining: number;
+  /** 嘲讽/义护：施加者 uid */
+  sourceUid?: string;
 }
 
 export interface UnitTemplate {
@@ -260,6 +315,8 @@ export interface UnitRuntime {
   block: number;
   counter: number;
   resilience: number;
+  /** 涅槃：致死后按该比例起身，本场 1 次；未点星则为 undefined */
+  nirvanaHpRatio?: number;
   echo: number;
   thorns: number;
   steal: number;
@@ -276,8 +333,25 @@ export interface UnitRuntime {
   focusPolicy?: FocusPolicyId;
   /** T3 效果词缀 ID 列表（来自装备） */
   effectAffixIds?: string[];
-  /** T3 死亡保命已用（每场 1 次） */
-  effectAffixDeathSaveUsed?: boolean;
+  /** 进战条件词（乘区） */
+  conditionAffixes?: ConditionAffix[];
+  /** 锁息：行动削气，全身帽 6 */
+  qiSiphon: number;
+  /** 回元：大招后回气，全身帽 6 */
+  qiRefund: number;
+  /** T3 / 词缀本场状态（死亡保命、收势、每回合一次等） */
+  t3State?: Record<string, number | boolean | string>;
+  lastSkillTargetUid?: string;
+  /** 连续技能打同一目标的层数（一鼓作气） */
+  focusStreak?: number;
+  /** 近期承伤，供以伤回血 */
+  recentDamageTaken?: number;
+  startQiBonus?: number;
+  qiOnHit?: number;
+  basicQiBonus?: number;
+  secondWind?: boolean;
+  counterFollow?: boolean;
+  linkHeal?: boolean;
 }
 
 export interface BattleSide {
@@ -301,6 +375,7 @@ export type BattleEventCode =
   | 'shield_gain'
   | 'qi_gain'
   | 'follow_up'
+  | 'effect_miss'
   | 'battle_end';
 
 export interface BattleEvent {
@@ -347,7 +422,7 @@ export interface PlayerState {
   version: number;
   gold: number;
   inventory: Equipment[];
-  /** @deprecated 旧共享衣柜；迁移后不再使用 */
+  /** 旧共享衣柜字段。读档后恒空；穿戴只认 characterEquip。 */
   equipped: Partial<Record<EquipSlot, string>>;
   formation: Partial<Record<string, GridSlot>>;
   heroManual: boolean;
@@ -383,6 +458,17 @@ export interface PlayerState {
   mineDay?: string;
   /** VIP 额外挖矿上限 */
   mineExtraLimit?: number;
+  /** 洗练尘 */
+  rerollDust?: number;
+  /** 点开检视过的装备 id；不在此列的格子打「新」 */
+  seenItemIds?: string[];
+  /** 封存印（一条条件） */
+  sealStamp?: {
+    condition: ConditionAffix;
+    sourceSlot: EquipSlot;
+    wearTier: number;
+    sourceRarity: Rarity;
+  };
 }
 
 export interface SaveAdapter {

@@ -33,7 +33,7 @@
 
 | role id | 定位 | 战场职责 | 精通效果（摘要） |
 |---------|------|----------|------------------|
-| `flex` | **全能** | 主角专用；补位、手动操作；样样一小点 | 技能伤小幅 + 状态命中小幅 + 治疗小幅（都不精） |
+| `flex` | **全能** | 主角默认；少数卡可挂（哪吒/木兰/魏延等）；补位、样样一小点 | 技能伤小幅 + 状态命中小幅 + 治疗小幅（都不精） |
 | `tank` | **坦克** | 承伤、护盾、前排 | 再减伤 + 护盾量 ↑ |
 | `st_burst` | **单体爆发** | 点杀高威胁 | 单体技能伤 ↑ + 微量暴伤/穿透 |
 | `aoe_dps` | **群体攻击** | 清杂、打排 | 群体技能伤 ↑ |
@@ -71,7 +71,7 @@
 | `warlock` | **术士** | `st_ctrl` | `aoe_ctrl` | 异常专家；沉默/禁疗/混乱/迟缓 |
 | `support` | **辅助** | `group_amp` | — | Buff/破甲增幅；自身输出偏低 |
 | `healer` | **治疗** | `st_heal` | `aoe_heal` | 抬血；单体或群体由技能决定 |
-| `adept` | **行者** | `flex` | — | **仅主角**；攻/技/防全能，无极端招牌 |
+| `adept` | **行者** | `flex` | — | 主角与少数 `flex` 卡；无极端招牌 |
 
 **规则：**
 
@@ -80,18 +80,18 @@
 3. **不加**职业专属资源条、物法双防、职业克制三角。  
 4. 新职业 = 新 `jobId` + 词表项；禁止用题材专名当 id（如不要 `jianxiu`）。
 
-**公版池映射：** hero→行者；张飞→盾卫；赵云→刺客；孙悟空→法师；后羿→射手；华佗/雅典娜→治疗；诸葛亮→辅助；白骨精/美杜莎→术士；赫拉克勒斯→盾卫。
+**公版池映射：** hero→行者；张飞→盾卫；赵云→刺客；孙悟空→法师；后羿→射手；华佗→治疗；诸葛亮→辅助；白骨精→术士。西方神谱已下架，见 [中土故事圈](../2026-08-26-zhongtu-roster-circles-design.md)。
 
 ## 初期人物表
 
-### 4.10 卡池人物表（公版 · 现行 100）
+### 4.10 卡池人物表（中土故事圈 · 200）
 
 > **出战上限 5** = 主角 + 最多 4 张卡。  
 > 默认上阵：主角 / 张飞 / 赵云 / 孙悟空 / 华佗。  
-> **完整名单以代码为准：** `CORE_TEMPLATES`（24）+ `EXPAND_ROSTER`（76）= **100**。  
-> **结构：** [roster-100](../2026-08-02-roster-100-design.md)——**20 深做** / 4 核心暂缓 / 76 占位。  
-> **新卡技能/星章写法：** [skill-design-spec](../2026-08-02-skill-design-spec.md)。  
-> 存档 **v10**；换代史：[public-domain-roster](../2026-08-01-public-domain-roster-design.md)（归档）。
+> **名单权威：** 代码 `UNIT_TEMPLATES`；规则 [中土故事圈](../2026-08-26-zhongtu-roster-circles-design.md)（200 人、16 圈、绝 81 / 珍 45 / 良 44 含主角）。  
+> **100 期实现史：** [roster-100](../2026-08-02-roster-100-design.md)。  
+> **新卡技能/星章写法：** [skill-design-spec](../2026-08-02-skill-design-spec.md)；**人物卡品级另约束技能厚度**（见中土故事圈 spec §1）。  
+> 存档 **v16**。
 
 **开局五人（摘要）：**
 
@@ -103,7 +103,7 @@
 | wukong | 孙悟空 | `aoe_dps` | row_front |
 | huatuo | 华佗 | `st_heal` | heal+cleanse |
 
-**深做 20 / 暂缓 4 / 扩展解锁：** 见 roster-100 与 `chapter/defs` 的 `expandIdsByUnlock`。
+**解锁：** 按圈批次，见中土故事圈 spec §6 与 `expandIdsByUnlock`。
 
 > **9 职能已盖全。** 新卡走 skill-design-spec 填表 → 改模板/技能/星轨，禁止改战斗主循环。
 
@@ -111,15 +111,14 @@
 
 ## 稀有度（卡框色）
 
-> 定调：稀有度**只定框色与角标文案**，不改技能挂载、不改战斗公式。技能仍挂在伙伴 `skillId` 上。  
-> 与装备共用 `Rarity` 枚举；中性显示名见 `RARITY_LABELS`（故事皮可后换）。
+> 定调：稀有度定框色与角标；**人物卡另外约束招牌/星章厚度**（凡 1 动词 … 绝 2～3 效果，见 [中土故事圈 §1](../2026-08-26-zhongtu-roster-circles-design.md)）。不改伤害公式。装备稀有度仍只定框与生成层。
 
 | rarity | 中性名 | UI 框色倾向 | 示例卡 |
 |--------|--------|-------------|--------|
 | `common` | 凡品 | 中性边 | 扩展占位（孟获/沙僧等） |
-| `rare` | 良品 | 青蓝 | 华佗 / 赫拉克勒斯 |
-| `epic` | 珍品 | 品红 | 张飞 / 后羿 / 白骨精 / 美杜莎 / 雅典娜 |
-| `legendary` | 绝品 | 琥珀金 | 主角 / 赵云 / 孙悟空 / 诸葛亮 |
+| `rare` | 良品 | 青蓝 | 徐庶 / 魏延 |
+| `epic` | 珍品 | 品红 | 马超 / 八戒 |
+| `legendary` | 绝品 | 琥珀金 | 主角 / 赵云 / 悟空 / 女娲 / 聂隐娘 |
 
 **接线面：** 伙伴列表卡、详情头图、布阵位/可选池、召唤结果卡。未获得：虚线 + 同色相弱化。
 
@@ -138,14 +137,14 @@
 | GrowthTrack 注册表 | ✅ level / breakthrough / star；awaken/bond 预留 disabled |
 | BreakthroughDisplay | ✅ 与消耗/cap 分表 |
 | StarNode stack | ✅；特例赵云★3 / 孙悟空★3 |
-| 正式图鉴 / 觉醒可玩 | 后置；**公版已 100 卡（20 深做）** |
+| 正式图鉴 / 觉醒可玩 | 后置；名单迁完约 200（16 圈） |
 | composeSkill 地基 | ✅ F1–F5；见 [foundation](../2026-08-02-character-foundation-design.md) |
 
 | 指针 | |
 |------|--|
 | 三轴 | GrowthTrack → `growthTracks.ts` |
 | 升星 | 数据轨 ★1–★6；**可玩上限按品级** 凡★3 / 良★4 / 珍★5 / 绝★6（`maxStarForRarity`）；消耗见 [gacha §3.1](./gacha.md) |
-| 破境 | 每境 4 小节点（修为）满后破境；抬 cap + 被动（`breakthroughPerks`）；修为仅塔 · [xiuwei-cultivation](../2026-08-02-xiuwei-cultivation-design.md) |
+| 破境 | 每境 10 小节点（修为）满后破境；抬 cap + 被动（`breakthroughPerks`）；修为仅塔 · [xiuwei-cultivation](../2026-08-02-xiuwei-cultivation-design.md) |
 | 修为来源 | 修炼塔薄壳 → dungeon |
 | 构筑总图 | [build-dual-core-design](../2026-07-21-build-dual-core-design.md) |
 

@@ -33,6 +33,15 @@ export function rarityTone(rarity: string): string {
   return 'border-l-border';
 }
 
+/** 装备名着色（暗黑式 tooltip 标题） */
+export function rarityNameTone(rarity: string): string {
+  if (rarity === 'legendary') return 'text-amber-300';
+  if (rarity === 'epic') return 'text-fuchsia-300';
+  if (rarity === 'rare') return 'text-sky-300';
+  if (rarity === 'uncommon') return 'text-emerald-300/90';
+  return 'text-foreground/85';
+}
+
 /** 伙伴卡框：整圈描边 + 轻底（列表/详情头图） */
 export function rarityFrame(rarity: string): string {
   if (rarity === 'legendary') {

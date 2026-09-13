@@ -1,4 +1,5 @@
 import { grantCurrency } from '../character/growth.js';
+import { deployedHasT3 } from '../equipment/loadout.js';
 import { createRng } from '../shared/rng.js';
 import type { PlayerState } from '../shared/types.js';
 
@@ -18,7 +19,9 @@ export type StardustRealmResult = {
 export function runStardustRealm(state: PlayerState): StardustRealmResult {
   const rng = createRng(state.seed + (state.wins + 1) * 17 + state.inventory.length * 3);
   const [lo, hi] = STARDUST_REALM_RANGE;
-  const gainedStardust = rng.int(lo, hi);
+  const gainedStardust = Math.round(
+    rng.int(lo, hi) * (deployedHasT3(state, 'fx_star_dust') ? 1.1 : 1),
+  );
   let next = grantCurrency(state, 'stardust', gainedStardust);
   next = { ...next, seed: next.seed + 1 };
   return { ok: true, state: next, gainedStardust };

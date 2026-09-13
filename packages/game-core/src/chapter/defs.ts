@@ -18,10 +18,17 @@ export interface ChapterNodeDef {
   id: string;
   kind: ChapterNodeKind;
   title: string;
+  /** 场地名（关卡条 /「进入 · 某地」）；故事皮可后换 */
+  place: string;
   /** 占位文案；故事皮可后换 */
   blurb: string;
   /** battle：EncounterDef.id */
   encounterId?: string;
+}
+
+export function nodePlace(node: Pick<ChapterNodeDef, 'place' | 'title'>): string {
+  const place = node.place?.trim();
+  return place || node.title;
 }
 
 export interface ChapterDef {
@@ -49,16 +56,6 @@ export const START_UNLOCKS: ContentUnlock[] = [
   { kind: 'dungeon', id: 'stardust_realm' },
   { kind: 'encounter', id: 'wall' },
   { kind: 'encounter', id: 'archers' },
-  { kind: 'gacha_unit', id: 'zhangfei' },
-  { kind: 'gacha_unit', id: 'zhaoyun' },
-  { kind: 'gacha_unit', id: 'wukong' },
-  { kind: 'gacha_unit', id: 'huatuo' },
-  { kind: 'gacha_unit', id: 'houyi' },
-  { kind: 'gacha_unit', id: 'heracles' },
-  { kind: 'gacha_unit', id: 'guanyu' },
-  { kind: 'gacha_unit', id: 'robin' },
-  { kind: 'gacha_unit', id: 'dianwei' },
-  { kind: 'gacha_unit', id: 'beowulf' },
   ...gachaUnlocks(...expandIdsByUnlock('start')),
 ];
 
@@ -77,12 +74,14 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch1_n1',
         kind: 'story',
         title: '上路',
+        place: '城门驿道',
         blurb: '占位过场：你整理行装，前方有盾墙拦路。',
       },
       {
         id: 'ch1_n2',
         kind: 'battle',
         title: '初战盾墙',
+        place: '盾墙关隘',
         blurb: '占位：击败盾墙遭遇。',
         encounterId: 'wall',
       },
@@ -90,12 +89,12 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch1_n3',
         kind: 'story',
         title: '落脚',
+        place: '关外营地',
         blurb: '占位：初战结束；速攻遭遇将解锁。',
       },
     ],
     unlocksOnClear: [
       { kind: 'encounter', id: 'raiders' },
-      { kind: 'gacha_unit', id: 'nezha' },
       ...gachaUnlocks(...expandIdsByUnlock('ch1')),
     ],
   },
@@ -109,22 +108,22 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch2_n1',
         kind: 'story',
         title: '异兆',
+        place: '乱阵林道',
         blurb: '占位：有人能扰乱阵脚。',
       },
       {
         id: 'ch2_n2',
         kind: 'battle',
         title: '速攻来袭',
+        place: '密林伏击',
         blurb: '占位：应对高机动敌人。',
         encounterId: 'raiders',
       },
     ],
     unlocksOnClear: [
-      { kind: 'gacha_unit', id: 'baigujing' },
       { kind: 'dungeon', id: 'abyss_mirror' },
       { kind: 'encounter', id: 'chaos_rite' },
       { kind: 'encounter', id: 'spirit_wall' },
-      { kind: 'gacha_unit', id: 'daji' },
       ...gachaUnlocks(...expandIdsByUnlock('ch2')),
     ],
   },
@@ -138,15 +137,13 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch3_n1',
         kind: 'battle',
         title: '弓阵',
+        place: '远矢高台',
         blurb: '占位：切开后排。',
         encounterId: 'archers',
       },
     ],
     unlocksOnClear: [
-      { kind: 'gacha_unit', id: 'medusa' },
       { kind: 'encounter', id: 'boss_warden' },
-      { kind: 'gacha_unit', id: 'yangjian' },
-      { kind: 'gacha_unit', id: 'xishi' },
       ...gachaUnlocks(...expandIdsByUnlock('ch3')),
     ],
   },
@@ -160,20 +157,19 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch4_n1',
         kind: 'story',
         title: '整备',
+        place: '中途营地',
         blurb: '占位：回去刷装、抽人，再来。',
       },
       {
         id: 'ch4_n2',
         kind: 'battle',
         title: '再战盾墙',
+        place: '盾墙回廊',
         blurb: '占位：检验构筑。',
         encounterId: 'wall',
       },
     ],
     unlocksOnClear: [
-      { kind: 'gacha_unit', id: 'zhuge' },
-      { kind: 'gacha_unit', id: 'change' },
-      { kind: 'gacha_unit', id: 'arthur' },
       ...gachaUnlocks(...expandIdsByUnlock('ch4')),
     ],
   },
@@ -187,14 +183,12 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch5_n1',
         kind: 'battle',
         title: '乱战',
+        place: '高压乱原',
         blurb: '占位：速攻再临。',
         encounterId: 'raiders',
       },
     ],
     unlocksOnClear: [
-      { kind: 'gacha_unit', id: 'athena' },
-      { kind: 'gacha_unit', id: 'lvbu' },
-      { kind: 'gacha_unit', id: 'thor' },
       ...gachaUnlocks(...expandIdsByUnlock('ch5')),
     ],
   },
@@ -208,18 +202,19 @@ export const CHAPTERS: ChapterDef[] = [
         id: 'ch6_n1',
         kind: 'story',
         title: '回望',
+        place: '暂歇台',
         blurb: '占位：主线骨架走完；后续章可继续往本表加。',
       },
       {
         id: 'ch6_n2',
         kind: 'battle',
         title: '终阵',
+        place: '镇守深门',
         blurb: '占位：最后一场。',
         encounterId: 'boss_warden',
       },
     ],
     unlocksOnClear: [
-      { kind: 'gacha_unit', id: 'sunbin' },
       ...gachaUnlocks(...expandIdsByUnlock('ch6')),
     ],
   },

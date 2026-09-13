@@ -6,10 +6,12 @@ import {
   currentChapterEncounterIndex,
   getDungeon,
   grantDungeonReward,
+  grantSampleEquipment,
   loadOrCreatePlayer,
   persistPlayer,
   pickUnlockedEncounterIndex,
   pressureForDungeon,
+  battlePressure,
   staminaCostForDungeon,
   stepBattle,
   syncStamina,
@@ -96,6 +98,10 @@ export default function App() {
   useEffect(() => {
     persistPlayer(localSaveAdapter, player);
   }, [player]);
+
+  useEffect(() => {
+    setPlayer((p) => grantSampleEquipment(p));
+  }, []);
 
   useEffect(() => {
     setPlayer((p) => syncStamina(p));
@@ -195,7 +201,7 @@ export default function App() {
     dungeonRef.current = dungeonId;
     const encIdx = pickUnlockedEncounterIndex(spend.state, dungeonId, spend.state.encounterIndex);
     const initial = createBattle(party, spend.state.seed + spend.state.wins, encIdx, {
-      pressure: pressureForDungeon(dungeonId),
+      pressure: battlePressure(spend.state.chapterCleared ?? 0, pressureForDungeon(dungeonId)),
     });
     battleRef.current = initial;
     setBattle(initial);
@@ -219,7 +225,9 @@ export default function App() {
     battleSourceRef.current = 'chapter';
     setActiveDungeonId(DEFAULT_BATTLE_DUNGEON);
     dungeonRef.current = DEFAULT_BATTLE_DUNGEON;
-    const initial = createBattle(party, player.seed + player.wins + 1000, encIdx);
+    const initial = createBattle(party, player.seed + player.wins + 1000, encIdx, {
+      pressure: battlePressure(player.chapterCleared ?? 0),
+    });
     battleRef.current = initial;
     setBattle(initial);
     setLastLoot(null);
@@ -265,7 +273,7 @@ export default function App() {
           roster[t.id] = { ...roster[t.id], owned: true, cardShards: 99, exp: 99999 };
         }
       }
-      return {
+      const next = {
         ...p,
         gold: 999999,
         stamina: STAMINA_MAX,
@@ -294,8 +302,9 @@ export default function App() {
         ],
         roster,
       };
+      return grantSampleEquipment(next, { replace: true });
     });
-    pushNotice('🔧 DEV：全资源拉满（含强化石/宝石/形态石）');
+    pushNotice('🔧 DEV：全资源拉满（含样装/强化石/宝石/形态石）');
   };
 
   const handleHeroManualAuto = () => {
@@ -351,7 +360,9 @@ export default function App() {
         ? '尘埃落定'
         : screen === 'formation'
           ? '九宫站位'
-          : '布阵刷装 · 摸鱼深构筑';
+          : screen === 'bag'
+            ? '行囊'
+            : '布阵刷装 · 摸鱼深构筑';
 
   const showDock = screen !== 'battle' && screen !== 'result';
   const onNav = (tab: NavTab) => {
@@ -366,9 +377,14 @@ export default function App() {
     <GameShell
       subtitle={subtitle}
       layout={
-        screen === 'battle' || screen === 'character' || screen === 'formation' ? 'focus' : 'home'
+        screen === 'battle' ||
+        screen === 'character' ||
+        screen === 'formation' ||
+        screen === 'bag'
+          ? 'focus'
+          : 'home'
       }
-      hideBrand={screen === 'character' || screen === 'formation'}
+      hideBrand={screen === 'character' || screen === 'formation' || screen === 'bag'}
       notice={notice}
       dock={
         showDock ? (

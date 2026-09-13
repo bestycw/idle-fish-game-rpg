@@ -52,8 +52,8 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     tags: ['aoe', 'damage'],
     multiplier: 1.15,
     qiCost: 55,
-    /** 对盾墙：破甲行伤，逼「带悟空打墙」而非纯单体 */
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.82 }],
+    applyStatus: [{ statusId: 'stun', duration: 1 }],
+    effects: [{ kind: 'surround', multiplier: 1.2 }],
     damageSchool: 'phys',
     aiWeight: 0.6,
   },
@@ -88,30 +88,16 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     focusPolicy: 'lowest_hp',
     aiWeight: 0.65,
   },
-  skill_heracles_hide: {
-    id: 'skill_heracles_hide',
-    name: '狮皮',
-    nameKey: 'skill.heracles_hide',
-    targetPattern: 'single',
-    tags: ['guard'],
-    /** 护盾偏厚，对速攻控场有解法感 */
-    multiplier: 1.4,
-    qiCost: 45,
-    applyStatus: [{ statusId: 'shield', duration: 99, value: 1 }],
-    damageSchool: 'phys',
-    aiWeight: 0.5,
-  },
   skill_zhuge_qimen: {
     id: 'skill_zhuge_qimen',
     name: '奇门',
     nameKey: 'skill.zhuge_qimen',
     targetPattern: 'single',
     tags: ['damage'],
-    /** 辅助破甲带 0.9～1.2 */
     multiplier: 0.95,
     qiCost: 50,
-    /** 深破甲：盾墙/铁壁关解法核；持续略长以便队友吃满窗口 */
-    applyStatus: [{ statusId: 'shred', duration: 3, value: 0.55 }],
+    applyStatus: [{ statusId: 'qi_drought', duration: 2 }, { statusId: 'slow', duration: 2 }],
+    effects: [{ kind: 'ally_grant_qi', value: 16 }],
     damageSchool: 'spirit',
     aiWeight: 0.55,
   },
@@ -127,31 +113,6 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     applyStatus: [{ statusId: 'havoc', duration: 1 }],
     damageSchool: 'spirit',
     aiWeight: 0.55,
-  },
-  skill_medusa_gaze: {
-    id: 'skill_medusa_gaze',
-    name: '石化',
-    nameKey: 'skill.medusa_gaze',
-    targetPattern: 'single',
-    tags: ['damage'],
-    /** 硬控带 ≥1.05 */
-    multiplier: 1.15,
-    qiCost: 50,
-    applyStatus: [{ statusId: 'stun', duration: 1 }],
-    damageSchool: 'spirit',
-    aiWeight: 0.55,
-  },
-  skill_athena_aegis: {
-    id: 'skill_athena_aegis',
-    name: '神恩',
-    nameKey: 'skill.athena_aegis',
-    targetPattern: 'all',
-    tags: ['heal', 'aoe'],
-    multiplier: 0.8,
-    qiCost: 50,
-    applyStatus: [],
-    damageSchool: 'spirit',
-    aiWeight: 0.7,
   },
 
   // —— +10 公版 ——
@@ -200,7 +161,7 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     multiplier: 1.7,
     qiCost: 50,
     /** 穿甲灼锋：与赵云流血 / 后羿点残错开 */
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.85 }],
+    applyStatus: [{ statusId: 'bleed', duration: 2, layers: 1 }],
     damageSchool: 'phys',
     aiWeight: 0.65,
   },
@@ -224,7 +185,7 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     tags: ['pierce', 'damage'],
     multiplier: 2.0,
     qiCost: 55,
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.8 }],
+    applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
     damageSchool: 'phys',
     focusPolicy: 'lowest_hp',
     aiWeight: 0.65,
@@ -241,43 +202,6 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
     effects: [{ kind: 'cleanse' }],
     damageSchool: 'spirit',
     aiWeight: 0.7,
-  },
-  skill_thor_hammer: {
-    id: 'skill_thor_hammer',
-    name: '雷锤',
-    nameKey: 'skill.thor_hammer',
-    targetPattern: 'row_front',
-    tags: ['aoe', 'damage'],
-    multiplier: 1.2,
-    qiCost: 55,
-    applyStatus: [{ statusId: 'stun', duration: 1 }],
-    damageSchool: 'phys',
-    aiWeight: 0.6,
-  },
-  skill_robin_arrow: {
-    id: 'skill_robin_arrow',
-    name: '穿林箭',
-    nameKey: 'skill.robin_arrow',
-    targetPattern: 'single',
-    tags: ['pierce', 'damage'],
-    multiplier: 1.9,
-    qiCost: 50,
-    applyStatus: [{ statusId: 'bleed', duration: 2, layers: 1 }],
-    damageSchool: 'phys',
-    focusPolicy: 'lowest_hp',
-    aiWeight: 0.65,
-  },
-  skill_arthur_oath: {
-    id: 'skill_arthur_oath',
-    name: '誓约盾',
-    nameKey: 'skill.arthur_oath',
-    targetPattern: 'single',
-    tags: ['guard'],
-    multiplier: 1.3,
-    qiCost: 45,
-    applyStatus: [{ statusId: 'shield', duration: 99, value: 1 }],
-    damageSchool: 'spirit',
-    aiWeight: 0.5,
   },
   skill_xishi_chenyu: {
     id: 'skill_xishi_chenyu',
@@ -305,18 +229,6 @@ const CORE_SKILLS_BASE: Record<string, SkillDef> = {
       { statusId: 'slow', duration: 2 },
     ],
     damageSchool: 'spirit',
-    aiWeight: 0.55,
-  },
-  skill_beowulf_grip: {
-    id: 'skill_beowulf_grip',
-    name: '熊握',
-    nameKey: 'skill.beowulf_grip',
-    targetPattern: 'single',
-    tags: ['damage'],
-    multiplier: 1.55,
-    qiCost: 50,
-    applyStatus: [{ statusId: 'stun', duration: 1 }],
-    damageSchool: 'phys',
     aiWeight: 0.55,
   },
 
@@ -461,10 +373,10 @@ function applyDeepOverrides(base: Record<string, SkillDef>): Record<string, Skil
   return out;
 }
 
-export const SKILLS: Record<string, SkillDef> = {
-  ...applyDeepOverrides(CORE_SKILLS_BASE),
+export const SKILLS: Record<string, SkillDef> = applyDeepOverrides({
+  ...CORE_SKILLS_BASE,
   ...EXPAND_SKILLS,
-};
+});
 
 export function getSkill(id: string): SkillDef {
   const skill = SKILLS[id];
@@ -474,5 +386,16 @@ export function getSkill(id: string): SkillDef {
     applyStatus: skill.applyStatus.map((s) => ({ ...s })),
     tags: [...skill.tags],
     effects: skill.effects?.map((e) => ({ ...e })),
+    softModes: skill.softModes?.map((m) => ({
+      ...m,
+      when: { ...m.when },
+      then: {
+        ...m.then,
+        effectPatches: m.then.effectPatches?.map((e) => ({ ...e })),
+        statusPatches: m.then.statusPatches?.map((s) => ({ ...s })),
+        followUp: m.then.followUp ? { ...m.then.followUp } : undefined,
+        reviveAlly: m.then.reviveAlly ? { ...m.then.reviveAlly } : undefined,
+      },
+    })),
   };
 }

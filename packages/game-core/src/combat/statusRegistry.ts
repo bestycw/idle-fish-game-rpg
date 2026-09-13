@@ -63,6 +63,34 @@ export interface StatusDef {
   landBase?: number;
   /** 精英 / Boss 抗性；缺省 ok */
   rankGate?: Partial<Record<'elite' | 'boss', RankGate>>;
+  /** 承伤按该比例推迟到行动跳字（卸力） */
+  deferIncomingRatio?: number;
+  /** 挨打时按 instance.value（缺省 0.05）回血 */
+  healOnTakenHit?: boolean;
+  /** 被净化/驱散时反噬驱散者 */
+  backlashOnCleanse?: boolean;
+  /** 禁普攻（缴械） */
+  blocksBasic?: boolean;
+  /** 禁止回能 */
+  blocksQiGain?: boolean;
+  /** 致死时留 1 血（金身 / 因果锁） */
+  preventLethal?: boolean;
+  /** 下一次技能必暴 */
+  nextSkillCrit?: boolean;
+  /** instance.value 为单次承伤上限（占 maxHp 比例） */
+  maxHitRatioFromValue?: boolean;
+  /** 焦点锁向 sourceUid（嘲讽） */
+  forcesFocus?: boolean;
+  /** 为 sourceUid 分摊承伤 */
+  shareDamage?: boolean;
+  /** 前排为后排挡伤 */
+  coverFront?: boolean;
+  /** 暴击率加算 */
+  critChanceBonus?: number;
+  /** 触发免死后消耗该状态（金身）；因果锁不消耗 */
+  consumeOnPreventLethal?: boolean;
+  /** 挨硬控时反弹给施加者 */
+  reflectCc?: boolean;
 }
 
 const defs = new Map<StatusId, StatusDef>();
@@ -173,6 +201,233 @@ register({
   cleanseable: true,
   incomingDamageTakenFromValue: true,
   stack: 'replace',
+  guaranteedLand: true,
+});
+register({
+  id: 'atk_up',
+  defaultLabel: '加持',
+  kind: 'buff',
+  purgeable: true,
+  outgoingDamageMult: 1.15,
+});
+register({
+  id: 'def_up',
+  defaultLabel: '铁壁咒',
+  kind: 'buff',
+  purgeable: true,
+  incomingDamageTakenMult: 0.88,
+});
+register({
+  id: 'spd_up',
+  defaultLabel: '神行',
+  kind: 'buff',
+  purgeable: true,
+  actionWeightMult: 1.2,
+});
+register({
+  id: 'regen',
+  defaultLabel: '回春',
+  kind: 'buff',
+  purgeable: true,
+  tickKind: 'regen_hp_pct',
+});
+register({
+  id: 'stagger',
+  defaultLabel: '卸力',
+  kind: 'buff',
+  purgeable: true,
+  tickKind: 'stagger_hp',
+  deferIncomingRatio: 0.4,
+});
+register({
+  id: 'earth_shield',
+  defaultLabel: '受击回春',
+  kind: 'buff',
+  purgeable: true,
+  healOnTakenHit: true,
+  stack: 'layers',
+  maxLayers: 3,
+});
+register({
+  id: 'unstable',
+  defaultLabel: '反噬印',
+  kind: 'debuff',
+  cleanseable: true,
+  guaranteedLand: true,
+  backlashOnCleanse: true,
+});
+register({
+  id: 'poison',
+  defaultLabel: '毒雾',
+  kind: 'debuff',
+  cleanseable: true,
+  tickKind: 'bleed_hp_pct',
+  stack: 'layers',
+  maxLayers: 3,
+  guaranteedLand: true,
+});
+register({
+  id: 'burn',
+  defaultLabel: '灼魂',
+  kind: 'debuff',
+  cleanseable: true,
+  tickKind: 'bleed_hp_pct',
+  stack: 'layers',
+  maxLayers: 3,
+  guaranteedLand: true,
+});
+register({
+  id: 'frostbite',
+  defaultLabel: '霜噬',
+  kind: 'debuff',
+  cleanseable: true,
+  tickKind: 'bleed_hp_pct',
+  actionWeightMult: 0.8,
+  guaranteedLand: true,
+});
+register({
+  id: 'atk_down',
+  defaultLabel: '丧锋',
+  kind: 'debuff',
+  cleanseable: true,
+  outgoingDamageMult: 0.85,
+  guaranteedLand: true,
+});
+register({
+  id: 'freeze',
+  defaultLabel: '凝冰',
+  kind: 'cc',
+  blocksAct: true,
+  cleanseable: false,
+  ccDrBucket: 'stun',
+  landBase: 0.35,
+  rankGate: { boss: 'immune' },
+});
+register({
+  id: 'root',
+  defaultLabel: '定身',
+  kind: 'debuff',
+  cleanseable: true,
+  actionWeightMult: 0.5,
+  guaranteedLand: true,
+});
+register({
+  id: 'taunt',
+  defaultLabel: '嘲讽',
+  kind: 'debuff',
+  cleanseable: true,
+  forcesFocus: true,
+  landBase: 0.55,
+  rankGate: { boss: 'halve' },
+});
+register({
+  id: 'disarm',
+  defaultLabel: '缴械',
+  kind: 'debuff',
+  blocksBasic: true,
+  cleanseable: true,
+  landBase: 0.45,
+  rankGate: { boss: 'halve' },
+});
+register({
+  id: 'crit_up',
+  defaultLabel: '开眼',
+  kind: 'buff',
+  purgeable: true,
+  critChanceBonus: 0.15,
+});
+register({
+  id: 'immortal',
+  defaultLabel: '金身',
+  kind: 'buff',
+  purgeable: true,
+  preventLethal: true,
+  consumeOnPreventLethal: true,
+});
+register({
+  id: 'stealth_next',
+  defaultLabel: '隐锋',
+  kind: 'buff',
+  purgeable: true,
+  nextSkillCrit: true,
+});
+register({
+  id: 'oath',
+  defaultLabel: '义护',
+  kind: 'buff',
+  purgeable: true,
+  shareDamage: true,
+});
+register({
+  id: 'cover',
+  defaultLabel: '掩护',
+  kind: 'buff',
+  purgeable: true,
+  coverFront: true,
+});
+register({
+  id: 'qi_drought',
+  defaultLabel: '闭气',
+  kind: 'debuff',
+  cleanseable: true,
+  blocksQiGain: true,
+  guaranteedLand: true,
+});
+register({
+  id: 'fate_lock',
+  defaultLabel: '因果锁',
+  kind: 'debuff',
+  healBlocked: true,
+  preventLethal: true,
+  cleanseable: true,
+  guaranteedLand: true,
+});
+register({
+  id: 'dmg_cap',
+  defaultLabel: '金身限额',
+  kind: 'buff',
+  purgeable: true,
+  maxHitRatioFromValue: true,
+});
+register({
+  id: 'dao',
+  defaultLabel: '道韵',
+  kind: 'buff',
+  purgeable: true,
+  stack: 'layers',
+  maxLayers: 5,
+});
+register({
+  id: 'reflect_cc',
+  defaultLabel: '反制',
+  kind: 'buff',
+  purgeable: true,
+  reflectCc: true,
+});
+register({
+  id: 'corruption',
+  defaultLabel: '侵蚀',
+  kind: 'debuff',
+  cleanseable: true,
+  tickKind: 'corruption_tick',
+  stack: 'layers',
+  maxLayers: 5,
+  guaranteedLand: true,
+});
+register({
+  id: 'cell_lock',
+  defaultLabel: '画地',
+  kind: 'debuff',
+  cleanseable: true,
+  actionWeightMult: 0.5,
+  guaranteedLand: true,
+});
+register({
+  id: 'domain',
+  defaultLabel: '领域',
+  kind: 'debuff',
+  cleanseable: true,
+  incomingDamageTakenMult: 1.12,
   guaranteedLand: true,
 });
 

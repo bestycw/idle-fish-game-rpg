@@ -150,12 +150,12 @@ function main() {
     'baigujing',
     'daji',
     'xishi',
-    'medusa',
+    'diaochan',
     'zhuge',
     'houyi',
     'guanyu',
     'nezha',
-    'heracles',
+    'dianwei',
   ];
 
   const starterState = withRoster(fresh, starterIds, { level: 1, star: 0 });
@@ -190,7 +190,7 @@ function main() {
   runSuite(
     '养成控场 lv8 ★2 · pressure1.3 镜渊',
     midState,
-    ['hero', 'baigujing', 'daji', 'xishi', 'medusa'],
+    ['hero', 'baigujing', 'daji', 'xishi', 'diaochan'],
     abyssEnc,
     { quietStatus: true, pressure: 1.3 },
   );
@@ -199,16 +199,16 @@ function main() {
   console.log('\n======== 解法门 Δ（lv8★2，错队应明显低于对队）========');
   // 同核：张飞/赵云/华佗 + 第五人（盾辅 vs 破甲辅；勿用关羽等高物伤冒充「无解法」）
   const noShred = runSuite(
-    '门·无破甲 · 核+赫拉克勒斯（盾）',
+    '门·无破甲 · 核+典韦（盾）',
     midState,
-    ['hero', 'zhangfei', 'zhaoyun', 'huatuo', 'heracles'],
+    ['hero', 'zhangfei', 'zhaoyun', 'huatuo', 'dianwei'],
     ['wall', 'boss_warden', 'spirit_wall'],
     { quietStatus: true, pressure: 1.3 },
   );
   const deepShred = runSuite(
-    '门·深破甲 · 核+诸葛',
+    '门·深破甲 · 核+孙膑',
     midState,
-    ['hero', 'zhangfei', 'zhaoyun', 'huatuo', 'zhuge'],
+    ['hero', 'zhangfei', 'zhaoyun', 'huatuo', 'sunbin'],
     ['wall', 'boss_warden', 'spirit_wall'],
     { quietStatus: true, pressure: 1.3 },
   );
@@ -234,9 +234,9 @@ function main() {
     { quietStatus: true, pressure: 1 },
   );
   const ctrlBoss = runSuite(
-    '门·硬控 · 白骨/妲己/西施/美杜莎',
+    '门·硬控 · 白骨/妲己/西施/貂蝉',
     midState,
-    ['hero', 'baigujing', 'daji', 'xishi', 'medusa'],
+    ['hero', 'baigujing', 'daji', 'xishi', 'diaochan'],
     ['boss_warden', 'chaos_rite'],
     { quietStatus: true, pressure: 1.3 },
   );

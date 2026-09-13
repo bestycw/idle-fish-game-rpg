@@ -1,17 +1,21 @@
 import {
-  SLOT_NAMES,
-  getEffectAffixDef,
-  getGemDef,
-  getSetDef,
+  isItemUnseen,
+  markItemSeen,
   tryDisassemble,
+  wornItemIds,
   type Equipment,
   type PlayerState,
 } from '@moyu/game-core';
-import { useMemo } from 'react';
-import { ChoiceList } from '@/components/game/ChoiceList';
-import { Narrative } from '@/components/game/Narrative';
+import { useMemo, useState } from 'react';
+import { Popover } from 'radix-ui';
 import { cn } from '@/lib/utils';
 import { rarityTone } from '@/lib/tones';
+import { EquipBagCell } from './EquipBagCell';
+import { EquipCraftPanel, SealStampBanner } from './EquipCraftPanel';
+import { EquipTooltip } from './EquipTooltip';
+
+const BAG_COLS = 8;
+const BAG_MIN_ROWS = 5;
 
 type InventoryPanelProps = {
   player: PlayerState;
@@ -20,87 +24,33 @@ type InventoryPanelProps = {
   pushNotice: (msg: string) => void;
 };
 
-/** Collect all equipped item ids across all characters */
 function allEquippedIds(player: PlayerState): Set<string> {
-  const ids = new Set<string>();
-  // Legacy shared equipped
-  for (const id of Object.values(player.equipped)) {
-    if (id) ids.add(id);
-  }
-  // Per-character equipped
-  if (player.characterEquip) {
-    for (const slotMap of Object.values(player.characterEquip)) {
-      if (!slotMap) continue;
-      for (const id of Object.values(slotMap)) {
-        if (id) ids.add(id);
-      }
-    }
-  }
-  return ids;
+  return wornItemIds(player);
 }
 
-function ItemDetail({ item }: { item: Equipment }) {
-  const setDef = item.setId ? getSetDef(item.setId) : undefined;
-  const effectDef1 = item.effectAffixId ? getEffectAffixDef(item.effectAffixId) : undefined;
-  const effectDef2 = item.effectAffixId2 ? getEffectAffixDef(item.effectAffixId2) : undefined;
-  const gemDef = item.gemId ? getGemDef(item.gemId) : undefined;
-  return (
-    <div className={cn('rounded-lg border bg-card/60 px-2.5 py-1.5', rarityTone(item.rarity))}>
-      <div className="flex items-baseline justify-between gap-1">
-        <strong className="text-xs">
-          {(item.enhanceLevel ?? 0) > 0 ? `+${item.enhanceLevel} ` : ''}{item.name}
-        </strong>
-        <span className="text-[10px] text-muted-foreground">{SLOT_NAMES[item.slot] ?? item.slot}</span>
-      </div>
-      {/* baseStats */}
-      {item.baseStats && Object.keys(item.baseStats).length > 0 && (
-        <div className="mt-0.5 font-mono text-[10px] text-foreground/80">
-          {Object.entries(item.baseStats).map(([k, v]) => `${k === 'maxHp' ? 'HP' : k.toUpperCase()} +${v}`).join(' · ')}
-        </div>
-      )}
-      {/* affixes */}
-      {item.affixes.length > 0 && (
-        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-          {item.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
-        </div>
-      )}
-      {/* rareAffixes */}
-      {item.rareAffixes && item.rareAffixes.length > 0 && (
-        <div className="mt-0.5 font-mono text-[10px] text-amber-300/90">
-          {item.rareAffixes.map((a) => `${a.name}+${Math.round(a.value * 100)}%`).join(' · ')}
-        </div>
-      )}
-      {/* T3 effects */}
-      {effectDef1 && (
-        <div className="mt-0.5 text-[10px] text-teal-300/90">T3·{effectDef1.name}：{effectDef1.description}</div>
-      )}
-      {effectDef2 && (
-        <div className="mt-0.5 text-[10px] text-teal-300/90">T3·{effectDef2.name}：{effectDef2.description}</div>
-      )}
-      {/* gem */}
-      {(item.socketCount ?? 0) > 0 && (
-        <div className="mt-0.5 text-[10px] text-sky-300/80">
-          {gemDef ? `宝石·${gemDef.name}（${gemDef.stat} +${gemDef.value}）` : '空孔×1'}
-        </div>
-      )}
-      {/* set */}
-      {setDef && (
-        <div className="mt-0.5 text-[10px] text-primary/80">套装·{setDef.name}</div>
-      )}
-    </div>
-  );
-}
-
-export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: InventoryPanelProps) {
+export function InventoryPanel({
+  player,
+  setPlayer,
+  onBack: _onBack,
+  pushNotice,
+}: InventoryPanelProps) {
+  void _onBack;
+  const [openId, setOpenId] = useState<string | null>(null);
   const equippedIds = useMemo(() => allEquippedIds(player), [player]);
-
-  // Only show unequipped items
   const unequipped = useMemo(
-    () => player.inventory.filter((e) => !equippedIds.has(e.id)),
+    () => [...player.inventory.filter((e) => !equippedIds.has(e.id))].reverse(),
     [player.inventory, equippedIds],
   );
+  const selected = unequipped.find((e) => e.id === openId);
 
-  const recent = [...unequipped].slice(-10).reverse();
+  const cellCount = Math.max(
+    BAG_COLS * BAG_MIN_ROWS,
+    Math.ceil(Math.max(unequipped.length, 1) / BAG_COLS) * BAG_COLS,
+  );
+  const cells: Array<Equipment | undefined> = Array.from(
+    { length: cellCount },
+    (_, i) => unequipped[i],
+  );
 
   const onDisassemble = (itemId: string) => {
     setPlayer((p) => {
@@ -108,60 +58,108 @@ export function InventoryPanel({ player, setPlayer, onBack, pushNotice }: Invent
       pushNotice(r.message);
       return r.ok ? r.state : p;
     });
+    setOpenId(null);
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <Narrative
-          eyebrow="行囊"
-          title="背包"
-          paragraphs={[
-            '未装备的物品在此。装备请在角色详情·装备页操作。',
-          ]}
-        />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-1.5 flex shrink-0 items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h2 className="font-display text-xl tracking-wide">行囊</h2>
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+            {unequipped.length}/{cellCount}
+          </span>
+        </div>
         <button
           type="button"
           onClick={() => pushNotice('商会后置：兑换与补给将挂在背包经济侧。')}
-          className="shrink-0 rounded-full border border-dashed border-border/80 px-3.5 py-1.5 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+          className="font-mono text-[11px] tracking-wide text-muted-foreground/80 transition hover:text-primary"
         >
           商会
         </button>
       </div>
-
-      <section className="space-y-2">
-        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-          闲置装备 · {unequipped.length}
-        </p>
-        {recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground">背包空空。</p>
-        ) : (
-          recent.map((item) => (
-            <div key={item.id} className="flex items-start gap-1.5">
-              <div className="min-w-0 flex-1">
-                <ItemDetail item={item} />
-              </div>
-              <button
-                type="button"
-                onClick={() => onDisassemble(item.id)}
-                className="mt-1 shrink-0 rounded border border-red-400/40 bg-red-400/10 px-1.5 py-0.5 text-[10px] text-red-300"
-              >
-                分解
-              </button>
-            </div>
-          ))
+      {player.sealStamp ? <SealStampBanner player={player} className="mb-1.5 shrink-0" /> : null}
+      <div
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto rounded-lg border border-[#243040] p-2',
+          'bg-[#07090d] shadow-[inset_0_2px_12px_rgba(0,0,0,0.55)]',
         )}
-      </section>
-
-      <ChoiceList
-        choices={[
-          {
-            id: 'back',
-            label: '回到故事',
-            onSelect: onBack,
-          },
-        ]}
-      />
+      >
+        {unequipped.length === 0 ? (
+          <div className="flex h-full min-h-40 flex-col items-center justify-center px-6 py-10 text-center">
+            <span className="size-2 rotate-45 border border-amber-700/50 bg-amber-900/40" />
+            <p className="font-display mt-3 text-lg tracking-wide text-foreground/50">空囊</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">猎装入袋后，点格子检视。</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,3rem)] gap-1">
+            {cells.map((item, i) => {
+              if (!item) {
+                return <EquipBagCell key={`empty-${i}`} />;
+              }
+              const open = item.id === openId;
+              return (
+                <Popover.Root
+                  key={item.id}
+                  modal={false}
+                  open={open}
+                  onOpenChange={(next) => {
+                    if (!next) setOpenId((cur) => (cur === item.id ? null : cur));
+                  }}
+                >
+                  <Popover.Anchor asChild>
+                    <div className="min-w-0 w-full">
+                      <EquipBagCell
+                        item={item}
+                        selected={open}
+                        unseen={isItemUnseen(player, item.id)}
+                        onSelect={() => {
+                          setPlayer((p) => markItemSeen(p, item.id));
+                          setOpenId((cur) => (cur === item.id ? null : item.id));
+                        }}
+                      />
+                    </div>
+                  </Popover.Anchor>
+                  <Popover.Portal>
+                    <Popover.Content
+                      side="right"
+                      align="start"
+                      sideOffset={8}
+                      collisionPadding={12}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                      className={cn(
+                        'z-[70] w-[min(18rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border bg-background/98 p-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] outline-none',
+                        rarityTone(item.rarity),
+                      )}
+                    >
+                      <div className="max-h-[min(24rem,70vh)] overflow-y-auto px-2.5 py-2">
+                        <EquipTooltip item={selected?.id === item.id ? selected : item} />
+                        <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
+                          <EquipCraftPanel
+                            player={player}
+                            item={selected?.id === item.id ? selected : item}
+                            setPlayer={setPlayer}
+                            notice={pushNotice}
+                            onGone={() => setOpenId(null)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onDisassemble(item.id)}
+                            className="font-mono text-[11px] text-red-300/80 transition hover:text-red-200"
+                          >
+                            分解此件
+                          </button>
+                        </div>
+                      </div>
+                      <Popover.Arrow className="fill-background" width={12} height={7} />
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

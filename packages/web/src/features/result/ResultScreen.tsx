@@ -1,5 +1,5 @@
 import {
-  setDisplayName,
+  firstWearableDeployed,
   wearLoot,
   type BattleState,
   type Equipment,
@@ -8,6 +8,7 @@ import {
 import { BattleLog } from '../shared/battleLog';
 import { cn } from '@/lib/utils';
 import { rarityTone } from '@/lib/tones';
+import { EquipTooltip } from '../inventory/EquipTooltip';
 
 type ResultScreenProps = {
   battle: BattleState;
@@ -63,19 +64,22 @@ export function ResultScreen({
           )}
         >
           <p className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground">掉落</p>
-          <div className="font-display mt-1 text-xl">{lastLoot.name}</div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {lastLoot.affixes.map((a) => `${a.name}+${a.value}`).join(' · ')}
-            {lastLoot.setId
-              ? ` · [${setDisplayName(lastLoot.setId) ?? lastLoot.setId}]`
-              : ''}
-          </p>
+          <div className="mt-2">
+            <EquipTooltip item={lastLoot} />
+          </div>
           <button
             type="button"
             className="mt-3 w-full rounded-lg bg-primary py-2.5 font-medium text-primary-foreground"
             onClick={() => {
-              setPlayer((p) => wearLoot(p, lastLoot.id));
-              pushNotice(`已穿戴 ${lastLoot.name}`);
+              setPlayer((p) => {
+                const wearer = firstWearableDeployed(p, lastLoot);
+                if (!wearer) {
+                  pushNotice(`无人可穿（装等 ${lastLoot.itemLevel}）`);
+                  return p;
+                }
+                pushNotice(`已穿戴 ${lastLoot.name}`);
+                return wearLoot(p, lastLoot.id);
+              });
             }}
           >
             立即穿戴

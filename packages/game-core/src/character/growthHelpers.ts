@@ -13,26 +13,40 @@ import type {
   PlayerState,
   Role,
   SkillDef,
+  SkillEffect,
+  SoftModeDef,
   UnitTemplate,
 } from '../shared/types.js';
 import {
+  CULTIVATION_NODE_MAIN_PCT,
   deriveGrowthStats,
+  formatMainPct,
   getProgress,
   isOwned,
+  levelCapForTier,
   listBreakthroughPerks,
+  listNextBreakthroughPerks,
   maxStarForTemplate,
-  nextBreakthroughPerk,
-  getStarBranches,
+  REALM_TIER_MAIN_PCT,
   resolveStarNode,
-  skillDiffLines,
+  isBranchStar,
+  listIdentityTracks,
+  identityChoice,
+  branchChoiceForStar,
+  IDENTITY_PICK_STAR,
+  IDENTITY_CLIMAX_STAR,
   skillWithGrowth,
   starShardCost,
+  proseSkillEffect,
+  summarizeSkillEffect,
   summarizeStarEffect,
   type DerivedGrowthStats,
   type StarNodeDef,
+  type StarNodeEffect,
 } from './growth.js';
-import { getSkill } from './skills.js';
+import { nextBreakthroughLabel } from './breakthroughDisplay.js';
 import { jobLabel, roleLabel, targetPatternLabel } from './labels.js';
+import { getSkill } from './skills.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 import { previewStardustExchange } from './stardustExchange.js';
 
@@ -40,6 +54,7 @@ export interface StarBranchPreview {
   id: string;
   label: string;
   effectLine: string;
+  identityLabel?: string;
 }
 
 export interface StarUpPreview {
@@ -92,9 +107,43 @@ function summarizeAttrDiff(before: DerivedGrowthStats, after: DerivedGrowthStats
   return parts.length > 0 ? parts.join(' · ') : '属性微幅提升';
 }
 
-function effectSummary(node: StarNodeDef): string {
-  const bits = node.effects.map(summarizeStarEffect).filter(Boolean);
-  return bits.join(' · ') || node.label;
+function starEffectPriority(fx: StarNodeEffect): number {
+  switch (fx.kind) {
+    case 'stat_pct':
+    case 'split_stat':
+    case 'rare_stat':
+    case 'rating':
+      return 2;
+    case 'skill_mult':
+    case 'qi_cost':
+    case 'tag_mult':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function statusIdsForStar(templateId: string, node: StarNodeDef): string[] {
+  const tpl = getTemplate(templateId);
+  const fromSkill = tpl ? getSkill(tpl.skillId).applyStatus.map((s) => s.statusId) : [];
+  if (fromSkill.length) return [...new Set(fromSkill)];
+  return [
+    ...new Set(
+      node.effects
+        .filter((e): e is Extract<StarNodeEffect, { kind: 'status_unlock' }> => e.kind === 'status_unlock')
+        .map((e) => e.status.statusId),
+    ),
+  ];
+}
+
+function effectSummary(node: StarNodeDef, templateId?: string): string {
+  const ordered = [...node.effects].sort(
+    (a, b) => starEffectPriority(a) - starEffectPriority(b),
+  );
+  const statusIds = templateId ? statusIdsForStar(templateId, node) : undefined;
+  const bits = ordered.map((fx) => summarizeStarEffect(fx, { statusIds })).filter(Boolean);
+  if (!bits.length) return node.label;
+  return `${bits.map((s) => s.replace(/[。]+$/, '')).join('。')}。`;
 }
 
 /** 升星只读预览：消耗 + 属性/节点 diff */
@@ -129,27 +178,29 @@ export function previewStarUp(state: PlayerState, templateId: string): StarUpPre
   }
 
   const nextStar = progress.star + 1;
-  const branchDefs = getStarBranches(templateId, nextStar);
-  const isBranch = branchDefs.length >= 2;
+  const isBranch = isBranchStar(templateId, nextStar);
+  const tracks = listIdentityTracks(templateId);
   const branches: StarBranchPreview[] | undefined = isBranch
-    ? branchDefs.map((b) => {
-        const resolved = resolveStarNode(templateId, nextStar, b.id);
-        return {
-          id: b.id,
-          label: b.label,
-          effectLine: resolved ? effectSummary(resolved) : b.label,
-        };
-      })
+    ? identityBranchPreviews(templateId, nextStar, tracks)
     : undefined;
-  const node = resolveStarNode(templateId, nextStar);
+  const node = resolveStarNode(
+    templateId,
+    nextStar,
+    branchChoiceForStar(templateId, nextStar, progress.starBranch),
+  );
   const before = deriveGrowthStats(template, progress);
   const after = deriveGrowthStats(template, { ...progress, star: nextStar });
   const useShard = shardsHave >= shardsNeed;
-  const nodeLine = isBranch
-    ? `解锁岔路「${node?.label ?? `★${nextStar}`}」· 升星后二选一`
-    : node
-      ? `解锁「${node.label}」· ${effectSummary(node)}`
-      : `升至 ★${nextStar}`;
+  let nodeLine = node ? effectSummary(node, templateId) : `升至 ★${nextStar}`;
+  if (isBranch) {
+    nodeLine = '选定分支';
+  } else if (nextStar === IDENTITY_CLIMAX_STAR && tracks.length >= 2) {
+    const identityId = identityChoice(templateId, progress.starBranch);
+    const climax = tracks.find((t) => t.id === identityId)?.star6;
+    nodeLine = climax
+      ? effectSummary(resolveStarNode(templateId, nextStar, climax.id)!, templateId)
+      : '先在 ★3 选定分支';
+  }
 
   return {
     nextStar,
@@ -177,14 +228,18 @@ export interface SkillDisplayInfo {
   multiplier: number;
   /** 伤害/治疗/护盾 = 力系|灵系×系数 */
   coeffLine: string;
+  /** 约伤 / 约疗 / 约盾 */
+  previewKind: 'damage' | 'heal' | 'shield';
+  previewLabel: string;
+  /** 当前攻 × 倍率，未计防御/暴击/站位 */
+  previewAmount: number;
+  /** 魔兽/新的开始式一段话 */
+  rulesLine: string;
   statusLine: string;
   effectsLine: string | null;
   followUpLine: string | null;
-  nextFollowUpLine: string | null;
-  /** 相对底板的养成修正（多行拼一句） */
-  growthModLine: string | null;
-  /** 下一星相对当前的技能变化 */
-  nextStarDiffLine: string | null;
+  /** 软模式变招短句（条件→效果），玩家向 */
+  softModeLine: string | null;
   /** 装备形态修正一句 */
   morphLine: string | null;
   roleLine: string;
@@ -196,10 +251,29 @@ export interface StarTrackRow {
   label: string;
   effectLine: string;
   unlocked: boolean;
-  /** 若此星是岔路，列出可选分支 */
+  /** ★3 / ★6 各展示该星分支技能；只在 ★3 可点选 */
   branches?: StarBranchPreview[];
-  /** 已选分支 id（未选则 undefined） */
+  /** 已选分支 id */
   chosenBranch?: string;
+  /** ★6 跟跑，卡片只展示不挑选 */
+  followsIdentity?: boolean;
+}
+
+function identityBranchPreviews(
+  templateId: string,
+  star: number,
+  tracks: ReturnType<typeof listIdentityTracks>,
+): StarBranchPreview[] {
+  return tracks.map((t) => {
+    const branch = star === IDENTITY_CLIMAX_STAR ? t.star6 : t.star3;
+    const resolved = resolveStarNode(templateId, star, branch?.id ?? t.id);
+    return {
+      id: t.id,
+      label: branch?.label ?? t.label,
+      identityLabel: t.label,
+      effectLine: resolved ? effectSummary(resolved, templateId) : (branch?.label ?? t.label),
+    };
+  });
 }
 
 /** ★1–品级上限 星轨预览（未解锁也列出；超品级星章不展示） */
@@ -210,28 +284,34 @@ export function listStarTrackRows(
 ): StarTrackRow[] {
   const rows: StarTrackRow[] = [];
   const cap = maxStarForTemplate(templateId);
+  const tracks = listIdentityTracks(templateId);
+  const identityId = identityChoice(templateId, starBranch);
   for (let s = 1; s <= cap; s += 1) {
-    const choice = starBranch?.[s];
+    const isIdentity =
+      tracks.length >= 2 && (s === IDENTITY_PICK_STAR || s === IDENTITY_CLIMAX_STAR);
+    const choice = branchChoiceForStar(templateId, s, starBranch);
     const node = resolveStarNode(templateId, s, choice);
+    const base = resolveStarNode(templateId, s);
+    if (!node && !base) continue;
+    if (isIdentity) {
+      const shown = identityId ? node : base;
+      rows.push({
+        star: s,
+        label: base?.label ?? (s === IDENTITY_CLIMAX_STAR ? '满星' : '分支'),
+        effectLine: shown ? effectSummary(shown, templateId) : (base?.label ?? '分支'),
+        unlocked: s <= star,
+        branches: identityBranchPreviews(templateId, s, tracks),
+        chosenBranch: identityId,
+        followsIdentity: s === IDENTITY_CLIMAX_STAR,
+      });
+      continue;
+    }
     if (!node) continue;
-    const branchDefs = getStarBranches(templateId, s);
-    const branches: StarBranchPreview[] | undefined =
-      branchDefs.length >= 2
-        ? branchDefs.map((b) => {
-            const resolved = resolveStarNode(templateId, s, b.id);
-            return {
-              id: b.id,
-              label: b.label,
-              effectLine: resolved ? effectSummary(resolved) : b.label,
-            };
-          })
-        : undefined;
     rows.push({
       star: s,
       label: node.label,
-      effectLine: effectSummary(node),
+      effectLine: effectSummary(node, templateId),
       unlocked: s <= star,
-      branches,
       chosenBranch: choice,
     });
   }
@@ -252,19 +332,53 @@ export function listBreakthroughPerkRows(
   const unlocked = listBreakthroughPerks(templateId, tier).map((p) => ({
     tier: p.tier,
     label: p.label,
-    effectLine: p.effects.map(summarizeStarEffect).filter(Boolean).join(' · '),
+    effectLine: p.effects.map(summarizeStarEffect).filter(Boolean).join('。'),
     unlocked: true as const,
   }));
-  const nextPerk = nextBreakthroughPerk(templateId, tier);
-  const next = nextPerk
+  const upcoming = listNextBreakthroughPerks(templateId, tier);
+  const next = upcoming.length
     ? {
-        tier: nextPerk.tier,
-        label: nextPerk.label,
-        effectLine: nextPerk.effects.map(summarizeStarEffect).filter(Boolean).join(' · '),
+        tier: upcoming[0]!.tier,
+        label: upcoming.map((p) => p.label).join(' · '),
+        effectLine: upcoming
+          .flatMap((p) => p.effects.map(summarizeStarEffect))
+          .filter(Boolean)
+          .join('。'),
         unlocked: false,
       }
     : null;
   return { unlocked, next };
+}
+
+export function cultivationGainLine(): string {
+  return formatMainPct(CULTIVATION_NODE_MAIN_PCT);
+}
+
+export interface BreakthroughStepPreview {
+  toLabel: string;
+  levelCap: number;
+  mainLine: string;
+  perkLabel: string;
+  perkLine: string;
+}
+
+export function previewBreakthroughStep(
+  templateId: string,
+  currentTier: number,
+): BreakthroughStepPreview | null {
+  const toLabel = nextBreakthroughLabel(currentTier);
+  if (!toLabel) return null;
+  const perks = listNextBreakthroughPerks(templateId, currentTier);
+  return {
+    toLabel,
+    levelCap: levelCapForTier(currentTier + 1),
+    mainLine: formatMainPct(REALM_TIER_MAIN_PCT),
+    perkLabel: perks.map((p) => p.label).join(' · '),
+    perkLine: perks
+      .flatMap((p) => p.effects.map(summarizeStarEffect))
+      .filter(Boolean)
+      .join('。'),
+  };
 }
 
 function followUpText(fu: { chance: number; multiplier?: number } | undefined): string | null {
@@ -277,33 +391,44 @@ type StatusDisplayCtx = {
   masteryRating: number;
 };
 
+const TICK_HP_PCT_DEFAULT: Record<string, number> = {
+  bleed_hp_pct: 0.03,
+  regen_hp_pct: 0.04,
+};
+
 /** 状态强度一句（与命中分开；含精通预览） */
 function statusPotencyText(s: ApplyStatusDef, ctx: StatusDisplayCtx): string | null {
   const meta = getStatusDef(s.statusId);
   if (!meta) return null;
   const carrier = { role: ctx.role, masteryRating: ctx.masteryRating };
+  const bits: string[] = [];
   if (meta.incomingDefMultFromValue && s.value != null) {
     const v = shredValueWithMastery(carrier, s.value);
-    return `防御×${Math.round(v * 100)}%`;
+    bits.push(`防御×${Math.round(v * 100)}%`);
   }
   if (meta.incomingDamageTakenFromValue && s.value != null) {
     const v = markPreyValueWithMastery(carrier, s.value);
-    return `承伤×${Math.round(v * 100)}%`;
+    bits.push(`承伤×${Math.round(v * 100)}%`);
+  }
+  if (meta.tickKind && TICK_HP_PCT_DEFAULT[meta.tickKind] != null) {
+    const pct = s.value ?? TICK_HP_PCT_DEFAULT[meta.tickKind]!;
+    const layers = s.layers ?? 1;
+    bits.push(`每回生命上限${Math.round(pct * layers * 100)}%`);
   }
   if (meta.actionWeightMult != null && meta.actionWeightMult !== 1) {
-    return `行动权重×${Math.round(meta.actionWeightMult * 100)}%`;
+    bits.push(`行动权重×${Math.round(meta.actionWeightMult * 100)}%`);
   }
   if (meta.outgoingDamageMult != null && meta.outgoingDamageMult !== 1) {
-    return `出手伤害×${Math.round(meta.outgoingDamageMult * 100)}%`;
+    bits.push(`出手伤害×${Math.round(meta.outgoingDamageMult * 100)}%`);
   }
-  return null;
+  return bits.length > 0 ? bits.join('、') : null;
 }
 
 function statusBody(s: ApplyStatusDef, ctx: StatusDisplayCtx): string {
   const meta = getStatusDef(s.statusId);
   const name = statusLabel(s.statusId);
   const bits: string[] = [name];
-  if (s.layers != null && s.layers > 1) bits.push(`×${s.layers}`);
+  if (s.layers != null && s.layers > 1) bits.push(`${s.layers}层`);
   if (s.duration != null && !meta?.appliesAsShield) bits.push(`${s.duration}回`);
   const potency = statusPotencyText(s, ctx);
   if (potency) bits.push(`（${potency}）`);
@@ -340,59 +465,188 @@ export function statusText(
   return skill.applyStatus.map((s) => statusEntryText(s, ctx)).join(' · ');
 }
 
-function buildCoeffLine(skill: SkillDef): { coeffLine: string; multiplier: number } {
+function skillPreviewKind(skill: SkillDef): 'damage' | 'heal' | 'shield' {
+  if (skill.tags.includes('heal')) return 'heal';
+  if (skill.tags.includes('guard')) return 'shield';
+  return 'damage';
+}
+
+function previewLabelOf(kind: 'damage' | 'heal' | 'shield'): string {
+  if (kind === 'heal') return '约疗';
+  if (kind === 'shield') return '约盾';
+  return '约伤';
+}
+
+function targetClause(patternLabel: string, kind: 'damage' | 'heal' | 'shield'): string {
+  if (kind === 'damage') {
+    return patternLabel === '单体' ? '对敌方单体' : `对敌方${patternLabel}`;
+  }
+  return patternLabel === '单体' ? '为己方单体' : `为己方${patternLabel}`;
+}
+
+function fmtTimes(n: number): string {
+  return `×${Math.round(n * 100) / 100}`;
+}
+
+function fmtPct(n: number): string {
+  return `${Math.round(n * 100)}%`;
+}
+
+function thenFromCopy(copy: string): string {
+  const i = copy.indexOf('：');
+  return (i >= 0 ? copy.slice(i + 1) : copy).trim();
+}
+
+/** 软模式写成魔兽/新的开始式条件句，不用「变招」标签 */
+export function softModeSentence(mode: SoftModeDef): string {
+  const then = thenFromCopy(mode.copy);
+  const w = mode.when;
+  if (w.kind === 'target_has_status') {
+    return `若目标带有${statusLabel(w.statusId)}，则${then}`;
+  }
+  if (w.kind === 'target_under_cc') {
+    return `若目标已被硬控，则${then}`;
+  }
+  if (w.kind === 'self_hp_below') {
+    return `自身生命低于${fmtPct(w.value)}时，${then}`;
+  }
+  if (w.kind === 'target_hp_below') {
+    return `目标生命低于${fmtPct(w.value)}时，${then}`;
+  }
+  if (w.kind === 'first_cast') {
+    return `本场首次施放时，${then}`;
+  }
+  if (w.kind === 'target_has_shield') {
+    return `若目标有护盾，则${then}`;
+  }
+  return `己方有人倒下时，${then}`;
+}
+
+function tooltipStatusClause(s: ApplyStatusDef, ctx: StatusDisplayCtx): string {
+  const meta = getStatusDef(s.statusId);
+  const name = statusLabel(s.statusId);
+  const bits: string[] = [name];
+  if (s.layers != null && s.layers > 1) bits.push(`${s.layers}层`);
+  if (s.duration != null && !meta?.appliesAsShield) bits.push(`${s.duration}回`);
+  const potency = statusPotencyText(s, ctx);
+  if (potency) bits.push(potency);
+  const body = bits[0] + (bits.length > 1 ? `（${bits.slice(1).join('，')}）` : '');
+  const isHostile = meta?.kind === 'debuff' || meta?.kind === 'cc';
+  if (!isHostile) return `并获得${body}`;
+  if (meta?.guaranteedLand) {
+    if (s.chance != null && s.chance < 1) {
+      return `有${Math.round(s.chance * 100)}%几率附加${body}`;
+    }
+    return `并附加${body}`;
+  }
+  const land = Math.round(statusLandChance(ctx.role, ctx.masteryRating, 0, s.statusId) * 100);
+  const p = s.chance != null && s.chance < 1 ? Math.round(s.chance * 100) : land;
+  return `并有${p}%几率使其${body}`;
+}
+
+function tooltipEffectClause(e: SkillEffect): string {
+  return proseSkillEffect(e);
+}
+
+function buildCoeffLine(skill: SkillDef): { coeffLine: string; multiplier: number; schoolLabel: string } {
   const mult = Math.round(skill.multiplier * 100) / 100;
-  const isHeal = skill.tags.includes('heal');
-  const isGuard = skill.tags.includes('guard');
-  const school = skill.damageSchool ?? (isHeal || isGuard ? 'spirit' : 'phys');
+  const kind = skillPreviewKind(skill);
+  const school = skill.damageSchool ?? (kind === 'damage' ? 'phys' : 'spirit');
   const schoolLabel = school === 'spirit' ? '灵系' : '力系';
-  if (isHeal) return { multiplier: mult, coeffLine: `治疗 = ${schoolLabel}×${mult}` };
-  if (isGuard) return { multiplier: mult, coeffLine: `护盾 = ${schoolLabel}×${mult}` };
-  return { multiplier: mult, coeffLine: `伤害 = ${schoolLabel}×${mult}` };
+  if (kind === 'heal') return { multiplier: mult, schoolLabel, coeffLine: `治疗 = ${schoolLabel}×${mult}` };
+  if (kind === 'shield') return { multiplier: mult, schoolLabel, coeffLine: `护盾 = ${schoolLabel}×${mult}` };
+  return { multiplier: mult, schoolLabel, coeffLine: `伤害 = ${schoolLabel}×${mult}` };
+}
+
+/** 给玩家看的技能正文：魔兽/新的开始式一段话，数字嵌在句子里 */
+export function buildSkillRulesLine(
+  skill: SkillDef,
+  preview: { kind: 'damage' | 'heal' | 'shield'; amount: number; schoolLabel: string; multiplier: number },
+  extras: {
+    statusCtx: StatusDisplayCtx;
+  },
+): string {
+  const tgt = targetClause(targetPatternLabel(skill.targetPattern), preview.kind);
+  const amount = `（约${preview.amount}）`;
+  const pierce = preview.kind === 'damage' && skill.tags.includes('pierce') ? '穿透' : '';
+  let head: string;
+  if (preview.kind === 'heal') {
+    head = `${tgt}恢复${preview.schoolLabel}×${preview.multiplier}的气血${amount}`;
+  } else if (preview.kind === 'shield') {
+    head = `${tgt}施加${preview.schoolLabel}×${preview.multiplier}的护盾${amount}`;
+  } else {
+    head = `${tgt}造成${preview.schoolLabel}×${preview.multiplier}的${pierce}伤害${amount}`;
+  }
+
+  const attach = skill.applyStatus.map((s) => tooltipStatusClause(s, extras.statusCtx));
+  if (attach.length === 1) {
+    head = `${head}，${attach[0]}`;
+  } else if (attach.length > 1) {
+    head = `${head}，${attach.join('，')}`;
+  }
+
+  const sentences = [head];
+  const modes = skill.softModes ?? [];
+  const effects = skill.effects ?? [];
+  const firstCastFx = effects.find((e) => e.kind === 'first_cast');
+  const firstCastModes = modes.filter((m) => m.when.kind === 'first_cast');
+  for (const e of effects) {
+    if (e.kind === 'first_cast' && firstCastModes.length > 0) continue;
+    sentences.push(tooltipEffectClause(e));
+  }
+  if (firstCastFx && firstCastModes.length > 0) {
+    const extras = firstCastModes.map((m) => thenFromCopy(m.copy)).join('，');
+    sentences.push(`${tooltipEffectClause(firstCastFx)}，并${extras}`);
+  }
+  if (skill.followUp) {
+    sentences.push(
+      `有${Math.round(skill.followUp.chance * 100)}%几率追加一击（${fmtTimes(skill.followUp.multiplier ?? 1)}）`,
+    );
+  }
+  for (const mode of modes) {
+    if (mode.when.kind === 'first_cast' && firstCastFx) continue;
+    sentences.push(softModeSentence(mode));
+  }
+  return `${sentences.map((s) => s.replace(/[。]+$/, '')).join('。')}。`;
 }
 
 export function skillDisplayFor(templateId: string, state: PlayerState): SkillDisplayInfo | null {
   const template = getTemplate(templateId);
   if (!template) return null;
   const progress = getProgress(state, templateId);
-  const equipMods = listEquipmentSkillModifiers(state);
+  const equipMods = listEquipmentSkillModifiers(state, templateId);
   const composeCtx = { extraModifiers: equipMods };
-  const base = getSkill(template.skillId);
   const skill = skillWithGrowth(template, progress, composeCtx);
-  const growthOnly = skillWithGrowth(template, progress);
-  const diffVsBase = skillDiffLines(base, growthOnly);
   const morphBits = equipMods.map((m) => m.label).filter(Boolean) as string[];
 
-  let nextFollowUpLine: string | null = null;
-  let nextStarDiffLine: string | null = null;
-  const nextNode = resolveStarNode(templateId, progress.star + 1);
-  if (nextNode && progress.star < maxStarForTemplate(templateId)) {
-    const nextProgress = { ...progress, star: progress.star + 1 };
-    const nextSkill = skillWithGrowth(template, nextProgress, composeCtx);
-    const nextDiff = skillDiffLines(skill, nextSkill);
-    if (nextDiff.length) {
-      nextStarDiffLine = `下一星 · ${nextDiff.join(' · ')}`;
-    }
-    if (!skill.followUp && nextSkill.followUp) {
-      nextFollowUpLine = `下一星 · ${followUpText(nextSkill.followUp)}`;
-    } else if (
-      skill.followUp &&
-      nextSkill.followUp &&
-      (skill.followUp.chance !== nextSkill.followUp.chance ||
-        skill.followUp.multiplier !== nextSkill.followUp.multiplier)
-    ) {
-      nextFollowUpLine = `下一星 · ${followUpText(nextSkill.followUp)}`;
-    }
-  }
-
-  const { coeffLine, multiplier } = buildCoeffLine(skill);
+  const { coeffLine, multiplier, schoolLabel } = buildCoeffLine(skill);
   const derived = deriveGrowthStats(template, progress);
-  const equipBonus = sumEquipmentBonuses(state);
+  const equipBonus = sumEquipmentBonuses(state, templateId);
   const masteryRating = derived.masteryRating + equipBonus.masteryRating;
+  const atk = Math.max(1, derived.atk + equipBonus.atk);
+  const previewKind = skillPreviewKind(skill);
+  const previewLabel = previewLabelOf(previewKind);
+  const previewAmount = Math.max(1, Math.floor(atk * multiplier));
   const st = statusText(skill, {
     role: template.role,
     masteryRating,
   });
+  const effectsLine =
+    skill.effects && skill.effects.length > 0
+      ? skill.effects.map(summarizeSkillEffect).join(' · ')
+      : null;
+  const followUpLine = followUpText(skill.followUp);
+  const softModeLine =
+    skill.softModes && skill.softModes.length > 0
+      ? skill.softModes.map(softModeSentence).join(' ')
+      : null;
+  const rulesLine = buildSkillRulesLine(
+    skill,
+    { kind: previewKind, amount: previewAmount, schoolLabel, multiplier },
+    {
+      statusCtx: { role: template.role, masteryRating },
+    },
+  );
 
   return {
     name: skill.name,
@@ -402,12 +656,14 @@ export function skillDisplayFor(templateId: string, state: PlayerState): SkillDi
     damageSchool: skill.damageSchool,
     multiplier,
     coeffLine,
+    previewKind,
+    previewLabel,
+    previewAmount,
+    rulesLine,
     statusLine: st,
-    effectsLine: null,
-    followUpLine: followUpText(skill.followUp),
-    nextFollowUpLine,
-    growthModLine: diffVsBase.length > 0 ? diffVsBase.join(' · ') : null,
-    nextStarDiffLine,
+    effectsLine,
+    followUpLine,
+    softModeLine,
     morphLine: morphBits.length > 0 ? morphBits.join(' · ') : null,
     roleLine: roleLabel(template.role),
     jobLine: jobLabel(template.job),

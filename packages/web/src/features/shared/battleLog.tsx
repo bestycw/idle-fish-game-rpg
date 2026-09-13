@@ -12,7 +12,7 @@ export function eventTone(ev: BattleEvent): string {
     return 'log-status';
   }
   if (ev.code === 'status_remove' || ev.code === 'status_block') return 'log-special';
-  if (ev.code === 'follow_up') return 'log-special';
+  if (ev.code === 'follow_up' || ev.code === 'effect_miss') return 'log-special';
   if (ev.code === 'resist') return 'log-resist';
   if (ev.code === 'heal') return 'log-heal';
   if (ev.code === 'shield_gain') return 'log-shield';
@@ -46,6 +46,8 @@ export function formatEventLine(ev: BattleEvent): string {
       return `${p.target} 的 ${p.status} 被${p.reason ?? '移除'}。`;
     case 'follow_up':
       return `${p.actor} 连击→${p.target}，伤害 ${p.amount}。`;
+    case 'effect_miss':
+      return `${p.actor} ${p.effect ?? '效果'}未触发。`;
     case 'block':
       return `${p.target} 格挡，伤害降至 ${p.amount}。`;
     case 'dodge':

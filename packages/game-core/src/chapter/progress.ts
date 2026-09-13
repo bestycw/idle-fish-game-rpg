@@ -13,6 +13,70 @@ import {
   type UnlockKind,
 } from './defs.js';
 
+export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
+
+export interface ChapterRouteStop {
+  index: number;
+  node: ChapterNodeDef;
+  status: RouteStopStatus;
+}
+
+export interface ChapterTick {
+  order: number;
+  name: string;
+  status: RouteStopStatus;
+}
+
+export interface ChapterRouteView {
+  chapter: ChapterDef | null;
+  stops: ChapterRouteStop[];
+  ticks: ChapterTick[];
+  currentIndex: number;
+  finished: boolean;
+}
+
+/** 当前章的场地关卡条。未到的站不能进。不是地图。 */
+export function getChapterRoute(state: PlayerState): ChapterRouteView {
+  const view = getChapterView(state);
+  const ticks: ChapterTick[] = listChapters().map((ch) => ({
+    order: ch.order,
+    name: ch.name,
+    status: view.finished
+      ? 'cleared'
+      : ch.order <= view.cleared
+        ? 'cleared'
+        : ch.order === view.cleared + 1
+          ? 'current'
+          : 'ahead',
+  }));
+  if (view.finished) {
+    const last = getChapterByOrder(maxChapterOrder()) ?? null;
+    return {
+      chapter: last,
+      stops: (last?.nodes ?? []).map((node, index) => ({
+        index,
+        node,
+        status: 'cleared',
+      })),
+      ticks,
+      currentIndex: last?.nodes.length ?? 0,
+      finished: true,
+    };
+  }
+  const chapter = view.playing!;
+  return {
+    chapter,
+    stops: chapter.nodes.map((node, index) => ({
+      index,
+      node,
+      status: index < view.nodeIndex ? 'cleared' : index === view.nodeIndex ? 'current' : 'ahead',
+    })),
+    ticks,
+    currentIndex: view.nodeIndex,
+    finished: false,
+  };
+}
+
 export interface ChapterView {
   /** 已通关最高章 order；0=尚未通关第 1 章 */
   cleared: number;

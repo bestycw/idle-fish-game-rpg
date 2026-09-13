@@ -6,19 +6,25 @@ import {
   type SkillDef,
   type UnitTemplate,
 } from '../shared/types.js';
-import { breakthroughLabel } from './breakthroughDisplay.js';
+import { breakthroughLabel, isMaxRealm, LEVEL_CAP_BY_TIER } from './breakthroughDisplay.js';
 import { listBreakthroughPerks } from './breakthroughPerks.js';
 import {
   accumulateSkillMods,
   emptySkillMods,
+  summarizeStarEffect,
   type SkillGrowthMods,
   type StarNodeEffect,
   type StarRatingStat,
 } from './starTypes.js';
 import {
+  IDENTITY_CLIMAX_STAR,
+  IDENTITY_PICK_STAR,
   MAX_STAR,
+  climaxBranchId,
   getStarBranches,
+  identityChoice,
   isBranchStar,
+  listIdentityTracks,
   maxStarForRarity,
   resolveStarNode,
   unlockedStarNodes,
@@ -29,25 +35,44 @@ import {
 } from './skillCompose.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 
-export { breakthroughLabel, nextBreakthroughLabel, BREAKTHROUGH_LABELS } from './breakthroughDisplay.js';
+export {
+  breakthroughLabel,
+  nextBreakthroughLabel,
+  BREAKTHROUGH_LABELS,
+  LEVEL_CAP_BY_TIER,
+  REALM_LADDER,
+  clampRealmTier,
+  isMaxRealm,
+  maxRealmTier,
+  migrateLegacyRealmTier,
+} from './breakthroughDisplay.js';
 export {
   listBreakthroughPerks,
   nextBreakthroughPerk,
-  BREAKTHROUGH_PERKS,
+  listNextBreakthroughPerks,
   BREAKTHROUGH_OVERRIDES,
+  ROLE_BREAKTHROUGH_LADDERS,
 } from './breakthroughPerks.js';
 export {
+  IDENTITY_CLIMAX_STAR,
+  IDENTITY_PICK_STAR,
   MAX_STAR,
   MAX_STAR_BY_RARITY,
   maxStarForRarity,
   SHARED_STAR_NODES,
   STAR_OVERRIDES,
+  climaxBranchId,
   getStarBranches,
+  identityChoice,
   isBranchStar,
+  listIdentityTracks,
+  branchChoiceForStar,
   registerStarTrack,
   resolveStarNode,
   unlockedStarNodes,
 } from './starTracks.js';
+export { ABILITY_ATOMS } from './abilityAtoms.js';
+export { ROLE_STAR_LADDERS, roleStarNode } from './roleStarTracks.js';
 
 /** 该卡可玩星级上限（按模板稀有度） */
 export function maxStarForTemplate(templateId: string): number {
@@ -56,7 +81,13 @@ export function maxStarForTemplate(templateId: string): number {
   return maxStarForRarity(t.rarity);
 }
 export type { StarNodeDef, StarNodeEffect, SkillGrowthMods } from './starTypes.js';
-export { summarizeStarEffect } from './starTypes.js';
+export {
+  proseSkillEffect,
+  proseSkillEffectDelta,
+  summarizeApplyStatus,
+  summarizeSkillEffect,
+  summarizeStarEffect,
+} from './starTypes.js';
 export {
   composeSkill,
   composeSkillFor,
@@ -76,14 +107,19 @@ export const STARTER_OWNED_IDS = [
   'huatuo',
 ] as const;
 
-/** 突破阶 → 等级上限（可配置替换） */
-export const LEVEL_CAP_BY_TIER = [20, 40, 60, 80, 100] as const;
-
 /** 每境小节点数（修为点；满后才能破境） */
-export const CULTIVATION_NODES_PER_TIER = 4;
+export const CULTIVATION_NODES_PER_TIER = 10;
 
 /** 每个已完成小节点折合主属性 */
 export const CULTIVATION_NODE_MAIN_PCT = 0.012;
+
+/** 每破一境的底子（攻防血灵） */
+export const REALM_TIER_MAIN_PCT = 0.04;
+
+export function formatMainPct(pct: number): string {
+  const n = Math.round(pct * 1000) / 10;
+  return Number.isInteger(n) ? `主属性+${n}%` : `主属性+${n}%`;
+}
 
 export const SAVE_ROSTER_VERSION = 11 as const;
 
@@ -96,14 +132,18 @@ export function expToNextLevel(level: number): number {
   return 30 + level * 12;
 }
 
-/** 当前境第 nodeIndex 个小节点消耗（nodeIndex 0..3） */
+/** 当前境第 nodeIndex 个小节点消耗（nodeIndex 0..9） */
 export function cultivationNodeCost(tier: number, nodeIndex: number): number {
   return 12 + tier * 10 + nodeIndex * 5;
 }
 
-/** 破境大节点消耗（须小节点已满） */
+/** 破境大节点消耗（须小节点已满；约等于本境十层总价的 1.3 倍） */
 export function breakthroughCost(tier: number): number {
-  return 100 + tier * 70;
+  let small = 0;
+  for (let n = 0; n < CULTIVATION_NODES_PER_TIER; n += 1) {
+    small += cultivationNodeCost(tier, n);
+  }
+  return Math.round(small * 1.3);
 }
 
 /** 已完成小节点总数（含往境） */
@@ -123,14 +163,6 @@ export function starShardCost(currentStar: number): number {
   if (next <= 3) return 1;
   if (next <= 5) return 2;
   return 3;
-}
-
-/**
- * @deprecated 星尘不再直接升星；保留供旧调用兼容。
- * 请用 stardustExchange.STARDUST_PER_SHARD。
- */
-export function starCost(_currentStar: number): number {
-  return 200;
 }
 
 export function defaultProgress(templateId: string): CharacterProgress {
@@ -257,10 +289,17 @@ export interface DerivedGrowthStats {
   block: number;
   counter: number;
   resilience: number;
+  nirvanaHpRatio?: number;
   echo: number;
   thorns: number;
   steal: number;
   finalDmgBonus: number;
+  startQiBonus: number;
+  qiOnHit: number;
+  basicQiBonus: number;
+  secondWind: boolean;
+  counterFollow: boolean;
+  linkHeal: boolean;
   damageSchool: 'phys' | 'spirit';
   followUp?: { chance: number; multiplier?: number };
   skillMods: SkillGrowthMods;
@@ -277,10 +316,23 @@ function applyEffectToAccum(
     block: number;
     counter: number;
     resilience: number;
+    nirvanaHpRatio?: number;
     echo: number;
     thorns: number;
     steal: number;
     finalDmgBonus: number;
+    critResist: number;
+    startQiBonus: number;
+    qiOnHit: number;
+    basicQiBonus: number;
+    secondWind: boolean;
+    counterFollow: boolean;
+    linkHeal: boolean;
+    hpPct: number;
+    atkPct: number;
+    defPct: number;
+    resPct: number;
+    spdPct: number;
     ratings: Partial<Record<StarRatingStat, number>>;
     followUp?: DerivedGrowthStats['followUp'];
     skillEffects: StarNodeEffect[];
@@ -296,12 +348,34 @@ function applyEffectToAccum(
     if (fx.stat === 'echo') acc.echo += fx.value;
     if (fx.stat === 'thorns') acc.thorns += fx.value;
     if (fx.stat === 'steal') acc.steal += fx.value;
+    if (fx.stat === 'critResist') acc.critResist += fx.value;
+  }
+  if (fx.kind === 'split_stat') {
+    if (fx.stat === 'hp') acc.hpPct += fx.pct;
+    if (fx.stat === 'atk') acc.atkPct += fx.pct;
+    if (fx.stat === 'def') acc.defPct += fx.pct;
+    if (fx.stat === 'res') acc.resPct += fx.pct;
+    if (fx.stat === 'spd') acc.spdPct += fx.pct;
+  }
+  if (fx.kind === 'final_dmg') acc.finalDmgBonus += fx.value;
+  if (fx.kind === 'qi_passive') {
+    acc.startQiBonus += fx.start ?? 0;
+    acc.qiOnHit += fx.onHit ?? 0;
+    acc.basicQiBonus += fx.basic ?? 0;
+  }
+  if (fx.kind === 'unit_flag') {
+    if (fx.flag === 'secondWind') acc.secondWind = true;
+    if (fx.flag === 'counterFollow') acc.counterFollow = true;
+    if (fx.flag === 'linkHeal') acc.linkHeal = true;
   }
   if (fx.kind === 'rating') {
     acc.ratings[fx.stat] = (acc.ratings[fx.stat] ?? 0) + fx.value;
   }
   if (fx.kind === 'enable_follow_up') {
     acc.followUp = { chance: fx.chance, multiplier: fx.multiplier };
+  }
+  if (fx.kind === 'nirvana') {
+    acc.nirvanaHpRatio = Math.max(acc.nirvanaHpRatio ?? 0, fx.hpRatio ?? 0.3);
   }
   if (fx.kind === 'skill_mult' || fx.kind === 'qi_cost' || fx.kind === 'status_boost') {
     acc.skillEffects.push(fx);
@@ -316,7 +390,7 @@ export function deriveGrowthStats(
   const lv = Math.max(1, progress.level);
   const tier = Math.max(0, progress.breakthroughTier);
   const levelFactor = 1 + (lv - 1) * 0.035;
-  const tierBonus = 1 + tier * 0.04;
+  const tierBonus = 1 + tier * REALM_TIER_MAIN_PCT;
   const cultPct = completedCultivationNodes(progress) * CULTIVATION_NODE_MAIN_PCT;
 
   const acc = {
@@ -326,10 +400,23 @@ export function deriveGrowthStats(
     block: template.block ?? 0,
     counter: 0,
     resilience: 0,
+    nirvanaHpRatio: undefined as number | undefined,
     echo: 0,
     thorns: 0,
     steal: 0,
     finalDmgBonus: 0,
+    critResist: 0,
+    startQiBonus: 0,
+    qiOnHit: 0,
+    basicQiBonus: 0,
+    secondWind: false,
+    counterFollow: false,
+    linkHeal: false,
+    hpPct: 0,
+    atkPct: 0,
+    defPct: 0,
+    resPct: 0,
+    spdPct: 0,
     ratings: {} as Partial<Record<StarRatingStat, number>>,
     followUp: undefined as DerivedGrowthStats['followUp'],
     skillEffects: [] as StarNodeEffect[],
@@ -352,11 +439,11 @@ export function deriveGrowthStats(
   const r = (stat: StarRatingStat) => acc.ratings[stat] ?? 0;
 
   return {
-    atk: Math.max(1, Math.round(template.baseAtk * scale)),
-    def: Math.max(1, Math.round(template.baseDef * scale)),
-    res: Math.max(1, Math.round(template.baseRes * scale)),
-    maxHp: Math.max(1, Math.round(template.baseMaxHp * scale)),
-    spd: Math.max(1, Math.round(template.baseSpd * (1 + (lv - 1) * 0.01 + tier * 0.01))),
+    atk: Math.max(1, Math.round(template.baseAtk * scale * (1 + acc.atkPct))),
+    def: Math.max(1, Math.round(template.baseDef * scale * (1 + acc.defPct))),
+    res: Math.max(1, Math.round(template.baseRes * scale * (1 + acc.resPct))),
+    maxHp: Math.max(1, Math.round(template.baseMaxHp * scale * (1 + acc.hpPct))),
+    spd: Math.max(1, Math.round(template.baseSpd * (1 + (lv - 1) * 0.01 + tier * 0.01) * (1 + acc.spdPct))),
     critRating: template.critRating + Math.floor((lv - 1) * 0.4) + r('critRating'),
     critDmgRating: template.critDmgRating + Math.floor((lv - 1) * 0.3) + r('critDmgRating'),
     penRating: template.penRating + Math.floor((lv - 1) * 0.25) + r('penRating'),
@@ -365,14 +452,21 @@ export function deriveGrowthStats(
     fortuneRating: template.fortuneRating + r('fortuneRating'),
     dodge: acc.dodge,
     lifesteal: acc.lifesteal,
-    critResist: template.critResist ?? 0,
+    critResist: (template.critResist ?? 0) + acc.critResist,
     block: acc.block,
     counter: acc.counter ?? 0,
     resilience: acc.resilience ?? 0,
+    nirvanaHpRatio: acc.nirvanaHpRatio,
     echo: acc.echo ?? 0,
     thorns: acc.thorns ?? 0,
     steal: acc.steal ?? 0,
     finalDmgBonus: acc.finalDmgBonus ?? 0,
+    startQiBonus: acc.startQiBonus,
+    qiOnHit: acc.qiOnHit,
+    basicQiBonus: acc.basicQiBonus,
+    secondWind: acc.secondWind,
+    counterFollow: acc.counterFollow,
+    linkHeal: acc.linkHeal,
     damageSchool: template.damageSchool,
     followUp: acc.followUp,
     skillMods: accumulateSkillMods(acc.skillEffects),
@@ -419,8 +513,8 @@ export function tryCultivateNode(state: PlayerState, templateId: string): Growth
   if (nodes >= CULTIVATION_NODES_PER_TIER) {
     return { ok: false, message: '本境小节点已满，请破境。' };
   }
-  if (progress.breakthroughTier >= LEVEL_CAP_BY_TIER.length - 1 && nodes >= CULTIVATION_NODES_PER_TIER) {
-    return { ok: false, message: '已达最高境界。' };
+  if (isMaxRealm(progress.breakthroughTier) && nodes >= CULTIVATION_NODES_PER_TIER) {
+    return { ok: false, message: '已达当前最高境界。' };
   }
   const cost = cultivationNodeCost(progress.breakthroughTier, nodes);
   const xiuwei = s.currencies.xiuwei ?? 0;
@@ -435,14 +529,14 @@ export function tryCultivateNode(state: PlayerState, templateId: string): Growth
       currencies: { ...s.currencies, xiuwei: xiuwei - cost },
       roster: { ...s.roster, [templateId]: progress },
     },
-    message: `修炼小成（${progress.cultivationNodes}/${CULTIVATION_NODES_PER_TIER}），主属性微幅提升`,
+    message: `修炼小成（${progress.cultivationNodes}/${CULTIVATION_NODES_PER_TIER}），${formatMainPct(CULTIVATION_NODE_MAIN_PCT)}`,
   };
 }
 
 export function tryBreakthrough(state: PlayerState, templateId: string): GrowthActionResult {
   const s = ensureRoster(state);
   const progress = { ...getProgress(s, templateId) };
-  if (progress.breakthroughTier >= LEVEL_CAP_BY_TIER.length - 1) {
+  if (isMaxRealm(progress.breakthroughTier)) {
     return { ok: false, message: '已达当前最高境界。' };
   }
   const nodes = progress.cultivationNodes ?? 0;
@@ -459,10 +553,15 @@ export function tryBreakthrough(state: PlayerState, templateId: string): GrowthA
   }
   progress.breakthroughTier += 1;
   progress.cultivationNodes = 0;
-  const unlocked = listBreakthroughPerks(templateId, progress.breakthroughTier)
-    .filter((p) => p.tier === progress.breakthroughTier)
-    .map((p) => p.label);
-  const perkBit = unlocked.length ? `，解锁「${unlocked.join('、')}」` : '';
+  const unlocked = listBreakthroughPerks(templateId, progress.breakthroughTier).filter(
+    (p) => p.tier === progress.breakthroughTier,
+  );
+  const perkBit = unlocked.length
+    ? `，解锁「${unlocked.map((p) => p.label).join('、')}」（${unlocked
+        .flatMap((p) => p.effects.map(summarizeStarEffect))
+        .filter(Boolean)
+        .join(' · ')}）`
+    : '';
   return {
     ok: true,
     state: {
@@ -500,15 +599,25 @@ export function tryStarUp(state: PlayerState, templateId: string): GrowthActionR
   progress.star = next;
   const node = resolveStarNode(templateId, next);
   const needBranch = isBranchStar(templateId, next);
+  let message = node
+    ? `升至 ★${next}，解锁「${node.label}」`
+    : `升至 ★${next}`;
+  if (needBranch) {
+    message = `升至 ★${next}，选定分支`;
+  } else if (next === IDENTITY_CLIMAX_STAR) {
+    const identityId = identityChoice(templateId, progress.starBranch);
+    const climax = listIdentityTracks(templateId).find((t) => t.id === identityId)?.star6;
+    message = climax
+      ? `升至 ★${next}，点亮「${climax.label}」`
+      : `升至 ★${next}`;
+  }
   return {
     ok: true,
     state: {
       ...s,
       roster: { ...s.roster, [templateId]: progress },
     },
-    message: node
-      ? `升至 ★${next}，解锁「${node.label}」`
-      : `升至 ★${next}`,
+    message,
     needBranch,
   };
 }
@@ -524,6 +633,17 @@ export function starBranchRespecCost(state: PlayerState): number {
   return count * 50;
 }
 
+function writeIdentityBranch(
+  templateId: string,
+  starBranch: Record<number, string> | undefined,
+  identityId: string,
+): Record<number, string> {
+  const next: Record<number, string> = { ...starBranch, [IDENTITY_PICK_STAR]: identityId };
+  const climax = climaxBranchId(templateId, identityId);
+  if (climax) next[IDENTITY_CLIMAX_STAR] = climax;
+  return next;
+}
+
 /** 选择升星分支（首次选择，免费） */
 export function chooseStarBranch(
   state: PlayerState,
@@ -533,6 +653,9 @@ export function chooseStarBranch(
 ): { ok: boolean; state: PlayerState; message: string } {
   const s = ensureRoster(state);
   const progress = { ...getProgress(s, templateId) };
+  if (listIdentityTracks(templateId).length >= 2 && star === IDENTITY_CLIMAX_STAR) {
+    return { ok: false, state: s, message: '分支在 ★3 选定' };
+  }
   if (progress.star < star) {
     return { ok: false, state: s, message: `未升至 ★${star}，无法选择分支` };
   }
@@ -543,16 +666,19 @@ export function chooseStarBranch(
   if (!branches.find((b) => b.id === branchId)) {
     return { ok: false, state: s, message: `无效分支 ${branchId}` };
   }
-  const existing = progress.starBranch?.[star];
+    const existing = identityChoice(templateId, progress.starBranch);
   if (existing) {
-    return { ok: false, state: s, message: `已选择「${existing}」，如需更换请走重洗` };
+    const track = listIdentityTracks(templateId).find((t) => t.id === existing);
+    return { ok: false, state: s, message: `已选定「${track?.label ?? existing}」，更换请重洗` };
   }
-  progress.starBranch = { ...progress.starBranch, [star]: branchId };
+  progress.starBranch = writeIdentityBranch(templateId, progress.starBranch, branchId);
+  const track = listIdentityTracks(templateId).find((t) => t.id === branchId);
   const branch = branches.find((b) => b.id === branchId)!;
+  const name = track?.label ?? branch.label;
   return {
     ok: true,
     state: { ...s, roster: { ...s.roster, [templateId]: progress } },
-    message: `选择分支「${branch.label}」`,
+    message: `选定「${name}」`,
   };
 }
 
@@ -565,22 +691,27 @@ export function respecStarBranch(
 ): { ok: boolean; state: PlayerState; message: string } {
   const s = ensureRoster(state);
   const progress = { ...getProgress(s, templateId) };
+  if (listIdentityTracks(templateId).length >= 2 && star === IDENTITY_CLIMAX_STAR) {
+    return { ok: false, state: s, message: '分支在 ★3 选定' };
+  }
   if (progress.star < star) {
     return { ok: false, state: s, message: `未升至 ★${star}，无法重洗` };
   }
-  const branches = getStarBranches(templateId, star);
+  const branches = getStarBranches(templateId, IDENTITY_PICK_STAR).length
+    ? getStarBranches(templateId, IDENTITY_PICK_STAR)
+    : getStarBranches(templateId, star);
   if (!branches.length) {
     return { ok: false, state: s, message: `★${star} 不是岔路节点` };
   }
   if (!branches.find((b) => b.id === newBranchId)) {
     return { ok: false, state: s, message: `无效分支 ${newBranchId}` };
   }
-  const existing = progress.starBranch?.[star];
+  const existing = identityChoice(templateId, progress.starBranch);
   if (!existing) {
     return { ok: false, state: s, message: `尚未选择，请直接选择而非重洗` };
   }
   if (existing === newBranchId) {
-    return { ok: false, state: s, message: `已经是此分支` };
+    return { ok: false, state: s, message: `已是此分支` };
   }
   const cost = starBranchRespecCost(s);
   const dust = s.currencies.stardust ?? 0;
@@ -590,8 +721,10 @@ export function respecStarBranch(
   const today = new Date().toISOString().slice(0, 10);
   const todayCount =
     s.starBranchRespecDay === today ? (s.starBranchRespecToday ?? 0) : 0;
-  progress.starBranch = { ...progress.starBranch, [star]: newBranchId };
+  progress.starBranch = writeIdentityBranch(templateId, progress.starBranch, newBranchId);
+  const track = listIdentityTracks(templateId).find((t) => t.id === newBranchId);
   const branch = branches.find((b) => b.id === newBranchId)!;
+  const name = track?.label ?? branch.label;
   return {
     ok: true,
     state: {
@@ -602,8 +735,8 @@ export function respecStarBranch(
       starBranchRespecToday: todayCount + 1,
     },
     message: cost > 0
-      ? `重洗为「${branch.label}」，消耗 ${cost} 星尘`
-      : `重洗为「${branch.label}」（今日首次免费）`,
+      ? `改为「${name}」，消耗 ${cost} 星尘`
+      : `改为「${name}」（今日首次免费）`,
   };
 }
 

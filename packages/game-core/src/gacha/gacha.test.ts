@@ -9,7 +9,8 @@ describe('gacha', () => {
     const state = createInitialPlayer(1);
     assert.ok(!gachaPoolIds(state).includes('hero'));
     assert.ok(gachaPoolIds(state).includes('houyi'));
-    assert.ok(gachaPoolIds(state).includes('heracles'));
+    assert.ok(gachaPoolIds(state).includes('dianwei'));
+    assert.ok(!gachaPoolIds(state).includes('heracles'));
     assert.ok(!gachaPoolIds(state).includes('baigujing'));
     assert.ok(gachaPoolIds().includes('baigujing'));
   });
@@ -68,11 +69,11 @@ describe('gacha', () => {
       gachaPity: GACHA_SOFT_PITY - 1,
     };
     assert.equal(isOwned(state, 'houyi'), false);
-    assert.equal(isOwned(state, 'heracles'), false);
+    assert.equal(isOwned(state, 'dianwei'), false);
     const r = pullGacha(state, 1);
     assert.equal(r.ok, true);
     if (!r.ok) return;
     assert.equal(r.items[0]?.kind, 'new');
-    assert.ok(['houyi', 'heracles'].includes(r.items[0]!.templateId));
+    assert.ok(gachaPoolIds(state).includes(r.items[0]!.templateId));
   });
 });

@@ -1,17 +1,17 @@
 import type { PlayerState } from '../shared/types.js';
 import {
   breakthroughCost,
+  CULTIVATION_NODE_MAIN_PCT,
   CULTIVATION_NODES_PER_TIER,
   cultivationNodeCost,
+  formatMainPct,
   expToNextLevel,
   getProgress,
   isOwned,
-  LEVEL_CAP_BY_TIER,
+  isMaxRealm,
   levelCapForTier,
   maxStarForTemplate,
-  nextBreakthroughPerk,
-  getStarBranches,
-  resolveStarNode,
+  isBranchStar,
   starShardCost,
   tryBreakthrough,
   tryCultivateNode,
@@ -19,6 +19,7 @@ import {
   tryStarUp,
   type GrowthActionResult,
 } from './growth.js';
+import { previewBreakthroughStep } from './growthHelpers.js';
 import { STARDUST_ASSIST_STAR_CAP, STARDUST_PER_SHARD } from './stardustExchange.js';
 import { breakthroughLabel, nextBreakthroughLabel } from './breakthroughDisplay.js';
 
@@ -94,10 +95,10 @@ function cultivateTrack(): GrowthTrackDef {
       const progress = getProgress(state, templateId);
       const nodes = progress.cultivationNodes ?? 0;
       const xiuwei = state.currencies?.xiuwei ?? 0;
-      const atMaxTier = progress.breakthroughTier >= LEVEL_CAP_BY_TIER.length - 1;
+      const atMaxTier = isMaxRealm(progress.breakthroughTier);
       if (atMaxTier) {
         return {
-          costLine: '已达最高境界',
+          costLine: '已达当前最高境界',
           effectLine: breakthroughLabel(progress.breakthroughTier),
           current: 1,
           need: 1,
@@ -116,7 +117,7 @@ function cultivateTrack(): GrowthTrackDef {
       const need = cultivationNodeCost(progress.breakthroughTier, nodes);
       return {
         costLine: `修为 ${xiuwei}/${need}（仅塔）`,
-        effectLine: `${breakthroughLabel(progress.breakthroughTier)} 小节点 ${nodes}/${CULTIVATION_NODES_PER_TIER} · 主属性微幅`,
+        effectLine: `${breakthroughLabel(progress.breakthroughTier)} 第 ${nodes + 1}/${CULTIVATION_NODES_PER_TIER} 层 · ${formatMainPct(CULTIVATION_NODE_MAIN_PCT)}`,
         current: xiuwei,
         need,
         ready: xiuwei >= need,
@@ -139,21 +140,21 @@ function breakthroughTrack(): GrowthTrackDef {
       const progress = getProgress(state, templateId);
       const need = breakthroughCost(progress.breakthroughTier);
       const xiuwei = state.currencies?.xiuwei ?? 0;
-      const maxTier = LEVEL_CAP_BY_TIER.length - 1;
-      const atMax = progress.breakthroughTier >= maxTier;
+      const atMax = isMaxRealm(progress.breakthroughTier);
       const nextName = nextBreakthroughLabel(progress.breakthroughTier);
       const nodes = progress.cultivationNodes ?? 0;
       const nodesOk = nodes >= CULTIVATION_NODES_PER_TIER;
-      const perk = nextBreakthroughPerk(templateId, progress.breakthroughTier);
+      const step = previewBreakthroughStep(templateId, progress.breakthroughTier);
       return {
         costLine: atMax
-          ? '已达最高境界'
-          : `修为 ${xiuwei}/${need}${nodesOk ? '' : ` · 节点 ${nodes}/${CULTIVATION_NODES_PER_TIER}`}`,
+          ? '已达当前最高境界'
+          : `修为 ${xiuwei}/${need}${nodesOk ? '' : ` · ${nodes}/${CULTIVATION_NODES_PER_TIER} 层`}`,
         effectLine: atMax
           ? breakthroughLabel(progress.breakthroughTier)
           : `${breakthroughLabel(progress.breakthroughTier)} → ${nextName ?? '下一境'}` +
             `（上限 Lv${levelCapForTier(progress.breakthroughTier + 1)}）` +
-            (perk ? ` · ${perk.label}` : ''),
+            (step ? ` · ${step.mainLine}` : '') +
+            (step?.perkLine ? ` · ${step.perkLabel}（${step.perkLine}）` : ''),
         current: xiuwei,
         need,
         ready: !atMax && nodesOk && xiuwei >= need,
@@ -179,8 +180,7 @@ function starTrack(): GrowthTrackDef {
       const shards = progress.cardShards ?? 0;
       const shardNeed = starShardCost(progress.star);
       const nextStar = progress.star + 1;
-      const next = resolveStarNode(templateId, nextStar);
-      const branchNext = getStarBranches(templateId, nextStar).length >= 2;
+      const branchNext = isBranchStar(templateId, nextStar);
       const owned = isOwned(state, templateId);
       const assistCap = Math.min(STARDUST_ASSIST_STAR_CAP, starCap);
       if (!owned) {
@@ -208,11 +208,7 @@ function starTrack(): GrowthTrackDef {
           : starCap > assistCap
             ? ' · 更高需抽卡碎片'
             : '';
-      const effectLine = next
-        ? branchNext
-          ? `★${progress.star} → ★${next.star}「${next.label}」· 二选一`
-          : `★${progress.star} → ★${next.star}「${next.label}」`
-        : `★${progress.star} → ★${nextStar}`;
+      const effectLine = branchNext ? '选定分支' : '';
       return {
         costLine: `碎片 ${shards}/${shardNeed}${useShard ? '' : dustHint}`,
         effectLine,

@@ -1,19 +1,22 @@
 import { equipItem } from '../equipment/equipment.js';
+import { migrateSeenItemIds } from '../equipment/unseen.js';
+import { canWearEquipment } from '../equipment/wear.js';
 import { defaultFormation, normalizeFormation } from '../formation/formation.js';
 import type { Equipment, EquipSlot, PlayerState, SaveAdapter } from '../shared/types.js';
 import {
   defaultCurrencies,
   ensureRoster,
+  migrateLegacyRealmTier,
 } from '../character/growth.js';
 import { UNIT_TEMPLATES } from '../character/templates.js';
-import { grantDungeonReward } from '../dungeon/lootTables.js';
 import { STAMINA_MAX, syncStamina } from '../stamina/stamina.js';
+import { migrateZhongtuV16, REMOVED_FOREIGN_IDS } from './zhongtuMigrate.js';
 
 type LegacySave = Omit<Partial<PlayerState>, 'version'> & { version?: number };
 
-const SAVE_VERSION = 12 as const;
+const SAVE_VERSION = 16 as const;
 
-/** 旧占位卡 id；迁移时从 roster/formation 剔除 */
+/** 旧占位卡 + 已下架国外 id；迁移时从 roster/formation 剔除 */
 const REMOVED_TEMPLATE_IDS = new Set([
   'tank_a',
   'burst_a',
@@ -21,6 +24,7 @@ const REMOVED_TEMPLATE_IDS = new Set([
   'col_a',
   'heal_a',
   'ctrl_a',
+  ...REMOVED_FOREIGN_IDS,
 ]);
 
 function withStaminaDefaults(state: PlayerState, now = Date.now()): PlayerState {
@@ -139,6 +143,7 @@ function migrateEquipToPerCharacter(state: PlayerState): PlayerState {
     ...state,
     inventory,
     characterEquip: { [firstChar]: charSlots },
+    equipped: {},
   };
 }
 
@@ -174,7 +179,7 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
         ...defaultCurrencies(),
         ...(loaded.currencies ?? {}),
       },
-      roster: pruneRoster(loaded.roster),
+      roster: loaded.roster ?? {},
       towerFloor: Math.max(1, loaded.towerFloor ?? 1),
       gachaPity: Math.max(0, loaded.gachaPity ?? 0),
       stamina: loaded.stamina ?? STAMINA_MAX,
@@ -191,6 +196,7 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       mineCountToday: (loaded as any).mineCountToday,
       mineDay: (loaded as any).mineDay,
       mineExtraLimit: (loaded as any).mineExtraLimit,
+      seenItemIds: migrateSeenItemIds(loaded as any),
     };
     if (loadedVersion === 2) {
       migrated.currencies.xiuwei = Math.max(migrated.currencies.xiuwei ?? 0, 80);
@@ -223,10 +229,29 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       const migrated2 = migrateEquipToPerCharacter(migrated);
       Object.assign(migrated, migrated2);
     }
+    if ((loadedVersion ?? 0) < 13) {
+      migrated.inventory = [];
+      migrated.characterEquip = {};
+      migrated.equipped = {};
+      migrated.sealStamp = undefined;
+    }
+    if ((loadedVersion ?? 0) < 14) {
+      for (const [id, row] of Object.entries(migrated.roster)) {
+        migrated.roster[id] = {
+          ...row,
+          breakthroughTier: migrateLegacyRealmTier(row.breakthroughTier ?? 0),
+        };
+      }
+    }
+    if ((loadedVersion ?? 0) < 16) {
+      Object.assign(migrated, migrateZhongtuV16(migrated));
+    }
+    migrated.roster = pruneRoster(migrated.roster);
     // 迁移后若阵容被剔空，回默认
     if (Object.keys(normalizeFormation(migrated.formation)).length === 0) {
       migrated.formation = defaultFormation();
     }
+    migrated.equipped = {};
     return withStaminaDefaults(ensureRoster(migrated), now);
   }
   const fresh = createInitialPlayer();
@@ -238,13 +263,16 @@ export function persistPlayer(adapter: SaveAdapter, state: PlayerState): void {
   adapter.save(withStaminaDefaults(ensureRoster(state)));
 }
 
-/** @deprecated 用 grantDungeonReward(state, 'gear_trial')；保留兼容 */
-export function grantVictoryLoot(state: PlayerState): { state: PlayerState; loot: Equipment } {
-  const result = grantDungeonReward(state, 'gear_trial');
-  if (!result.loot) throw new Error('gear_trial must drop equipment');
-  return { state: result.state, loot: result.loot };
+export function firstWearableDeployed(state: PlayerState, item: Equipment): string | undefined {
+  return Object.keys(normalizeFormation(state.formation)).find((id) =>
+    canWearEquipment(item, state.roster?.[id]?.breakthroughTier ?? 0),
+  );
 }
 
 export function wearLoot(state: PlayerState, itemId: string): PlayerState {
-  return equipItem(state, itemId);
+  const item = state.inventory.find((e) => e.id === itemId);
+  if (!item) return state;
+  const wearer = firstWearableDeployed(state, item);
+  if (!wearer) return state;
+  return equipItem(state, itemId, wearer);
 }

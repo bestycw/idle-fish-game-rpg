@@ -44,14 +44,22 @@ function unownedIds(state: PlayerState): string[] {
   return gachaPoolIds(state).filter((id) => !isOwned(state, id));
 }
 
-/** 缺职能加权；未拥有基础权更高 */
+const RARITY_WEIGHT: Record<Rarity, number> = {
+  common: 8,
+  uncommon: 8,
+  rare: 5,
+  epic: 3,
+  legendary: 1,
+};
+
+/** 品级权 × 未拥有更高 × 缺职能 */
 export function weightForPull(state: PlayerState, templateId: string): number {
   const t = getTemplate(templateId);
   if (!t || t.isHero) return 0;
   const owned = isOwned(state, templateId);
-  let w = owned ? 10 : 14;
+  let w = (owned ? 10 : 14) * (RARITY_WEIGHT[t.rarity] ?? 5);
   const roles = ownedRoles(state);
-  if (!owned && !roles.has(t.role)) w += 16;
+  if (!owned && !roles.has(t.role)) w += 16 * (RARITY_WEIGHT[t.rarity] ?? 5);
   return w;
 }
 

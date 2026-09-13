@@ -26,8 +26,8 @@ export interface DungeonDef {
   /** 开战体力；缺省由 stamina 按 kind 回落 */
   staminaCost: number;
   /**
-   * 遭遇压力系数（乘敌人攻/防/血等）。
-   * 早期本 ~1.0；高压本 >1，逼养成后仍要换解法，而不是同一张表两头不靠。
+   * 本种压力（乘在章档 enemyMult 之上）。
+   * 猎装 1；镜渊 1.3。敌人跟正在打的章走，不按玩家当前战力缩放。
    */
   pressure?: number;
 }

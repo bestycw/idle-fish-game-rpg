@@ -1,9 +1,13 @@
 /**
- * 深做 20 卡：母题 + 招牌改写 + 典故星章。
+ * 深做卡：母题 + 招牌改写 + 典故星章。
  * 数值/钩子走能力池；标题必须贴历史，禁止「主属性强化」当终态。
  */
 import type { SkillDef } from '../shared/types.js';
 import type { StarBranchDef, StarNodeDef, StarNodeEffect } from './starTypes.js';
+import {
+  EXPAND_DEEP_SKILL_OVERRIDES,
+  EXPAND_DEEP_STAR_OVERRIDES,
+} from './expandDeepKits.js';
 
 type TrackEntry = {
   label: string;
@@ -27,341 +31,418 @@ function track(entries: TrackEntry[]): Partial<Record<number, StarNodeDef>> {
   return out;
 }
 
-/** 覆盖 CORE 技能的展示与机制（id 不变） */
-export const DEEP_SKILL_OVERRIDES: Record<string, Partial<SkillDef>> = {
+function fork(
+  id: string,
+  identityLabel: string,
+  label: string,
+  effects: StarNodeEffect[],
+): StarBranchDef {
+  return { id, identityLabel, label, effects };
+}
+
+/** 覆盖 CORE / 已升格扩展技能的展示与机制（id 不变） */
+const CORE_DEEP_SKILL_OVERRIDES: Record<string, Partial<SkillDef>> = {
   skill_hero_strike: {
     name: '破妄斩',
-    blurb: '对单体造成力系重击，并驱散其一道增益；本场首次施放伤害更高。',
+    blurb: '对单体力系重击并驱散一道增益；本场第一刀更锋利。目标有盾时，破妄专克护盾。',
     effects: [{ kind: 'purge' }, { kind: 'first_cast', multiplier: 1.25 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_shield' },
+        then: { effectPatches: [{ kind: 'vs_shield', multiplier: 1.28 }], multiplierDelta: 0.06 },
+        copy: '有盾：破妄加重',
+      },
+    ],
   },
   skill_zhangfei_roar: {
     name: '当阳吼',
-    blurb: '震慑单体；本场首次施放伤害更高。',
+    blurb: '怒吼眩晕单体；本场第一吼先声夺人，并锁住敌方焦点。',
     applyStatus: [{ statusId: 'stun', duration: 1 }],
     effects: [{ kind: 'first_cast', multiplier: 1.4 }],
+    softModes: [
+      {
+        when: { kind: 'first_cast' },
+        then: { statusPatches: [{ statusId: 'taunt', duration: 2, chance: 0.7 }] },
+        copy: '第一吼：当阳锁敌',
+      },
+    ],
   },
   skill_zhaoyun_longdan: {
     name: '龙胆枪',
-    blurb: '穿透点杀，附加流血；对护盾额外增伤。',
+    blurb: '银枪穿透点杀：撕开流血，专克护盾；猎物一旦被猎印锁定，枪尖直取残命。',
     applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
     effects: [{ kind: 'vs_shield', multiplier: 1.25 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'mark_prey' },
+        then: {
+          effectPatches: [{ kind: 'execute', value: 0.3, multiplier: 1.45 }],
+          multiplierDelta: 0.08,
+        },
+        copy: '猎印目标：斩杀加重',
+      },
+    ],
   },
   skill_wukong_sweep: {
     name: '定海神针',
-    blurb: '打击目标所在行与列，附加破甲，专克盾墙。',
+    blurb: '十字打击并眩晕；身旁有人时棒势更沉。本场第一棍再扫一圈。',
     targetPattern: 'cross',
     tags: ['aoe', 'damage'],
     multiplier: 1.15,
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.82 }],
-    effects: [{ kind: 'first_cast', multiplier: 1.2 }],
+    applyStatus: [{ statusId: 'stun', duration: 1 }],
+    effects: [{ kind: 'first_cast', multiplier: 1.2 }, { kind: 'surround', multiplier: 1.2 }],
+    softModes: [
+      {
+        when: { kind: 'first_cast' },
+        then: { followUp: { chance: 0.45, multiplier: 0.5, targetPattern: 'cross' } },
+        copy: '第一棍：定海再扫',
+      },
+    ],
   },
   skill_huatuo_qingnang: {
     name: '青囊济世',
-    blurb: '治疗单体并净化减益；目标残血时治疗更强。',
+    blurb: '治疗单体并净化减益；目标残血时疗得更猛，并顺手灌一口元气。',
     effects: [
       { kind: 'cleanse' },
       { kind: 'heal_low_hp', value: 0.4, multiplier: 1.35 },
     ],
+    softModes: [
+      {
+        when: { kind: 'target_hp_below', value: 0.4 },
+        then: { effectPatches: [{ kind: 'ally_grant_qi', value: 18 }] },
+        copy: '残血：青囊灌气',
+      },
+    ],
   },
   skill_houyi_luori: {
     name: '九日尽',
-    blurb: '穿透点残血目标，附加流血，猎杀后排脆皮。',
+    blurb: '穿透点残并撕开流血。猎物已在流血时，九日再沉、专收残命。',
     applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
     effects: [{ kind: 'execute', value: 0.35, multiplier: 1.35 }],
     focusPolicy: 'lowest_hp',
-  },
-  skill_heracles_hide: {
-    name: '涅墨亚狮皮',
-    blurb: '为自己裹上厚实护盾，扛住第一波冲击。',
-    effects: [{ kind: 'first_cast', multiplier: 1.15 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'bleed' },
+        then: {
+          effectPatches: [{ kind: 'execute', value: 0.35, multiplier: 1.5 }],
+          multiplierDelta: 0.08,
+        },
+        copy: '流血目标：九日再沉',
+      },
+    ],
   },
   skill_zhuge_qimen: {
     name: '借东风',
-    blurb: '深破甲并迟滞敌人，为队友撕开铁壁窗口。',
+    blurb: '抽干敌人能量并迟滞；25% 给友军灌一大口气。本场第一阵东风抽得更狠。',
     applyStatus: [
-      { statusId: 'shred', duration: 3, value: 0.55 },
+      { statusId: 'qi_drought', duration: 2 },
       { statusId: 'slow', duration: 2 },
+    ],
+    effects: [{ kind: 'ally_grant_qi', value: 64, chance: 0.25 }],
+    softModes: [
+      {
+        when: { kind: 'first_cast' },
+        then: { statusPatches: [{ statusId: 'qi_drought', duration: 1 }] },
+        copy: '第一阵：东风更深',
+      },
     ],
   },
   skill_baigujing_huagu: {
     name: '化骨绵掌',
-    blurb: '横扫前排，扰乱敌方心神（混乱）。',
-    applyStatus: [{ statusId: 'havoc', duration: 1 }],
-  },
-  skill_medusa_gaze: {
-    name: '戈耳工凝视',
-    blurb: '低伤硬控，将敌人短暂石化（眩晕）。',
-    applyStatus: [{ statusId: 'stun', duration: 1 }],
-    effects: [{ kind: 'first_cast', multiplier: 1.2 }],
-  },
-  skill_athena_aegis: {
-    name: '神盾恩典',
-    blurb: '治疗全体；星章可开净化与结界。',
-    effects: [{ kind: 'heal_low_hp', value: 0.45, multiplier: 1.25 }],
+    blurb: '横扫前排并扰乱心神；印被驱散时反噬。敌军已乱时，化骨咬得更狠。',
+    applyStatus: [{ statusId: 'havoc', duration: 1 }, { statusId: 'unstable', duration: 3 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'havoc' },
+        then: { effectPatches: [{ kind: 'vs_cc', multiplier: 1.28 }], multiplierDelta: 0.08 },
+        copy: '混乱目标：化骨加码',
+      },
+    ],
   },
   skill_guanyu_slash: {
     name: '温酒青龙',
-    blurb: '力系单体重创并流血；本场首次施放锋芒更盛。',
+    blurb: '单体重创并流血，伤害会抬队里最残的人。敌方残血时，温酒斩杀。',
     applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
-    effects: [{ kind: 'first_cast', multiplier: 1.3 }],
+    effects: [{ kind: 'first_cast', multiplier: 1.3 }, { kind: 'atonement', value: 0.22 }],
+    softModes: [
+      {
+        when: { kind: 'target_hp_below', value: 0.35 },
+        then: { effectPatches: [{ kind: 'execute', value: 0.35, multiplier: 1.4 }], multiplierDelta: 0.1 },
+        copy: '残血：温酒斩杀',
+      },
+    ],
   },
   skill_lvbu_wushuang: {
     name: '人中吕布',
-    blurb: '极高倍率单体爆发；本场首刀更加凶戾。',
-    effects: [{ kind: 'first_cast', multiplier: 1.35 }],
+    blurb: '方天一戟：本场首击先声裂阵，残血时愈战愈凶；血线危急时戟影连环，专收残局。',
+    effects: [
+      { kind: 'first_cast', multiplier: 1.35 },
+      { kind: 'self_low_hp', value: 0.4, multiplier: 1.3 },
+    ],
+    softModes: [
+      {
+        when: { kind: 'self_hp_below', value: 0.4 },
+        then: {
+          multiplierDelta: 0.12,
+          followUp: { chance: 0.28, multiplier: 0.58 },
+        },
+        copy: '残血：戟影连环',
+      },
+    ],
   },
   skill_dianwei_guard: {
     name: '恶来护主',
-    blurb: '为自己叠盾死守，换主公一线生机。',
-    effects: [{ kind: 'first_cast', multiplier: 1.2 }],
+    blurb: '为自己叠盾并卸力，挨打的伤分后扣，再按承伤回血。自己残血时护主更厚。',
+    effects: [
+      { kind: 'first_cast', multiplier: 1.2 },
+      { kind: 'self_stagger' },
+      { kind: 'heal_from_taken', value: 0.5 },
+    ],
+    softModes: [
+      {
+        when: { kind: 'self_hp_below', value: 0.4 },
+        then: { effectPatches: [{ kind: 'self_shield', multiplier: 0.55 }], multiplierDelta: 0.1 },
+        copy: '残血：恶来护主',
+      },
+    ],
   },
   skill_nezha_arms: {
     name: '风火连枪',
-    blurb: '穿透并破甲；身法疾如风火轮。',
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.85 }],
+    blurb: '穿透点杀并流血，连打同一人越打越疼。猎物已在流血时，风火再燃。',
+    applyStatus: [{ statusId: 'bleed', duration: 2, layers: 1 }],
+    effects: [{ kind: 'focus_streak', value: 0.08 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'bleed' },
+        then: { followUp: { chance: 0.32, multiplier: 0.55 } },
+        copy: '流血目标：风火再燃',
+      },
+    ],
   },
   skill_daji_charm: {
     name: '九尾狐火',
-    blurb: '横扫前排扰乱心神；高星可诱敌狂乱。',
+    blurb: '横扫前排并扰乱心神。敌军已乱时，狐火抽走一口元气。',
     applyStatus: [{ statusId: 'havoc', duration: 1 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'havoc' },
+        then: { effectPatches: [{ kind: 'steal_qi', value: 12 }] },
+        copy: '混乱目标：狐火夺气',
+      },
+    ],
   },
   skill_yangjian_blade: {
     name: '天眼破妄',
-    blurb: '穿透点残，破甲开路，专打后排。',
-    applyStatus: [{ statusId: 'shred', duration: 2, value: 0.8 }],
+    blurb: '穿透点残并流血。目标有盾时，天眼专破护盾。',
+    applyStatus: [{ statusId: 'bleed', duration: 3, layers: 1 }],
     focusPolicy: 'lowest_hp',
     effects: [{ kind: 'vs_shield', multiplier: 1.2 }],
-  },
-  skill_thor_hammer: {
-    name: '妙尔尼尔',
-    blurb: '横扫前排并震慑；本场首次施放伤害更高。',
-    applyStatus: [{ statusId: 'stun', duration: 1 }],
-    effects: [{ kind: 'first_cast', multiplier: 1.25 }],
-  },
-  skill_arthur_oath: {
-    name: '石中剑誓',
-    blurb: '灵系护盾守御己身；星章可护全队。',
-    effects: [{ kind: 'first_cast', multiplier: 1.15 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_shield' },
+        then: { effectPatches: [{ kind: 'vs_shield', multiplier: 1.38 }], multiplierDelta: 0.08 },
+        copy: '有盾：天眼破妄',
+      },
+    ],
   },
   skill_xishi_chenyu: {
     name: '沉鱼落雁',
-    blurb: '低伤使目标沉眠，争取布阵与输出空档。',
+    blurb: '低伤使目标沉眠。已沉眠的人再被点中，连招式也被封住。',
     applyStatus: [{ statusId: 'sleep', duration: 2 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'sleep' },
+        then: { statusPatches: [{ statusId: 'silence', duration: 1, chance: 0.7 }] },
+        copy: '沉眠目标：再封其招',
+      },
+    ],
+  },
+  skill_change_moon: {
+    name: '月华',
+    blurb: '月华覆全体：治疗并净化；25% 再灌一口月露。',
+    effects: [{ kind: 'cleanse' }, { kind: 'ally_grant_qi', value: 32, chance: 0.25 }],
+  },
+  skill_sunbin_jianzao: {
+    name: '减灶',
+    blurb: '点破护甲并迟滞；身旁有人时合围加伤。已破甲时减灶套得更死。',
+    applyStatus: [
+      { statusId: 'shred', duration: 2, value: 0.78 },
+      { statusId: 'slow', duration: 2 },
+    ],
+    effects: [{ kind: 'surround', multiplier: 1.2 }],
+    softModes: [
+      {
+        when: { kind: 'target_has_status', statusId: 'shred' },
+        then: { effectPatches: [{ kind: 'surround', multiplier: 1.35 }], multiplierDelta: 0.08 },
+        copy: '破甲目标：减灶合围',
+      },
+    ],
   },
 };
 
+export const DEEP_SKILL_OVERRIDES: Record<string, Partial<SkillDef>> = {
+  ...CORE_DEEP_SKILL_OVERRIDES,
+  ...EXPAND_DEEP_SKILL_OVERRIDES,
+};
+
 /** 深做星章（★1–★6 数据轨；可玩上限仍按品级截断） */
-export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNodeDef>>> = {
+const CORE_DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNodeDef>>> = {
   hero: track([
     { label: '问心', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '斩意', effects: [{ kind: 'qi_cost', delta: -5 }] },
     {
-      label: '破妄岔路',
+      label: '破妄',
       effects: [],
       branches: [
-        {
-          id: 'combo',
-          label: '连斩破妄',
-          effects: [{ kind: 'enable_follow_up', chance: 0.28, multiplier: 0.6 }],
-        },
-        {
-          id: 'burst',
-          label: '一刀入魂',
-          effects: [
-            { kind: 'skill_mult', delta: 0.2 },
-            { kind: 'effect_unlock', effect: { kind: 'first_cast', multiplier: 1.35 } },
-          ],
-        },
+        fork('combo', '连斩', '破妄·连斩', [
+          { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.6 },
+        ]),
+        fork('burst', '破妄', '破妄·入魂', [
+          { kind: 'skill_mult', delta: 0.2 },
+          { kind: 'effect_unlock', effect: { kind: 'first_cast', multiplier: 1.35 } },
+        ]),
       ],
     },
     { label: '锋砺', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '再砺', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
     {
-      label: '再斩',
-      effects: [{ kind: 'enable_follow_up', chance: 0.38, multiplier: 0.75 }],
-    },
-    {
-      label: '破妄圆满',
+      label: '问道',
       effects: [],
       branches: [
-        {
-          id: 'relentless',
-          label: '无尽追斩',
-          effects: [
-            { kind: 'rating', stat: 'penRating', value: 10 },
-            { kind: 'enable_follow_up', chance: 0.15, multiplier: 0.5 },
-          ],
-        },
-        {
-          id: 'purge',
-          label: '万法皆空',
-          effects: [
-            { kind: 'skill_mult', delta: 0.18 },
-            { kind: 'effect_unlock', effect: { kind: 'purge' } },
-            { kind: 'rating', stat: 'critDmgRating', value: 10 },
-          ],
-        },
+        fork('relentless', '连斩', '问道·追斩', [
+          { kind: 'enable_follow_up', chance: 0.18, multiplier: 0.55 },
+          { kind: 'rating', stat: 'penRating', value: 10 },
+        ]),
+        fork('purge', '破妄', '问道·皆空', [
+          { kind: 'skill_mult', delta: 0.18 },
+          { kind: 'rating', stat: 'critDmgRating', value: 10 },
+        ]),
       ],
     },
   ]),
   zhangfei: track([
-    { label: '燕人虎躯', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
-    { label: '丈八铁壁', effects: [{ kind: 'rare_stat', stat: 'block', value: 0.04 }] },
+    { label: '燕人', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
+    { label: '丈八', effects: [{ kind: 'rare_stat', stat: 'block', value: 0.04 }] },
     {
-      label: '当阳岔路',
+      label: '当阳',
       effects: [{ kind: 'status_boost', duration: 1 }],
       branches: [
-        {
-          id: 'bulwark',
-          label: '当阳结界',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.5 } },
-          ],
-        },
-        {
-          id: 'roar',
-          label: '怒吼震桥',
-          effects: [
-            { kind: 'skill_mult', delta: 0.15 },
-            { kind: 'status_unlock', status: { statusId: 'slow', duration: 1, chance: 0.6 } },
-          ],
-        },
+        fork('bulwark', '据守', '当阳·据守', [
+          { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.5 } },
+        ]),
+        fork('roar', '断喝', '当阳·断喝', [
+          { kind: 'skill_mult', delta: 0.15 },
+          { kind: 'status_unlock', status: { statusId: 'slow', duration: 1, chance: 0.6 } },
+        ]),
       ],
     },
-    { label: '长坂骨', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
-    {
-      label: '震喝三军',
-      effects: [
-        { kind: 'skill_mult', delta: 0.12 },
-        { kind: 'rare_stat', stat: 'block', value: 0.03 },
-      ],
-    },
+    { label: '长坂', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
+    { label: '蛇矛', effects: [{ kind: 'rare_stat', stat: 'block', value: 0.03 }] },
     {
       label: '万人敌',
       effects: [{ kind: 'stat_pct', mainPct: 0.04 }],
       branches: [
-        {
-          id: 'fortress',
-          label: '铁壁万人',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.4 } },
-            { kind: 'rare_stat', stat: 'block', value: 0.05 },
-          ],
-        },
-        {
-          id: 'berserk',
-          label: '暴走蛇矛',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.35 } },
-            { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.4 } },
-          ],
-        },
+        fork('fortress', '据守', '万人·铁壁', [
+          { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.55 } },
+          { kind: 'rare_stat', stat: 'block', value: 0.05 },
+        ]),
+        fork('berserk', '断喝', '万人·震桥', [
+          { kind: 'skill_mult', delta: 0.18 },
+          { kind: 'status_boost', duration: 1 },
+        ]),
       ],
     },
   ]),
   zhaoyun: track([
-    { label: '银枪', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '常山会心', effects: [{ kind: 'rating', stat: 'critRating', value: 8 }] },
+    // 中间星只打磨已有动词：破盾 / 流血 / 穿透；肉身数值可附带
+    {
+      label: '银枪',
+      effects: [
+        { kind: 'stat_pct', mainPct: 0.03 },
+        { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.32 } },
+      ],
+    },
+    {
+      label: '常山',
+      effects: [
+        { kind: 'status_boost', duration: 1 },
+        { kind: 'rating', stat: 'penRating', value: 8 },
+      ],
+    },
     {
       label: '七进七出',
       effects: [],
       branches: [
-        {
-          id: 'rush',
-          label: '七进七出·突阵',
-          effects: [
-            { kind: 'enable_follow_up', chance: 0.34, multiplier: 0.68 },
-            { kind: 'status_unlock', status: { statusId: 'mark_prey', duration: 2, value: 1.15, chance: 0.7 } },
-          ],
-        },
-        {
-          id: 'crit',
-          label: '七进七出·会心',
-          effects: [
-            { kind: 'rating', stat: 'critRating', value: 12 },
-            { kind: 'rating', stat: 'critDmgRating', value: 8 },
-          ],
-        },
+        fork('rush', '突阵', '七进·突阵', [
+          { kind: 'enable_follow_up', chance: 0.34, multiplier: 0.68 },
+        ]),
+        fork('crit', '猎印', '七进·猎印', [
+          {
+            kind: 'status_unlock',
+            status: { statusId: 'mark_prey', duration: 2, value: 1.15, chance: 0.7 },
+          },
+        ]),
       ],
     },
-    { label: '血染长坂', effects: [{ kind: 'status_boost', layers: 1, duration: 1 }] },
     {
-      label: '龙胆连刺',
-      effects: [{ kind: 'enable_follow_up', chance: 0.42, multiplier: 0.8 }],
+      label: '血染长坂',
+      effects: [
+        { kind: 'status_boost', layers: 1, duration: 1 },
+        { kind: 'skill_mult', delta: 0.06 },
+      ],
+    },
+    {
+      label: '龙胆',
+      effects: [
+        { kind: 'skill_mult', delta: 0.12 },
+        { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.4 } },
+      ],
     },
     {
       label: '单骑救主',
       effects: [{ kind: 'rating', stat: 'critDmgRating', value: 10 }],
       branches: [
-        {
-          id: 'hunt',
-          label: '单骑·猎杀',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.3, multiplier: 1.5 } },
-            { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.55 } },
-          ],
-        },
-        {
-          id: 'mark',
-          label: '单骑·标靶',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'mark_prey', duration: 3, value: 1.22 } },
-            { kind: 'enable_follow_up', chance: 0.15, multiplier: 0.5 },
-          ],
-        },
+        fork('hunt', '突阵', '单骑·贯阵', [
+          { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.3, multiplier: 1.5 } },
+          { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.55 } },
+        ]),
+        fork('mark', '猎印', '单骑·标靶', [
+          { kind: 'status_unlock', status: { statusId: 'mark_prey', duration: 3, value: 1.22 } },
+        ]),
       ],
     },
   ]),
   wukong: track([
-    { label: '金箍如意', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '金箍', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '筋斗云', effects: [{ kind: 'rare_stat', stat: 'dodge', value: 0.04 }] },
     {
       label: '大闹天宫',
       stack: true,
       effects: [],
       branches: [
-        {
-          id: 'evade',
-          label: '大闹·腾云',
-          effects: [
-            { kind: 'rare_stat', stat: 'dodge', value: 0.06 },
-            { kind: 'status_boost', valueMult: 0.92, duration: 1 },
-          ],
-        },
-        {
-          id: 'shred',
-          label: '大闹·碎甲',
-          effects: [
-            { kind: 'status_boost', valueMult: 0.88 },
-            { kind: 'skill_mult', delta: 0.12 },
-          ],
-        },
+        fork('evade', '腾云', '大闹·腾云', [
+          { kind: 'rare_stat', stat: 'dodge', value: 0.06 },
+        ]),
+        fork('shred', '闹天', '大闹·定海', [
+          { kind: 'status_boost', duration: 1 },
+          { kind: 'skill_mult', delta: 0.12 },
+        ]),
       ],
     },
     { label: '棒扫千军', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
-    {
-      label: '七十二变',
-      effects: [{ kind: 'enable_follow_up', chance: 0.32, multiplier: 0.55 }],
-    },
+    { label: '七十二变', effects: [{ kind: 'enable_follow_up', chance: 0.32, multiplier: 0.55 }] },
     {
       label: '齐天大圣',
       effects: [{ kind: 'rating', stat: 'penRating', value: 10 }],
       branches: [
-        {
-          id: 'rampage',
-          label: '齐天·横扫',
-          effects: [
-            { kind: 'skill_mult', delta: 0.2 },
-            { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.35 } },
-          ],
-        },
-        {
-          id: 'immortal',
-          label: '齐天·不灭',
-          effects: [
-            { kind: 'rare_stat', stat: 'dodge', value: 0.06 },
-            { kind: 'rare_stat', stat: 'lifesteal', value: 0.06 },
-          ],
-        },
+        fork('rampage', '腾云', '齐天·云纵', [
+          { kind: 'rare_stat', stat: 'dodge', value: 0.06 },
+          { kind: 'rare_stat', stat: 'lifesteal', value: 0.06 },
+        ]),
+        fork('immortal', '闹天', '齐天·横扫', [
+          { kind: 'skill_mult', delta: 0.2 },
+          { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.35 } },
+        ]),
       ],
     },
   ]),
@@ -369,107 +450,61 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
     { label: '五禽戏', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '麻沸散', effects: [{ kind: 'skill_mult', delta: 0.12 }] },
     {
-      label: '济元岔路',
+      label: '济元',
       effects: [{ kind: 'qi_cost', delta: -5 }],
       branches: [
-        {
-          id: 'qi',
-          label: '济元回春',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 18 } },
-          ],
-        },
-        {
-          id: 'heal',
-          label: '济世深愈',
-          effects: [
-            { kind: 'skill_mult', delta: 0.18 },
-            { kind: 'effect_unlock', effect: { kind: 'heal_low_hp', value: 0.4, multiplier: 1.4 } },
-          ],
-        },
+        fork('qi', '回春', '济元·回春', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 18 } },
+        ]),
+        fork('heal', '刮骨', '济元·深愈', [{ kind: 'skill_mult', delta: 0.18 }]),
       ],
     },
-    { label: '青囊精通', effects: [{ kind: 'rating', stat: 'masteryRating', value: 12 }] },
+    { label: '青囊', effects: [{ kind: 'rating', stat: 'masteryRating', value: 12 }] },
+    { label: '济世', effects: [{ kind: 'skill_mult', delta: 0.1 }] },
     {
-      label: '刮骨疗毒',
-      effects: [
-        { kind: 'skill_mult', delta: 0.15 },
-        { kind: 'effect_unlock', effect: { kind: 'heal_low_hp', value: 0.35, multiplier: 1.55 } },
-      ],
-    },
-    {
-      label: '悬壶济世',
+      label: '悬壶',
       effects: [{ kind: 'qi_cost', delta: -5 }],
       branches: [
-        {
-          id: 'guardian',
-          label: '悬壶·结界',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.4 } },
-            { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 20 } },
-          ],
-        },
-        {
-          id: 'purify',
-          label: '悬壶·净世',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'cleanse' } },
-            { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 28 } },
-          ],
-        },
+        fork('guardian', '回春', '悬壶·灌气', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 28 } },
+        ]),
+        fork('purify', '刮骨', '悬壶·还魂', [
+          { kind: 'effect_unlock', effect: { kind: 'revive_ally', value: 0.35 } },
+        ]),
       ],
     },
   ]),
   houyi: track([
-    { label: '扶桑神射', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '扶桑', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '穿杨', effects: [{ kind: 'rating', stat: 'critDmgRating', value: 10 }] },
     {
-      label: '落日岔路',
+      label: '落日',
       effects: [],
       branches: [
-        {
-          id: 'bleed',
-          label: '落日血痕',
-          effects: [
-            { kind: 'status_boost', layers: 1, duration: 1 },
-            { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.55 },
-          ],
-        },
-        {
-          id: 'snipe',
-          label: '落日穿心',
-          effects: [
-            { kind: 'rating', stat: 'critRating', value: 12 },
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.3, multiplier: 1.3 } },
-          ],
-        },
+        fork('bleed', '连射', '落日·连矢', [
+          { kind: 'status_boost', layers: 1, duration: 1 },
+          { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.55 },
+        ]),
+        fork('snipe', '穿心', '落日·穿心', [
+          { kind: 'rating', stat: 'critRating', value: 12 },
+          { kind: 'skill_mult', delta: 0.12 },
+        ]),
       ],
     },
-    { label: '射日加深', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '射日', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '追乌', effects: [{ kind: 'qi_cost', delta: -5 }] },
     {
-      label: '连矢追乌',
-      effects: [{ kind: 'enable_follow_up', chance: 0.36, multiplier: 0.65 }],
-    },
-    {
-      label: '九日尽灭',
-      effects: [{ kind: 'qi_cost', delta: -5 }],
+      label: '九日尽',
+      effects: [],
       branches: [
-        {
-          id: 'execute',
-          label: '九日·猎杀',
-          effects: [
-            { kind: 'rating', stat: 'penRating', value: 12 },
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.28, multiplier: 1.55 } },
-          ],
-        },
-        {
-          id: 'volley',
-          label: '九日·连射',
-          effects: [
-            { kind: 'enable_follow_up', chance: 0.2, multiplier: 0.6 },
-            { kind: 'rating', stat: 'critDmgRating', value: 12 },
-          ],
-        },
+        fork('volley', '连射', '九日·连射', [
+          { kind: 'enable_follow_up', chance: 0.2, multiplier: 0.6 },
+          { kind: 'rating', stat: 'critDmgRating', value: 12 },
+        ]),
+        fork('execute', '穿心', '九日·贯日', [
+          { kind: 'rating', stat: 'penRating', value: 12 },
+          { kind: 'skill_mult', delta: 0.18 },
+        ]),
       ],
     },
   ]),
@@ -523,53 +558,33 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
   ]),
   zhuge: track([
     { label: '星算', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '八阵精通', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
+    { label: '八阵', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
     {
-      label: '东风岔路',
+      label: '东风',
       effects: [],
       branches: [
-        {
-          id: 'deep_shred',
-          label: '东风·深破',
-          effects: [
-            { kind: 'status_boost', valueMult: 0.88, duration: 1 },
-          ],
-        },
-        {
-          id: 'lockdown',
-          label: '东风·封锁',
-          effects: [
-            { kind: 'status_boost', duration: 2 },
-            { kind: 'rating', stat: 'masteryRating', value: 8 },
-          ],
-        },
+        fork('deep_shred', '借风', '东风·借风', [
+          { kind: 'status_boost', valueMult: 0.88, duration: 1 },
+        ]),
+        fork('lockdown', '运筹', '东风·运筹', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 80, chance: 0.25 } },
+        ]),
       ],
     },
     { label: '省策', effects: [{ kind: 'qi_cost', delta: -8 }] },
+    { label: '锦囊', effects: [{ kind: 'enable_follow_up', chance: 0.25, multiplier: 0.4 }] },
     {
-      label: '锦囊再计',
-      effects: [{ kind: 'enable_follow_up', chance: 0.25, multiplier: 0.4 }],
-    },
-    {
-      label: '卧龙出山',
+      label: '卧龙',
       effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }],
       branches: [
-        {
-          id: 'control',
-          label: '卧龙·全控',
-          effects: [
-            { kind: 'status_boost', duration: 1, valueMult: 0.9 },
-            { kind: 'status_unlock', status: { statusId: 'heal_block', duration: 2, chance: 0.5 } },
-          ],
-        },
-        {
-          id: 'support',
-          label: '卧龙·运筹',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 15 } },
-            { kind: 'qi_cost', delta: -5 },
-          ],
-        },
+        fork('control', '借风', '卧龙·空城', [
+          { kind: 'status_boost', duration: 1, valueMult: 0.9 },
+          { kind: 'status_unlock', status: { statusId: 'heal_block', duration: 2, chance: 0.5 } },
+        ]),
+        fork('support', '运筹', '卧龙·灌气', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 96, chance: 0.25 } },
+          { kind: 'qi_cost', delta: -5 },
+        ]),
       ],
     },
   ]),
@@ -577,25 +592,17 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
     { label: '白骨森森', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '惑心', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
     {
-      label: '三打岔路',
+      label: '三打',
       effects: [],
       branches: [
-        {
-          id: 'havoc',
-          label: '三打·离魂',
-          effects: [
-            { kind: 'status_boost', duration: 1 },
-            { kind: 'rating', stat: 'masteryRating', value: 6 },
-          ],
-        },
-        {
-          id: 'corrode',
-          label: '三打·蚀骨',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'bleed', duration: 2, layers: 1, chance: 0.6 } },
-            { kind: 'skill_mult', delta: 0.1 },
-          ],
-        },
+        fork('havoc', '离魂', '三打·离魂', [
+          { kind: 'status_boost', duration: 1 },
+          { kind: 'rating', stat: 'masteryRating', value: 6 },
+        ]),
+        fork('corrode', '蚀骨', '三打·蚀骨', [
+          { kind: 'status_unlock', status: { statusId: 'bleed', duration: 2, layers: 1, chance: 0.6 } },
+          { kind: 'skill_mult', delta: 0.1 },
+        ]),
       ],
     },
     { label: '群魇', effects: [{ kind: 'skill_mult', delta: 0.12 }] },
@@ -604,22 +611,14 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
       label: '白骨夫人',
       effects: [{ kind: 'skill_mult', delta: 0.1 }],
       branches: [
-        {
-          id: 'nightmare',
-          label: '夫人·永魇',
-          effects: [
-            { kind: 'status_boost', duration: 2 },
-            { kind: 'rating', stat: 'masteryRating', value: 12 },
-          ],
-        },
-        {
-          id: 'poison',
-          label: '夫人·噬魂',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'bleed', duration: 3, layers: 2, chance: 0.55 } },
-            { kind: 'rating', stat: 'penRating', value: 8 },
-          ],
-        },
+        fork('nightmare', '离魂', '夫人·永魇', [
+          { kind: 'status_boost', duration: 2 },
+          { kind: 'rating', stat: 'masteryRating', value: 12 },
+        ]),
+        fork('poison', '蚀骨', '夫人·噬魂', [
+          { kind: 'status_unlock', status: { statusId: 'bleed', duration: 3, layers: 2, chance: 0.55 } },
+          { kind: 'rating', stat: 'penRating', value: 8 },
+        ]),
       ],
     },
   ]),
@@ -723,307 +722,225 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
     },
   ]),
   guanyu: track([
-    { label: '青龙偃月', effects: [{ kind: 'stat_pct', mainPct: 0.035 }] },
+    { label: '青龙', effects: [{ kind: 'stat_pct', mainPct: 0.035 }] },
     { label: '义绝', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
     {
       label: '过五关',
       effects: [],
       branches: [
-        {
-          id: 'combo',
-          label: '过关·连斩',
-          effects: [
-            { kind: 'status_boost', layers: 1, duration: 1 },
-            { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.55 },
-          ],
-        },
-        {
-          id: 'shred',
-          label: '过关·破甲',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'shred', duration: 2, value: 0.85, chance: 0.75 } },
-            { kind: 'skill_mult', delta: 0.1 },
-          ],
-        },
+        fork('combo', '连斩', '过关·连斩', [
+          { kind: 'status_boost', layers: 1, duration: 1 },
+          { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.55 },
+        ]),
+        fork('shred', '义斩', '过关·温酒', [
+          { kind: 'effect_unlock', effect: { kind: 'first_cast', multiplier: 1.45 } },
+          { kind: 'skill_mult', delta: 0.1 },
+        ]),
       ],
     },
-    { label: '武圣锋', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '武圣', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '汉寿', effects: [{ kind: 'qi_cost', delta: -5 }] },
     {
-      label: '拖刀计',
-      effects: [{ kind: 'enable_follow_up', chance: 0.36, multiplier: 0.7 }],
-    },
-    {
-      label: '温酒斩华雄',
+      label: '斩华雄',
       effects: [{ kind: 'skill_mult', delta: 0.12 }],
       branches: [
-        {
-          id: 'brute',
-          label: '华雄·暴力',
-          effects: [
-            { kind: 'rating', stat: 'critDmgRating', value: 12 },
-            { kind: 'rating', stat: 'penRating', value: 8 },
-          ],
-        },
-        {
-          id: 'breaker',
-          label: '华雄·破阵',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'shred', duration: 2, value: 0.85, chance: 0.7 } },
-            { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.4 } },
-          ],
-        },
+        fork('brute', '连斩', '华雄·拖刀', [
+          { kind: 'enable_follow_up', chance: 0.18, multiplier: 0.6 },
+          { kind: 'rating', stat: 'critDmgRating', value: 12 },
+        ]),
+        fork('breaker', '义斩', '华雄·斩将', [
+          { kind: 'effect_unlock', effect: { kind: 'refund_qi_on_kill', value: 0.4 } },
+          { kind: 'effect_unlock', effect: { kind: 'vs_rank', multiplier: 1.22 } },
+        ]),
       ],
     },
   ]),
   lvbu: track([
-    { label: '方天画戟', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
-    { label: '赤兔暴戾', effects: [{ kind: 'rating', stat: 'critRating', value: 10 }] },
     {
-      label: '辕门岔路',
-      effects: [],
-      branches: [
-        {
-          id: 'combo',
-          label: '辕门·连戟',
-          effects: [{ kind: 'enable_follow_up', chance: 0.3, multiplier: 0.7 }],
-        },
-        {
-          id: 'nuke',
-          label: '辕门·重斩',
-          effects: [
-            { kind: 'skill_mult', delta: 0.25 },
-            { kind: 'rating', stat: 'critDmgRating', value: 8 },
-          ],
-        },
+      label: '方天',
+      effects: [
+        { kind: 'stat_pct', mainPct: 0.04 },
+        { kind: 'effect_unlock', effect: { kind: 'first_cast', multiplier: 1.42 } },
       ],
     },
-    { label: '弑神', effects: [{ kind: 'skill_mult', delta: 0.2 }] },
     {
-      label: '无双再战',
-      effects: [{ kind: 'enable_follow_up', chance: 0.4, multiplier: 0.85 }],
+      label: '赤兔',
+      effects: [
+        { kind: 'effect_unlock', effect: { kind: 'self_low_hp', value: 0.4, multiplier: 1.38 } },
+        { kind: 'rating', stat: 'critRating', value: 10 },
+      ],
+    },
+    {
+      label: '辕门',
+      effects: [],
+      branches: [
+        fork('combo', '连戟', '辕门·连戟', [
+          { kind: 'enable_follow_up', chance: 0.3, multiplier: 0.7 },
+        ]),
+        fork('nuke', '重斩', '辕门·重斩', [
+          { kind: 'skill_mult', delta: 0.25 },
+          { kind: 'rating', stat: 'critDmgRating', value: 8 },
+        ]),
+      ],
+    },
+    {
+      label: '弑神',
+      effects: [
+        { kind: 'skill_mult', delta: 0.2 },
+        { kind: 'effect_unlock', effect: { kind: 'first_cast', multiplier: 1.5 } },
+      ],
+    },
+    {
+      label: '无双',
+      effects: [
+        { kind: 'qi_cost', delta: -5 },
+        { kind: 'effect_unlock', effect: { kind: 'self_low_hp', value: 0.4, multiplier: 1.45 } },
+      ],
     },
     {
       label: '人中吕布',
-      effects: [{ kind: 'qi_cost', delta: -5 }],
+      effects: [],
       branches: [
-        {
-          id: 'slayer',
-          label: '吕布·猎神',
-          effects: [
-            { kind: 'rating', stat: 'penRating', value: 14 },
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.25, multiplier: 1.4 } },
-          ],
-        },
-        {
-          id: 'frenzy',
-          label: '吕布·狂战',
-          effects: [
-            { kind: 'enable_follow_up', chance: 0.2, multiplier: 0.6 },
-            { kind: 'rating', stat: 'critRating', value: 10 },
-            { kind: 'rating', stat: 'critDmgRating', value: 10 },
-          ],
-        },
+        fork('frenzy', '连戟', '吕布·狂战', [
+          { kind: 'enable_follow_up', chance: 0.2, multiplier: 0.6 },
+          { kind: 'rating', stat: 'critRating', value: 10 },
+        ]),
+        fork('slayer', '重斩', '吕布·猎神', [
+          { kind: 'rating', stat: 'penRating', value: 14 },
+          { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.25, multiplier: 1.4 } },
+        ]),
       ],
     },
   ]),
   dianwei: track([
-    { label: '恶来之躯', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
+    { label: '恶来', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
     { label: '死守', effects: [{ kind: 'rare_stat', stat: 'block', value: 0.05 }] },
     {
-      label: '护主岔路',
+      label: '护主',
       effects: [],
       branches: [
-        {
-          id: 'shield',
-          label: '护主·厚盾',
-          effects: [{ kind: 'skill_mult', delta: 0.22 }],
-        },
-        {
-          id: 'counter',
-          label: '护主·反击',
-          effects: [
-            { kind: 'skill_mult', delta: 0.08 },
-            { kind: 'enable_follow_up', chance: 0.25, multiplier: 0.5 },
-          ],
-        },
+        fork('shield', '护主', '护主·厚盾', [
+          { kind: 'rare_stat', stat: 'block', value: 0.04 },
+          { kind: 'skill_mult', delta: 0.12 },
+        ]),
+        fork('counter', '死战', '护主·死战', [
+          { kind: 'enable_follow_up', chance: 0.25, multiplier: 0.5 },
+          { kind: 'skill_mult', delta: 0.08 },
+        ]),
       ],
     },
-    { label: '双戟厚血', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
+    { label: '双戟', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
     { label: '省力', effects: [{ kind: 'qi_cost', delta: -8 }] },
     {
       label: '古之恶来',
       effects: [{ kind: 'stat_pct', mainPct: 0.05 }],
       branches: [
-        {
-          id: 'team',
-          label: '恶来·团盾',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.4 } },
-            { kind: 'rare_stat', stat: 'block', value: 0.04 },
-          ],
-        },
-        {
-          id: 'last_stand',
-          label: '恶来·死战',
-          effects: [
-            { kind: 'rare_stat', stat: 'lifesteal', value: 0.06 },
-            { kind: 'rating', stat: 'tenacityRating', value: 12 },
-          ],
-        },
+        fork('team', '护主', '恶来·覆甲', [
+          { kind: 'effect_unlock', effect: { kind: 'team_shield', multiplier: 0.4 } },
+          { kind: 'rare_stat', stat: 'block', value: 0.04 },
+        ]),
+        fork('last_stand', '死战', '恶来·殉主', [
+          { kind: 'rare_stat', stat: 'lifesteal', value: 0.06 },
+          { kind: 'nirvana', hpRatio: 0.28 },
+        ]),
       ],
     },
   ]),
   nezha: track([
-    { label: '莲花化身', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '莲花', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '风火轮', effects: [{ kind: 'rating', stat: 'fortuneRating', value: 10 }] },
     {
       label: '三头六臂',
       effects: [],
       branches: [
-        {
-          id: 'speed',
-          label: '六臂·速攻',
-          effects: [
-            { kind: 'enable_follow_up', chance: 0.35, multiplier: 0.55 },
-          ],
-        },
-        {
-          id: 'shred',
-          label: '六臂·破甲',
-          effects: [
-            { kind: 'status_boost', valueMult: 0.88 },
-            { kind: 'skill_mult', delta: 0.12 },
-          ],
-        },
+        fork('speed', '风火', '六臂·风火', [
+          { kind: 'enable_follow_up', chance: 0.35, multiplier: 0.55 },
+        ]),
+        fork('shred', '火尖', '六臂·火尖', [
+          { kind: 'status_boost', layers: 1 },
+          { kind: 'skill_mult', delta: 0.12 },
+        ]),
       ],
     },
-    { label: '火尖加深', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '混天绫', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '乾坤圈', effects: [{ kind: 'qi_cost', delta: -5 }] },
     {
-      label: '六臂连打',
-      effects: [{ kind: 'enable_follow_up', chance: 0.45, multiplier: 0.7 }],
-    },
-    {
-      label: '哪吒闹海',
+      label: '闹海',
       effects: [{ kind: 'skill_mult', delta: 0.12 }],
       branches: [
-        {
-          id: 'storm',
-          label: '闹海·风暴',
-          effects: [
-            { kind: 'rare_stat', stat: 'dodge', value: 0.05 },
-            { kind: 'status_unlock', status: { statusId: 'bleed', duration: 2, layers: 1, chance: 0.55 } },
-          ],
-        },
-        {
-          id: 'flame',
-          label: '闹海·焚天',
-          effects: [
-            { kind: 'rating', stat: 'penRating', value: 12 },
-            { kind: 'rating', stat: 'fortuneRating', value: 8 },
-          ],
-        },
+        fork('storm', '风火', '闹海·连枪', [
+          { kind: 'enable_follow_up', chance: 0.18, multiplier: 0.55 },
+          { kind: 'rare_stat', stat: 'dodge', value: 0.05 },
+        ]),
+        fork('flame', '火尖', '闹海·焚天', [
+          { kind: 'rating', stat: 'penRating', value: 12 },
+          { kind: 'status_boost', layers: 1 },
+        ]),
       ],
     },
   ]),
   daji: track([
     { label: '狐媚', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '朝歌惑阵', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
+    { label: '朝歌', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
     {
-      label: '魅惑岔路',
+      label: '魅惑',
       effects: [],
       branches: [
-        {
-          id: 'prolong',
-          label: '魅惑·长控',
-          effects: [
-            { kind: 'status_boost', duration: 1 },
-            { kind: 'rating', stat: 'masteryRating', value: 6 },
-          ],
-        },
-        {
-          id: 'spread',
-          label: '魅惑·群扰',
-          effects: [
-            { kind: 'skill_mult', delta: 0.15 },
-            { kind: 'status_unlock', status: { statusId: 'havoc', duration: 1, chance: 0.4 } },
-          ],
-        },
+        fork('prolong', '长控', '魅惑·长乱', [
+          { kind: 'status_boost', duration: 1 },
+          { kind: 'rating', stat: 'masteryRating', value: 6 },
+        ]),
+        fork('spread', '狐火', '魅惑·狐火', [{ kind: 'skill_mult', delta: 0.15 }]),
       ],
     },
     { label: '群惑', effects: [{ kind: 'skill_mult', delta: 0.1 }] },
     { label: '低语', effects: [{ kind: 'qi_cost', delta: -8 }] },
     {
-      label: '九尾天狐',
+      label: '九尾',
       effects: [{ kind: 'rating', stat: 'masteryRating', value: 12 }],
       branches: [
-        {
-          id: 'empress',
-          label: '天狐·妖后',
-          effects: [
-            { kind: 'status_boost', duration: 1 },
-            { kind: 'status_unlock', status: { statusId: 'berserk', duration: 1, chance: 0.45 } },
-          ],
-        },
-        {
-          id: 'fox_fire',
-          label: '天狐·业火',
-          effects: [
-            { kind: 'skill_mult', delta: 0.2 },
-            { kind: 'rating', stat: 'penRating', value: 10 },
-          ],
-        },
+        fork('empress', '长控', '天狐·妖后', [
+          { kind: 'status_boost', duration: 1 },
+          { kind: 'status_unlock', status: { statusId: 'berserk', duration: 1, chance: 0.45 } },
+        ]),
+        fork('fox_fire', '狐火', '天狐·业火', [
+          { kind: 'skill_mult', delta: 0.2 },
+          { kind: 'pattern', pattern: 'all' },
+        ]),
       ],
     },
   ]),
   yangjian: track([
     { label: '天眼', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
-    { label: '梅山会神', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
+    { label: '梅山', effects: [{ kind: 'rating', stat: 'penRating', value: 8 }] },
     {
-      label: '天眼岔路',
+      label: '显圣',
       effects: [],
       branches: [
-        {
-          id: 'shred',
-          label: '天眼·深破',
-          effects: [
-            { kind: 'status_boost', valueMult: 0.88, duration: 1 },
-          ],
-        },
-        {
-          id: 'hunt',
-          label: '天眼·猎杀',
-          effects: [
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.25, multiplier: 1.25 } },
-            { kind: 'rating', stat: 'critRating', value: 8 },
-          ],
-        },
+        fork('hunt', '猎杀', '天眼·猎杀', [
+          { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.25, multiplier: 1.25 } },
+          { kind: 'rating', stat: 'critRating', value: 8 },
+        ]),
+        fork('shred', '破妄', '天眼·破妄', [
+          { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.28 } },
+          { kind: 'skill_mult', delta: 0.1 },
+        ]),
       ],
     },
-    { label: '三尖锋', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '三尖', effects: [{ kind: 'skill_mult', delta: 0.15 }] },
+    { label: '哮天', effects: [{ kind: 'enable_follow_up', chance: 0.32, multiplier: 0.6 }] },
     {
-      label: '哮天连刺',
-      effects: [{ kind: 'enable_follow_up', chance: 0.32, multiplier: 0.6 }],
-    },
-    {
-      label: '二郎真君',
+      label: '真君',
       effects: [{ kind: 'qi_cost', delta: -5 }],
       branches: [
-        {
-          id: 'assassin',
-          label: '真君·杀伐',
-          effects: [
-            { kind: 'rating', stat: 'critRating', value: 10 },
-            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.32, multiplier: 1.35 } },
-          ],
-        },
-        {
-          id: 'erosion',
-          label: '真君·蚀甲',
-          effects: [
-            { kind: 'status_unlock', status: { statusId: 'shred', duration: 2, value: 0.85, chance: 0.65 } },
-            { kind: 'status_unlock', status: { statusId: 'bleed', duration: 2, layers: 1, chance: 0.5 } },
-          ],
-        },
+        fork('assassin', '猎杀', '真君·杀伐', [
+          { kind: 'rating', stat: 'critRating', value: 10 },
+          { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.32, multiplier: 1.35 } },
+        ]),
+        fork('erosion', '破妄', '真君·照妖', [
+          { kind: 'effect_unlock', effect: { kind: 'purge' } },
+          { kind: 'effect_unlock', effect: { kind: 'vs_shield', multiplier: 1.3 } },
+        ]),
       ],
     },
   ]),
@@ -1133,53 +1050,205 @@ export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNode
     { label: '浣纱', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
     { label: '沉鱼', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
     {
-      label: '长眠岔路',
+      label: '吴越',
       effects: [],
       branches: [
+        fork('deep_sleep', '长眠', '吴越·长眠', [
+          { kind: 'status_boost', duration: 1 },
+          { kind: 'rating', stat: 'masteryRating', value: 6 },
+        ]),
+        fork('confuse', '销魂', '吴越·销魂', [
+          { kind: 'effect_unlock', effect: { kind: 'steal_qi', value: 12 } },
+          { kind: 'skill_mult', delta: 0.1 },
+        ]),
+      ],
+    },
+    { label: '省息', effects: [{ kind: 'qi_cost', delta: -8 }] },
+    { label: '捧心', effects: [{ kind: 'skill_mult', delta: 0.1 }] },
+    {
+      label: '西子',
+      effects: [],
+      branches: [
+        fork('full_cc', '长眠', '捧心·深眠', [
+          { kind: 'status_boost', duration: 2 },
+          { kind: 'rating', stat: 'masteryRating', value: 12 },
+        ]),
+        fork('spirit', '销魂', '捧心·抽息', [
+          { kind: 'status_unlock', status: { statusId: 'qi_drought', duration: 2 } },
+          { kind: 'effect_unlock', effect: { kind: 'steal_qi', value: 16 } },
+        ]),
+      ],
+    },
+  ]),
+  beowulf: track([
+    { label: '守夜厅', effects: [{ kind: 'stat_pct', mainPct: 0.04 }] },
+    { label: '熊皮', effects: [{ kind: 'rare_stat', stat: 'block', value: 0.04 }] },
+    {
+      label: '撕臂岔路',
+      effects: [{ kind: 'status_boost', duration: 1 }],
+      branches: [
         {
-          id: 'deep_sleep',
-          label: '长眠·深沉',
+          id: 'rip',
+          label: '撕臂·断肢',
           effects: [
-            { kind: 'status_boost', duration: 1 },
-            { kind: 'rating', stat: 'masteryRating', value: 6 },
+            { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.3, multiplier: 1.35 } },
           ],
         },
         {
-          id: 'confuse',
-          label: '长眠·迷乱',
+          id: 'lock',
+          label: '撕臂·死掐',
           effects: [
-            { kind: 'status_unlock', status: { statusId: 'havoc', duration: 1, chance: 0.45 } },
-            { kind: 'skill_mult', delta: 0.1 },
+            { kind: 'skill_mult', delta: 0.12 },
+            { kind: 'rare_stat', stat: 'thorns', value: 0.08 },
           ],
         },
       ],
     },
-    { label: '吴越省息', effects: [{ kind: 'qi_cost', delta: -8 }] },
+    { label: '海族克星', effects: [{ kind: 'skill_mult', delta: 0.14 }] },
+    { label: '龙焰灼身', effects: [{ kind: 'rating', stat: 'tenacityRating', value: 10 }] },
     {
-      label: '连惑',
-      effects: [{ kind: 'enable_follow_up', chance: 0.22, multiplier: 0.4 }],
-    },
-    {
-      label: '西子捧心',
-      effects: [{ kind: 'skill_mult', delta: 0.1 }],
+      label: '屠龙岔路',
+      effects: [{ kind: 'qi_cost', delta: -5 }],
       branches: [
         {
-          id: 'full_cc',
-          label: '捧心·全控',
+          id: 'ember',
+          label: '屠龙·余烬',
           effects: [
-            { kind: 'status_boost', duration: 2 },
-            { kind: 'rating', stat: 'masteryRating', value: 12 },
+            { kind: 'effect_unlock', effect: { kind: 'self_low_hp', value: 0.4, multiplier: 1.3 } },
+            { kind: 'rating', stat: 'tenacityRating', value: 8 },
           ],
         },
         {
-          id: 'spirit',
-          label: '捧心·蚀魂',
+          id: 'martyr',
+          label: '屠龙·殉国',
           effects: [
-            { kind: 'status_unlock', status: { statusId: 'havoc', duration: 1, chance: 0.5 } },
-            { kind: 'rating', stat: 'penRating', value: 10 },
+            { kind: 'nirvana', hpRatio: 0.28 },
+            { kind: 'rare_stat', stat: 'thorns', value: 0.1 },
           ],
         },
       ],
     },
   ]),
+  robin: track([
+    { label: '舍伍德', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '绿林眼', effects: [{ kind: 'rating', stat: 'critRating', value: 8 }] },
+    {
+      label: '劫富岔路',
+      effects: [],
+      branches: [
+        {
+          id: 'mark',
+          label: '劫富·标的',
+          effects: [
+            { kind: 'status_boost', valueMult: 1.08, duration: 1 },
+            { kind: 'enable_follow_up', chance: 0.28, multiplier: 0.55 },
+          ],
+        },
+        {
+          id: 'pierce',
+          label: '劫富·穿杨',
+          effects: [
+            { kind: 'skill_mult', delta: 0.16 },
+            { kind: 'rating', stat: 'penRating', value: 10 },
+          ],
+        },
+      ],
+    },
+    { label: '济贫', effects: [{ kind: 'rare_stat', stat: 'lifesteal', value: 0.04 }] },
+    {
+      label: '连射',
+      effects: [{ kind: 'enable_follow_up', chance: 0.32, multiplier: 0.6 }],
+    },
+    {
+      label: '侠盗岔路',
+      effects: [{ kind: 'qi_cost', delta: -5 }],
+      branches: [
+        {
+          id: 'ambush',
+          label: '侠盗·伏击',
+          effects: [
+            { kind: 'effect_unlock', effect: { kind: 'surround', multiplier: 1.2 } },
+            { kind: 'rating', stat: 'critDmgRating', value: 10 },
+          ],
+        },
+        {
+          id: 'ghost',
+          label: '侠盗·飘忽',
+          effects: [
+            { kind: 'rare_stat', stat: 'dodge', value: 0.05 },
+            { kind: 'effect_unlock', effect: { kind: 'self_spd_up' } },
+          ],
+        },
+      ],
+    },
+  ]),
+  change: track([
+    { label: '桂下', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '清辉', effects: [{ kind: 'rating', stat: 'masteryRating', value: 10 }] },
+    {
+      label: '奔月',
+      effects: [{ kind: 'qi_cost', delta: -5 }],
+      branches: [
+        fork('afterglow', '济月', '奔月·余晖', [
+          { kind: 'effect_unlock', effect: { kind: 'heal_low_hp', value: 0.4, multiplier: 1.28 } },
+        ]),
+        fork('dew', '月露', '奔月·月露', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 12 } },
+        ]),
+      ],
+    },
+    { label: '广寒', effects: [{ kind: 'skill_mult', delta: 0.12 }] },
+    { label: '霜华', effects: [{ kind: 'rating', stat: 'fortuneRating', value: 8 }] },
+    {
+      label: '不死药',
+      effects: [{ kind: 'qi_cost', delta: -5 }],
+      branches: [
+        fork('elixir', '济月', '不死·还魂', [
+          { kind: 'effect_unlock', effect: { kind: 'revive_ally', value: 0.32 } },
+        ]),
+        fork('exile', '月露', '不死·谪仙', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 20 } },
+        ]),
+      ],
+    },
+  ]),
+  sunbin: track([
+    { label: '膑法', effects: [{ kind: 'stat_pct', mainPct: 0.03 }] },
+    { label: '减灶', effects: [{ kind: 'status_boost', valueMult: 0.92, duration: 1 }] },
+    {
+      label: '围魏',
+      effects: [],
+      branches: [
+        fork('encircle', '合围', '围魏·合围', [
+          { kind: 'skill_mult', delta: 0.14 },
+          { kind: 'effect_unlock', effect: { kind: 'surround', multiplier: 1.28 } },
+        ]),
+        fork('rescue', '救赵', '围魏·救赵', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 14 } },
+          { kind: 'qi_cost', delta: -5 },
+        ]),
+      ],
+    },
+    { label: '诱敌', effects: [{ kind: 'qi_cost', delta: -8 }] },
+    { label: '马陵伏', effects: [{ kind: 'effect_unlock', effect: { kind: 'vs_cc', multiplier: 1.22 } }] },
+    {
+      label: '马陵',
+      effects: [{ kind: 'rating', stat: 'masteryRating', value: 8 }],
+      branches: [
+        fork('pang', '合围', '马陵·绝庞', [
+          { kind: 'effect_unlock', effect: { kind: 'execute', value: 0.28, multiplier: 1.4 } },
+          { kind: 'rating', stat: 'penRating', value: 8 },
+        ]),
+        fork('art', '救赵', '马陵·兵书', [
+          { kind: 'effect_unlock', effect: { kind: 'ally_grant_qi', value: 16 } },
+          { kind: 'status_boost', duration: 1, valueMult: 0.9 },
+        ]),
+      ],
+    },
+  ]),
+};
+
+export const DEEP_STAR_OVERRIDES: Record<string, Partial<Record<number, StarNodeDef>>> = {
+  ...CORE_DEEP_STAR_OVERRIDES,
+  ...EXPAND_DEEP_STAR_OVERRIDES,
 };

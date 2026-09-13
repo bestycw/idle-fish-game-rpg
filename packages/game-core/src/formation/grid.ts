@@ -20,6 +20,21 @@ export function rowRank(slot: GridSlot): number {
   return 2;
 }
 
+export function adjacentSlots(slot: GridSlot): GridSlot[] {
+  const row = Math.floor((slot - 1) / 3);
+  const col = (slot - 1) % 3;
+  const out: GridSlot[] = [];
+  if (row > 0) out.push((slot - 3) as GridSlot);
+  if (row < 2) out.push((slot + 3) as GridSlot);
+  if (col > 0) out.push((slot - 1) as GridSlot);
+  if (col < 2) out.push((slot + 1) as GridSlot);
+  return out;
+}
+
+export function isAdjacent(a: GridSlot, b: GridSlot): boolean {
+  return adjacentSlots(a).includes(b);
+}
+
 export function rowLabel(row: Row): string {
   if (row === 'front') return '前排';
   if (row === 'mid') return '中排';

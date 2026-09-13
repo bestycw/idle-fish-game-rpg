@@ -21,6 +21,8 @@ import {
   markDeadIfNeeded,
   positionAtkMod,
   positionDefMod,
+  tryStandFromLethal,
+  type LethalSaveKind,
 } from './lifecycle.js';
 import {
   burstCritDmgExtra,
@@ -51,19 +53,31 @@ import {
 import { runSkillEffects } from './effectRegistry.js';
 import { runStatusTicksOnAct } from './tickRegistry.js';
 import {
-  attackDamageBonus,
   ccDurationReduction,
+  followUpAttackMult,
+  grantShieldBreakQi,
   onBattleStart,
   onBlock,
   onCritHit,
+  onDodge,
   onHealApplied,
   onHitTarget,
   onKill,
   onLethalDamage,
+  onSkillCast,
   onStatusApplied,
+  onStatusExpire,
   onTakeDamage,
   onTurnStart as fxTurnStart,
+  tryAllyCover,
+  tryFrontGuard,
 } from './effectAffixRuntime.js';
+import {
+  conditionHealMult,
+  conditionIncomingMult,
+  conditionOutgoingMult,
+} from './conditionRuntime.js';
+import { resolveSoftModes } from './softModeRuntime.js';
 import {
   pickAllyHealFocus,
   pickEnemyFocus,
@@ -71,11 +85,32 @@ import {
   resolveTargets,
 } from './targeting.js';
 import {
+  atonementHealAmount,
+  bumpFocusStreak,
+  healFromTakenAmount,
+  hpHealOnKill,
+  pickLowestHpLiving,
   qiRefundOnKill,
   skillHealMult,
   skillOutgoingDamageMult,
   statusIncomingDamageMult,
 } from './skillRules.js';
+import {
+  afterHealSkill,
+  afterOffensiveSkill,
+  applyBloodPactCost,
+  applyLinkHealOverflow,
+  applyQiOnHit,
+  capIncomingHit,
+  consumeNextSkillCrit,
+  coverFrontIncoming,
+  shareIncomingHpLoss,
+  statusCritChanceBonus,
+  tauntLockedFocus,
+  tryPreventLethalStatus,
+  tryReflectCc,
+  trySecondWind,
+} from './abilityRuntime.js';
 
 export type { StepOptions };
 
@@ -99,6 +134,11 @@ function cloneUnit(u: UnitRuntime): UnitRuntime {
     ) as UnitRuntime['ccDr'],
     statusApplyCounts: { ...(u.statusApplyCounts ?? {}) },
     skillCastCount: u.skillCastCount ?? 0,
+    effectAffixIds: u.effectAffixIds ? [...u.effectAffixIds] : undefined,
+    conditionAffixes: u.conditionAffixes?.map((c) => ({ ...c })),
+    qiSiphon: u.qiSiphon ?? 0,
+    qiRefund: u.qiRefund ?? 0,
+    t3State: u.t3State ? { ...u.t3State } : undefined,
   };
 }
 
@@ -122,6 +162,37 @@ function emit(state: BattleState, code: BattleEvent['code'], payload: Record<str
   state.events.push(event);
   const line = formatEvent(event);
   if (line) state.log.push(line);
+}
+
+function announceLethalSave(state: BattleState, unit: UnitRuntime, save: LethalSaveKind): void {
+  if (save === 'nirvana') {
+    emit(state, 'unit_revive', { target: unit.name, reason: '涅槃' });
+    return;
+  }
+  state.log.push(`${unit.name}【不屈】绝处逢生，存活！`);
+}
+
+/** T3 逆天改命 → 涅槃（必发一次）→ 不屈（概率 1 血）。未救则倒下。 */
+function resolveLethal(
+  state: BattleState,
+  unit: UnitRuntime,
+  rng: Rng | undefined,
+  killer?: UnitRuntime,
+): boolean {
+  if (rng && onLethalDamage(state, unit, rng)) return true;
+  if (tryPreventLethalStatus(unit)) {
+    state.log.push(`${unit.name}【金身】免死，余 1 血。`);
+    return true;
+  }
+  const save = tryStandFromLethal(unit, rng);
+  if (save) {
+    announceLethalSave(state, unit, save);
+    return true;
+  }
+  markDeadIfNeeded(unit);
+  emit(state, 'unit_down', { target: unit.name });
+  if (rng && killer) onKill(state, killer, unit, rng);
+  return false;
 }
 
 function formatEvent(event: BattleEvent): string | null {
@@ -149,12 +220,16 @@ function formatEvent(event: BattleEvent): string | null {
       return `${p.target} 的 ${p.status} 被${p.reason ?? '移除'}。`;
     case 'follow_up':
       return `${p.actor} 连击→${p.target}，伤害 ${p.amount}。`;
+    case 'effect_miss':
+      return `${p.actor} ${p.effect ?? '效果'}未触发。`;
     case 'block':
       return `${p.target} 格挡，伤害降至 ${p.amount}。`;
     case 'dodge':
       return `${p.target} 闪避。`;
     case 'unit_down':
       return `${p.target} 倒下。`;
+    case 'unit_revive':
+      return `${p.actor ? `${p.actor}【${p.reason ?? '招魂'}】唤回 ${p.target}` : `${p.target}【${p.reason ?? '涅槃'}】浴火重生`}。`;
     case 'qi_gain':
       return `${p.actor} 能量 +${p.qiGain}（${p.qi}/${p.maxQi}）。`;
     default:
@@ -213,8 +288,9 @@ function effectiveDef(
   return def;
 }
 
-function rollCrit(actor: UnitRuntime, target: UnitRuntime, rng: Rng): boolean {
-  const critRate = Math.min(0.6, ratingToPct(actor.critRating, 'critRating'));
+function rollCrit(actor: UnitRuntime, target: UnitRuntime, rng: Rng, skillHit = false): boolean {
+  if (skillHit && consumeNextSkillCrit(actor)) return true;
+  const critRate = Math.min(0.6, ratingToPct(actor.critRating, 'critRating') + statusCritChanceBonus(actor));
   const p = Math.max(0, Math.min(0.95, critRate - target.critResist));
   return rng.next() < p;
 }
@@ -229,6 +305,8 @@ function computeDamage(
     single?: boolean;
     school?: DamageSchool;
     skill?: SkillDef;
+    hitKind?: 'attack' | 'skill';
+    foes?: UnitRuntime[];
   },
   rng: Rng,
 ): { amount: number; crit: boolean; blocked: boolean; dodged: boolean } {
@@ -243,9 +321,12 @@ function computeDamage(
     const mult = getStatusDef(s.statusId)?.outgoingDamageMult;
     if (mult != null) raw *= mult;
   }
-  raw *= skillOutgoingDamageMult(actor, target, opts.skill);
+  raw *= skillOutgoingDamageMult(actor, target, opts.skill, { foes: opts.foes });
   raw *= statusIncomingDamageMult(target);
-  const crit = rollCrit(actor, target, rng);
+  const hitKind = opts.hitKind ?? (opts.skill ? 'skill' : 'attack');
+  raw *= conditionOutgoingMult(actor, target, hitKind);
+  if (hitKind === 'attack') raw *= followUpAttackMult(actor);
+  const crit = rollCrit(actor, target, rng, hitKind === 'skill');
   if (crit) raw *= 1.5 + critDmgExtra;
 
   const pierce = opts.pierce ? pierceDefReduction(actor) : penPct;
@@ -255,6 +336,7 @@ function computeDamage(
 
   let middle = afterDef;
   middle *= tankDamageTakenMult(target);
+  middle *= conditionIncomingMult(target, actor);
 
   let final = Math.max(1, Math.floor(middle * (1 + actor.finalDmgBonus) * outputMasteryMult(actor, opts)));
 
@@ -281,24 +363,35 @@ function applyDamageToTarget(
   blocked: boolean,
   dodged: boolean,
   rng?: Rng,
+  skillHit = false,
 ): number {
   if (dodged) {
     emit(state, 'dodge', { actor: actor.name, target: target.name });
+    if (rng) onDodge(state, target, rng);
     return 0;
   }
 
-  const shieldAbsorb = Math.min(target.shield, amount);
-  const hpLoss = Math.max(0, amount - shieldAbsorb);
+  let incoming = tryFrontGuard(state, target, amount);
+  incoming = coverFrontIncoming(state, target, incoming);
+  incoming = capIncomingHit(target, incoming);
+  const shieldBefore = target.shield;
+  const shieldAbsorb = Math.min(target.shield, incoming);
+  let hpLoss = Math.max(0, incoming - shieldAbsorb);
+  if (rng && hpLoss >= target.hp) {
+    hpLoss = tryAllyCover(state, target, hpLoss, rng);
+  }
+  hpLoss = shareIncomingHpLoss(state, target, hpLoss, emit);
   const knockdown = target.hp - hpLoss <= 0;
+  incoming = shieldAbsorb + hpLoss;
 
   if (blocked) {
-    emit(state, 'block', { actor: actor.name, target: target.name, amount });
+    emit(state, 'block', { actor: actor.name, target: target.name, amount: incoming });
     if (rng) onBlock(state, target, rng);
   } else if (crit) {
     emit(state, 'crit', {
       actor: actor.name,
       target: target.name,
-      amount,
+      amount: incoming,
       knockdown,
     });
     if (rng) onCritHit(state, actor, target, rng);
@@ -306,19 +399,36 @@ function applyDamageToTarget(
     emit(state, 'hit', {
       actor: actor.name,
       target: target.name,
-      amount,
+      amount: incoming,
       knockdown,
     });
   }
 
-  let remain = amount;
+  let remain = incoming;
   if (target.shield > 0) {
     const absorb = Math.min(target.shield, remain);
     target.shield -= absorb;
     remain -= absorb;
   }
+  if (shieldBefore > 0 && target.shield <= 0 && rng) {
+    grantShieldBreakQi(state, actor);
+  }
   if (remain > 0) {
+    const stag = target.statuses.find(
+      (s) => s.remaining > 0 && getStatusDef(s.statusId)?.deferIncomingRatio,
+    );
+    if (stag) {
+      const ratio = getStatusDef(stag.statusId)!.deferIncomingRatio!;
+      const defer = Math.floor(remain * ratio);
+      if (defer > 0) {
+        remain -= defer;
+        stag.value = (stag.value ?? 0) + defer;
+      }
+    }
     target.hp = Math.max(0, target.hp - remain);
+    if (remain > 0) {
+      target.recentDamageTaken = (target.recentDamageTaken ?? 0) + remain;
+    }
   if (unitHasStatusFlag(target, 'wakeOnDamage')) {
     const woke = target.statuses.filter((s) => {
       if (s.remaining <= 0) return false;
@@ -335,23 +445,38 @@ function applyDamageToTarget(
   }
   }
 
-  const dealt = amount;
+  const dealt = incoming;
 
-  // ─── 致死判定：T3 death_save → resilience → 死亡 ───
-  if (target.hp <= 0 && !target.dead) {
-    if (rng && onLethalDamage(state, target, rng)) {
-      // T3 saved
-    } else if (target.resilience > 0 && rng && rng.next() < target.resilience && !target.effectAffixDeathSaveUsed) {
-      target.hp = 1;
-      target.effectAffixDeathSaveUsed = true;
-      state.log.push(`${target.name}【不屈】绝处逢生，存活！`);
-    } else {
-      markDeadIfNeeded(target);
-      emit(state, 'unit_down', { target: target.name });
-      // T3 onKill
-      if (rng) onKill(state, actor, target, rng);
+  if (dealt > 0 && isLiving(target)) {
+    const earth = target.statuses.find(
+      (s) => s.remaining > 0 && getStatusDef(s.statusId)?.healOnTakenHit,
+    );
+    if (earth && !unitHasStatusFlag(target, 'healBlocked')) {
+      const heal = Math.max(1, Math.floor(target.maxHp * (earth.value ?? 0.05)));
+      const before = target.hp;
+      target.hp = Math.min(target.maxHp, target.hp + heal);
+      const got = target.hp - before;
+      if (got > 0) {
+        emit(state, 'heal', { actor: target.name, target: target.name, amount: got });
+      }
+      const layers = (earth.layers ?? 1) - 1;
+      if (layers <= 0) {
+        target.statuses = target.statuses.filter((s) => s !== earth);
+        emit(state, 'status_remove', {
+          target: target.name,
+          status: statusLabel(earth.statusId),
+          reason: '层数耗尽',
+        });
+      } else {
+        earth.layers = layers;
+      }
     }
   }
+
+  if (target.hp <= 0 && !target.dead) {
+    resolveLethal(state, target, rng, actor);
+  }
+  if (isLiving(target)) trySecondWind(state, target, emit);
 
   // ─── 吸血 ───
   if (dealt > 0 && actor.lifesteal > 0 && !dodged) {
@@ -367,8 +492,7 @@ function applyDamageToTarget(
     actor.hp = Math.max(0, actor.hp - thornsDmg);
     state.log.push(`${target.name}【反伤】反弹 ${thornsDmg} 伤害给 ${actor.name}。`);
     if (actor.hp <= 0 && !actor.dead) {
-      markDeadIfNeeded(actor);
-      emit(state, 'unit_down', { target: actor.name });
+      resolveLethal(state, actor, rng, target);
     }
   }
 
@@ -380,8 +504,15 @@ function applyDamageToTarget(
       state.log.push(`${target.name}【反击】反手攻击 ${actor.name}，伤害 ${counterDmg}。`);
       emit(state, 'hit', { actor: target.name, target: actor.name, amount: counterDmg, knockdown: actor.hp <= 0 });
       if (actor.hp <= 0 && !actor.dead) {
-        markDeadIfNeeded(actor);
-        emit(state, 'unit_down', { target: actor.name });
+        resolveLethal(state, actor, rng, target);
+      }
+      if (target.counterFollow && isLiving(actor)) {
+        const extra = Math.max(1, Math.floor(target.atk * 0.35));
+        actor.hp = Math.max(0, actor.hp - extra);
+        emit(state, 'follow_up', { actor: target.name, target: actor.name, amount: extra });
+        if (actor.hp <= 0 && !actor.dead) {
+          resolveLethal(state, actor, rng, target);
+        }
       }
     }
   }
@@ -399,11 +530,25 @@ function applyDamageToTarget(
     }
   }
 
-  // ─── T3 onTakeDamage + onHitTarget ───
-  if (dealt > 0 && isLiving(target) && rng) {
-    onTakeDamage(state, actor, target, dealt, rng);
+  // ─── T3 onTakeDamage + onHitTarget；锁息 ───
+  if (dealt > 0 && rng) {
+    if (isLiving(target)) {
+      onTakeDamage(state, actor, target, dealt, rng);
+      applyQiOnHit(target, (u, amt) => gainQi(state, u, amt));
+    }
     const foes = state.player.units.includes(target) ? state.player.units : state.enemy.units;
-    onHitTarget(state, actor, target, dealt, foes, rng);
+    onHitTarget(state, actor, target, dealt, foes, rng, skillHit);
+    if (actor.qiSiphon > 0 && isLiving(target)) {
+      const key = `siphon:${state.turn}`;
+      target.t3State = target.t3State ?? {};
+      if (!target.t3State[key]) {
+        const drain = Math.min(actor.qiSiphon, target.qi);
+        if (drain > 0) {
+          target.qi -= drain;
+          target.t3State[key] = true;
+        }
+      }
+    }
   }
 
   return dealt;
@@ -475,6 +620,7 @@ function applyOneStatus(
     statusMeta?.forceRandomTarget === true;
   if (needsCtrlDuration) {
     duration = Math.max(1, Math.round(duration * controlDurationMult(actor)));
+    duration = ccDurationReduction(target, duration);
   }
 
   const ccBucket = statusCcDrBucket(def.statusId);
@@ -523,6 +669,7 @@ function applyOneStatus(
       layers,
       remaining: duration,
       value: value ?? 0.03,
+      sourceUid: actor.uid,
     });
   } else {
     target.statuses = target.statuses.filter((s) => s.statusId !== def.statusId);
@@ -531,6 +678,7 @@ function applyOneStatus(
       remaining: duration,
       value,
       layers: def.layers,
+      sourceUid: actor.uid,
     });
   }
 
@@ -546,6 +694,8 @@ function applyOneStatus(
     status: label,
     duration,
   });
+
+  tryReflectCc(state, actor, target, def.statusId, duration, emit);
 
   // T3 hook: onStatusApplied (handles fx_heal_on_cc, fx_debuff_reflect)
   onStatusApplied(state, actor, target, def.statusId, rng);
@@ -586,20 +736,27 @@ function applyStatuses(
   }
 }
 
-function tickStatusesOnAct(unit: UnitRuntime): void {
+function tickStatusesOnAct(state: BattleState, unit: UnitRuntime, rng: Rng): void {
+  const expired: string[] = [];
   unit.statuses = unit.statuses
     .map((s) => ({ ...s, remaining: s.remaining - 1 }))
-    .filter((s) => s.remaining > 0);
+    .filter((s) => {
+      if (s.remaining > 0) return true;
+      expired.push(s.statusId);
+      return false;
+    });
+  for (const id of expired) onStatusExpire(state, unit, id, rng);
 }
 
 function applyQiGain(unit: UnitRuntime, amount: number): number {
+  if (unitHasStatusFlag(unit, 'blocksQiGain')) return 0;
   const scaled = Math.max(0, amount);
   const before = unit.qi;
   unit.qi = Math.min(unit.maxQi, unit.qi + scaled);
   return unit.qi - before;
 }
 
-function turnStart(state: BattleState, unit: UnitRuntime): void {
+function turnStart(state: BattleState, unit: UnitRuntime, rng: Rng): void {
   const room = Math.min(5, unit.maxQi - unit.qi);
   const gained = room > 0 ? applyQiGain(unit, room) : 0;
   emit(state, 'turn_start', {
@@ -610,6 +767,10 @@ function turnStart(state: BattleState, unit: UnitRuntime): void {
   });
 
   runStatusTicksOnAct(state, unit, emit);
+  if (unit.recentDamageTaken) {
+    unit.recentDamageTaken = Math.floor(unit.recentDamageTaken * 0.5);
+  }
+  fxTurnStart(state, unit, rng);
 }
 
 function gainQi(state: BattleState, unit: UnitRuntime, amount: number): void {
@@ -648,7 +809,8 @@ function resolveSkillTargets(
   }
 
   const policy = resolveFocusPolicy(skill.focusPolicy, actor.focusPolicy);
-  const focus = pickEnemyFocus(foes, actor, { pierce, policy, rng });
+  const tauntFocus = tauntLockedFocus(actor, foes);
+  const focus = tauntFocus ?? pickEnemyFocus(foes, actor, { pierce, policy, rng });
   const targets = resolveTargets(skill.targetPattern, foes, focus, rng);
   return { targets, focus };
 }
@@ -666,6 +828,7 @@ function chooseAiAction(
   rng: Rng,
 ): ActionKind {
   if (unitHasStatusFlag(unit, 'forceBasicAttack')) return 'attack';
+  if (unitHasStatusFlag(unit, 'blocksBasic') && canUseSkill(unit)) return 'skill';
 
   const skill = unit.skill;
   const roll = rng.next();
@@ -673,7 +836,10 @@ function chooseAiAction(
   if (canUseSkill(unit)) {
     if (skill.tags.includes('heal')) {
       const hurt = livingUnits(allies).some((u) => u.hp / u.maxHp < 0.7);
-      if (hurt && roll < skill.aiWeight) return 'skill';
+      const canRevive =
+        Boolean(skill.effects?.some((e) => e.kind === 'revive_ally')) &&
+        allies.some((u) => u.dead || u.hp <= 0);
+      if ((hurt || canRevive) && roll < skill.aiWeight) return 'skill';
     }
     if (skill.tags.includes('guard')) {
       const need =
@@ -704,18 +870,20 @@ function applyAttack(
   allUnits: UnitRuntime[],
   rng: Rng,
 ): void {
+  if (unitHasStatusFlag(actor, 'blocksBasic')) return;
+
   let target: UnitRuntime | null;
   if (unitHasStatusFlag(actor, 'forceRandomTarget')) {
     target = pickHavocTarget(allUnits, rng);
   } else {
     const policy = resolveFocusPolicy(undefined, actor.focusPolicy);
-    target = pickEnemyFocus(foes, actor, { pierce: false, policy, rng });
+    target = tauntLockedFocus(actor, foes) ?? pickEnemyFocus(foes, actor, { pierce: false, policy, rng });
   }
   if (!target) return;
 
-  const result = computeDamage(actor, target, 1, { single: true, school: 'phys' }, rng);
-  applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng);
-  gainQi(state, actor, 20);
+  const result = computeDamage(actor, target, 1, { single: true, school: 'phys', hitKind: 'attack', foes }, rng);
+  applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng, false);
+  gainQi(state, actor, 20 + (actor.basicQiBonus ?? 0));
 }
 
 function applySkill(
@@ -726,36 +894,58 @@ function applySkill(
   allUnits: UnitRuntime[],
   rng: Rng,
 ): void {
-  const skill = actor.skill;
+  const baseSkill = actor.skill;
   if (!canUseSkill(actor)) {
     applyAttack(state, actor, foes, allUnits, rng);
     return;
   }
 
-  actor.qi -= skill.qiCost;
+  actor.qi -= baseSkill.qiCost;
   const castIndex = actor.skillCastCount ?? 0;
 
   if (
-    skill.tags.includes('guard') &&
-    skill.applyStatus.some((s) => getStatusDef(s.statusId)?.appliesAsShield)
+    baseSkill.tags.includes('guard') &&
+    baseSkill.applyStatus.some((s) => getStatusDef(s.statusId)?.appliesAsShield)
   ) {
+    const skill = resolveSoftModes(baseSkill, {
+      actor,
+      allies,
+      foes,
+      targets: [actor],
+    });
     const school = resolveDamageSchool(skill, 'guard');
     const shieldAmt = Math.max(
       1,
-      Math.floor(attackPower(actor, school) * skill.multiplier * shieldMasteryMult(actor)),
+      Math.floor(
+        attackPower(actor, school) *
+          skill.multiplier *
+          shieldMasteryMult(actor) *
+          skillOutgoingDamageMult(actor, actor, skill),
+      ),
     );
     actor.shield += shieldAmt;
     emit(state, 'shield_gain', { actor: actor.name, target: actor.name, amount: shieldAmt });
     actor.skillCastCount = castIndex + 1;
     applySkillEffects(state, actor, [actor], skill, rng, allies);
+    const fromTaken = healFromTakenAmount(actor, skill);
+    if (fromTaken > 0 && !unitHasStatusFlag(actor, 'healBlocked')) {
+      actor.hp = Math.min(actor.maxHp, actor.hp + fromTaken);
+      actor.recentDamageTaken = 0;
+      emit(state, 'heal', { actor: actor.name, target: actor.name, amount: fromTaken });
+    }
+    onSkillCast(state, actor, rng, allies);
+    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
     return;
   }
 
-  const { targets } = resolveSkillTargets(actor, skill, allies, foes, allUnits, rng);
+  const { targets } = resolveSkillTargets(actor, baseSkill, allies, foes, allUnits, rng);
+  const skill = resolveSoftModes(baseSkill, { actor, allies, foes, targets });
 
   if (skill.tags.includes('heal')) {
     const school = resolveDamageSchool(skill, 'heal');
+    let healedAmount = 0;
     for (const target of targets) {
+      if (!isLiving(target)) continue;
       if (unitHasStatusFlag(target, 'healBlocked')) continue;
       const amount = Math.max(
         1,
@@ -763,14 +953,23 @@ function applySkill(
           attackPower(actor, school) *
             skill.multiplier *
             healMasteryMult(actor, skill.tags.includes('aoe')) *
-            skillHealMult(target, skill),
+            skillHealMult(target, skill, actor) *
+            conditionHealMult(actor),
         ),
       );
-      target.hp = Math.min(target.maxHp, target.hp + amount);
-      emit(state, 'heal', { actor: actor.name, target: target.name, amount });
+      const room = target.maxHp - target.hp;
+      const applied = Math.min(room, amount);
+      if (applied > 0) target.hp += applied;
+      applyLinkHealOverflow(actor, target, amount - applied);
+      if (applied > 0) emit(state, 'heal', { actor: actor.name, target: target.name, amount: applied });
+      healedAmount += applied;
+      onHealApplied(state, actor, target, rng);
     }
     applySkillEffects(state, actor, targets, skill, rng, allies);
+    afterHealSkill(state, actor, skill, allies, healedAmount, emit);
     actor.skillCastCount = castIndex + 1;
+    onSkillCast(state, actor, rng, allies);
+    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
     return;
   }
 
@@ -784,24 +983,27 @@ function applySkill(
   const school = resolveDamageSchool(skill, 'skill');
   const livingBefore = new Set(targets.filter((t) => isLiving(t)).map((t) => t.uid));
 
+  applyBloodPactCost(state, actor, skill, emit);
+
+  let totalDealt = 0;
   for (const target of targets) {
     const result = computeDamage(
       actor,
       target,
       skill.multiplier,
-      { pierce, aoe, single: !aoe, school, skill },
+      { pierce, aoe, single: !aoe, school, skill, hitKind: 'skill', foes },
       rng,
     );
-    applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng);
+    totalDealt += applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng, true);
   }
 
   // ─── echo（回响）：技能后概率再次触发（50%伤害）───
   if (actor.echo > 0 && rng.next() < actor.echo && targets.length > 0) {
     const echoTarget = targets.find((t) => isLiving(t));
     if (echoTarget) {
-      const echoResult = computeDamage(actor, echoTarget, skill.multiplier * 0.5, { pierce, aoe: false, single: true, school, skill }, rng);
+      const echoResult = computeDamage(actor, echoTarget, skill.multiplier * 0.5, { pierce, aoe: false, single: true, school, skill, hitKind: 'skill', foes }, rng);
       state.log.push(`${actor.name}【回响】技能再次爆发！`);
-      applyDamageToTarget(state, actor, echoTarget, echoResult.amount, echoResult.crit, echoResult.blocked, echoResult.dodged, rng);
+      applyDamageToTarget(state, actor, echoTarget, echoResult.amount, echoResult.crit, echoResult.blocked, echoResult.dodged, rng, true);
     }
   }
 
@@ -817,10 +1019,10 @@ function applySkill(
         actor,
         focus,
         mult,
-        { pierce, aoe: false, single: true, school, skill },
+        { pierce, aoe: false, single: true, school, skill, hitKind: 'skill', foes },
         rng,
       );
-      applyDamageToTarget(state, actor, focus, result.amount, result.crit, result.blocked, result.dodged, rng);
+      applyDamageToTarget(state, actor, focus, result.amount, result.crit, result.blocked, result.dodged, rng, true);
       emit(state, 'follow_up', {
         actor: actor.name,
         target: focus.name,
@@ -830,12 +1032,59 @@ function applySkill(
   }
 
   const killCount = targets.filter((t) => livingBefore.has(t.uid) && t.dead).length;
-  const refund = qiRefundOnKill(skill, killCount);
+  const refund = qiRefundOnKill(skill, killCount, actor);
   if (refund > 0) {
     gainQi(state, actor, refund);
   }
+  const killHeal = hpHealOnKill(actor, skill, killCount);
+  if (killHeal > 0 && !unitHasStatusFlag(actor, 'healBlocked')) {
+    actor.hp = Math.min(actor.maxHp, actor.hp + killHeal);
+    emit(state, 'heal', { actor: actor.name, target: actor.name, amount: killHeal });
+  }
+
+  bumpFocusStreak(actor, targets[0]);
+  const atone = atonementHealAmount(skill, totalDealt, actor);
+  if (atone > 0) {
+    const lowest = pickLowestHpLiving(allies);
+    if (lowest && !unitHasStatusFlag(lowest, 'healBlocked')) {
+      const before = lowest.hp;
+      lowest.hp = Math.min(lowest.maxHp, lowest.hp + atone);
+      const got = lowest.hp - before;
+      if (got > 0) emit(state, 'heal', { actor: actor.name, target: lowest.name, amount: got });
+    }
+  }
+  const fromTaken = healFromTakenAmount(actor, skill);
+  if (fromTaken > 0 && !unitHasStatusFlag(actor, 'healBlocked')) {
+    actor.hp = Math.min(actor.maxHp, actor.hp + fromTaken);
+    actor.recentDamageTaken = 0;
+    emit(state, 'heal', { actor: actor.name, target: actor.name, amount: fromTaken });
+  }
+
+  afterOffensiveSkill({
+    state,
+    actor,
+    skill,
+    targets,
+    foes,
+    rng,
+    totalDealt,
+    killCount,
+    emit,
+    hitTarget: (t, multiplier) => {
+      const result = computeDamage(
+        actor,
+        t,
+        multiplier,
+        { pierce, aoe: false, single: true, school, skill, hitKind: 'skill', foes },
+        rng,
+      );
+      return applyDamageToTarget(state, actor, t, result.amount, result.crit, result.blocked, result.dodged, rng, true);
+    },
+  });
 
   actor.skillCastCount = castIndex + 1;
+  onSkillCast(state, actor, rng, allies);
+  if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
 }
 
 function applyAction(
@@ -976,6 +1225,8 @@ function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntim
     echo: 0,
     thorns: 0,
     steal: 0,
+    qiSiphon: 0,
+    qiRefund: 0,
     finalDmgBonus: 0,
     qi: BATTLE_START_QI,
     maxQi: 100,
@@ -986,11 +1237,13 @@ function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntim
     ccDr: {},
     statusApplyCounts: {},
     skillCastCount: 0,
+    focusStreak: 0,
+    recentDamageTaken: 0,
   };
 }
 
 export type CreateBattleOpts = {
-  /** 敌人攻防血压力系数，默认 1（副本可传 DungeonDef.pressure） */
+  /** 敌人攻防血压力系数，默认 1。开战侧传 章档 × 本种压力。 */
   pressure?: number;
 };
 
@@ -1010,7 +1263,7 @@ export function createBattle(
       units: playerUnits.map((u) => ({
         ...cloneUnit(u),
         shield: 0,
-        qi: BATTLE_START_QI,
+        qi: Math.min(u.maxQi, BATTLE_START_QI + (u.startQiBonus ?? 0)),
         dead: false,
         hp: u.maxHp,
         statuses: [],
@@ -1018,6 +1271,9 @@ export function createBattle(
         statusApplyCounts: {},
         skillCastCount: 0,
         rank: u.rank ?? 'normal',
+        focusStreak: 0,
+        lastSkillTargetUid: undefined,
+        recentDamageTaken: 0,
       })),
     },
     enemy: { units: enemies },
@@ -1031,6 +1287,10 @@ export function createBattle(
     defeatHint: null,
   };
   state.log.push(`遭遇【${encounter.name}】，开战。`);
+  const startRng = createRng(_seed);
+  for (const u of [...state.player.units, ...state.enemy.units]) {
+    onBattleStart(state, u, startRng);
+  }
   return state;
 }
 
@@ -1051,7 +1311,7 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
     }
 
     const rng = createRng(seed + next.turn * 1009 + next.actedUids.length * 17 + hero.slot);
-    turnStart(next, hero);
+    turnStart(next, hero, rng);
 
     let kind = options.heroAction;
     if (!kind) {
@@ -1062,7 +1322,7 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
       next.log.push(`（主角手动：${labelAction(kind, hero.skill)}）`);
     }
 
-    tickStatusesOnAct(hero);
+    tickStatusesOnAct(next, hero, rng);
     tickCcDrOnAct(hero);
     const allUnits = [...next.player.units, ...next.enemy.units];
     applyAction(next, hero, kind, next.player.units, next.enemy.units, allUnits, rng);
@@ -1085,7 +1345,7 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
   const liveActor = (isPlayer ? next.player : next.enemy).units.find((u) => u.uid === actorRef.uid)!;
 
   if (!canAct(liveActor)) {
-    tickStatusesOnAct(liveActor);
+    tickStatusesOnAct(next, liveActor, createRng(next.turn * 13 + liveActor.slot));
     tickCcDrOnAct(liveActor);
     next.log.push(`${liveActor.name} 无法行动，跳过。`);
     next.actedUids.push(liveActor.uid);
@@ -1101,13 +1361,13 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
   }
 
   const rng = createRng(seed + next.turn * 1009 + next.actedUids.length * 17 + liveActor.slot);
-  turnStart(next, liveActor);
+  turnStart(next, liveActor, rng);
 
   const allies = isPlayer ? next.player.units : next.enemy.units;
   const foes = isPlayer ? next.enemy.units : next.player.units;
   const allUnits = [...next.player.units, ...next.enemy.units];
   const kind = chooseAiAction(liveActor, allies, foes, rng);
-  tickStatusesOnAct(liveActor);
+  tickStatusesOnAct(next, liveActor, rng);
   tickCcDrOnAct(liveActor);
   applyAction(next, liveActor, kind, allies, foes, allUnits, rng);
   next.actedUids.push(liveActor.uid);

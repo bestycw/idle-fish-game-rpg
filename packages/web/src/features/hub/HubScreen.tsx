@@ -7,9 +7,10 @@ import {
   advanceStoryNode,
   canClaimDaily,
   canMine,
-  chapterProgressLabel,
   climbTower,
   doMine,
+  getChapterBand,
+  getChapterRoute,
   getChapterView,
   getTowerFloor,
   isContentUnlocked,
@@ -17,6 +18,9 @@ import {
   MINE_DAILY_LIMIT,
   MINE_DEFS,
   MINE_STAMINA_COST,
+  nodePlace,
+  partyPower,
+  pressureForDungeon,
   runStardustRealm,
   tryClaimDaily,
   trySpendStamina,
@@ -25,6 +29,7 @@ import {
 } from '@moyu/game-core';
 import { useState } from 'react';
 import { EntryCard } from '@/components/game/EntryCard';
+import { ChapterRoute } from './ChapterRoute';
 
 type HubScreenProps = {
   player: PlayerState;
@@ -58,6 +63,9 @@ export function HubScreen({
 }: HubScreenProps) {
   const [showMinePicker, setShowMinePicker] = useState(false);
   const chapter = getChapterView(player);
+  const route = getChapterRoute(player);
+  const band = getChapterBand(player.chapterCleared ?? 0);
+  const deployedPower = partyPower(player, Object.keys(player.formation));
   const gearUnlocked = isContentUnlocked(player, 'dungeon', 'gear_trial');
   const abyssUnlocked = isContentUnlocked(player, 'dungeon', 'abyss_mirror');
   const towerUnlocked = isContentUnlocked(player, 'dungeon', 'tower');
@@ -88,15 +96,15 @@ export function HubScreen({
     setShowMinePicker(false);
   };
 
-  const chapterTitle = playing?.name ?? '旅途';
-  const nodeTitle = node?.title;
+  const chapterTitle = playing?.name ?? route.chapter?.name ?? '旅途';
+  const here = node ? nodePlace(node) : null;
   const blurb = chapter.finished
     ? '主线骨架已走完。去刷装、秘境或召唤吧。'
     : node
       ? `${playing?.blurb ?? ''} ${node.blurb}`
       : '夜色里，试炼的门还亮着。';
 
-  const primaryChapterAction = () => {
+  const enterCurrent = () => {
     if (chapter.finished || !node) return;
     if (node.kind === 'story') {
       const r = advanceStoryNode(player);
@@ -109,6 +117,19 @@ export function HubScreen({
       return;
     }
     onStartChapterBattle();
+  };
+
+  const onSelectStop = (stop: (typeof route.stops)[number]) => {
+    if (stop.status === 'current') {
+      enterCurrent();
+      return;
+    }
+    const place = nodePlace(stop.node);
+    if (stop.status === 'ahead') {
+      pushNotice(`尚未抵达「${place}」。`);
+      return;
+    }
+    pushNotice(`已经过了「${place}」。`);
   };
 
   const onDaily = () => {
@@ -148,29 +169,42 @@ export function HubScreen({
   };
 
   const storyPanel = (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/20 via-card/90 to-[#0e141c] p-4 sm:p-5 lg:flex lg:min-h-[18rem] lg:flex-col lg:justify-between">
-      <div>
-        <div className="absolute right-3 top-3 font-mono text-[10px] tracking-widest text-primary/70">
-          {chapterProgressLabel(player)}
+    <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/20 via-card/90 to-[#0e141c] p-4 sm:p-5">
+      <p className="font-mono text-[11px] tracking-[0.18em] text-primary/90">主线路程</p>
+      <h2 className="font-display mt-1 text-2xl tracking-wide sm:text-3xl">{chapterTitle}</h2>
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-stretch">
+        <ChapterRoute
+          ticks={route.ticks}
+          stops={route.stops}
+          finished={route.finished}
+          onSelect={onSelectStop}
+        />
+        <div className="flex min-w-0 flex-1 flex-col justify-between">
+          {here ? (
+            <p className="text-sm text-primary/90">此地 · {here}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">路程已尽</p>
+          )}
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground/85">{blurb}</p>
+          {!chapter.finished && node?.kind === 'battle' ? (
+            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+              建议战力 {band.recommendedPower}
+              {deployedPower > 0 ? ` · 出战 ${deployedPower}` : ''}
+            </p>
+          ) : null}
+          {!chapter.finished && node ? (
+            <button
+              type="button"
+              onClick={enterCurrent}
+              className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-center font-medium text-primary-foreground shadow-lg shadow-primary/20 transition hover:brightness-110 sm:w-auto sm:min-w-[12rem]"
+            >
+              进入 · {here}
+            </button>
+          ) : (
+            <p className="mt-4 font-mono text-xs text-muted-foreground">主线已通关</p>
+          )}
         </div>
-        <p className="font-mono text-[11px] tracking-[0.18em] text-primary/90">主线章节</p>
-        <h2 className="font-display mt-1 text-2xl tracking-wide sm:text-3xl">{chapterTitle}</h2>
-        {nodeTitle ? (
-          <p className="mt-1 text-sm text-primary/90">当前节点 · {nodeTitle}</p>
-        ) : null}
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground/85">{blurb}</p>
       </div>
-      {!chapter.finished && node ? (
-        <button
-          type="button"
-          onClick={primaryChapterAction}
-          className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-center font-medium text-primary-foreground shadow-lg shadow-primary/20 transition hover:brightness-110 sm:w-auto sm:min-w-[12rem] lg:mt-6"
-        >
-          {node.kind === 'story' ? `推进 · ${node.title}` : `出击 · ${node.title}`}
-        </button>
-      ) : (
-        <p className="mt-4 font-mono text-xs text-muted-foreground lg:mt-6">主线已通关</p>
-      )}
     </div>
   );
 
@@ -208,7 +242,11 @@ export function HubScreen({
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <EntryCard
             title="猎装试炼"
-            subtitle={gearUnlocked ? `刷装备 · 体力 ${STAMINA_COST_GEAR}` : '未解锁'}
+            subtitle={
+              gearUnlocked
+                ? `建议 ${band.recommendedPower} · 体力 ${STAMINA_COST_GEAR}`
+                : '未解锁'
+            }
             mark="装"
             accent="amber"
             disabled={!gearUnlocked}
@@ -219,7 +257,7 @@ export function HubScreen({
             title="镜渊试炼"
             subtitle={
               abyssUnlocked
-                ? `高压 · 经验向 · 体力 ${STAMINA_COST_ABYSS}`
+                ? `建议 ${Math.round(band.recommendedPower * pressureForDungeon('abyss_mirror'))} · 高压 · 体力 ${STAMINA_COST_ABYSS}`
                 : '通关第二章解锁'
             }
             mark="渊"
