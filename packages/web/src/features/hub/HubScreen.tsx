@@ -244,7 +244,7 @@ export function HubScreen({
             title="猎装试炼"
             subtitle={
               gearUnlocked
-                ? `建议 ${band.recommendedPower} · 体力 ${STAMINA_COST_GEAR}`
+                ? `建议 ${band.recommendedPower} · 刷装量 · 体力 ${STAMINA_COST_GEAR}`
                 : '未解锁'
             }
             mark="装"
@@ -257,7 +257,7 @@ export function HubScreen({
             title="镜渊试炼"
             subtitle={
               abyssUnlocked
-                ? `建议 ${Math.round(band.recommendedPower * pressureForDungeon('abyss_mirror'))} · 高压 · 体力 ${STAMINA_COST_ABYSS}`
+                ? `建议 ${Math.round(band.recommendedPower * pressureForDungeon('abyss_mirror'))} · 对症 T3 · 体力 ${STAMINA_COST_ABYSS}`
                 : '通关第二章解锁'
             }
             mark="渊"

@@ -148,6 +148,9 @@ describe('skill compose foundation', () => {
     assert.match(lb!.softModeLine ?? '', /倒下|招魂/);
     const zy = skillDisplayFor('zhouyu', createInitialPlayer(14));
     assert.match(zy!.softModeLine ?? '', /混乱|硬控|乘乱|业火/);
+    const lvbu = skillDisplayFor('lvbu', createInitialPlayer(15));
+    assert.match(lvbu!.rulesLine, /自身生命低于40%时，伤害提高至×1\.3，并戟影连环/);
+    assert.equal((lvbu!.rulesLine.match(/自身生命低于40%/g) ?? []).length, 1);
   });
 
   it('assertAllCharacterBundles passes for 24 cards', () => {

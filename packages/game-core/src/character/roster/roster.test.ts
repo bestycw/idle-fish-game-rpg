@@ -11,12 +11,13 @@ import { DEEP_SKILL_OVERRIDES } from '../deepKits.js';
 import { getSkill } from '../skills.js';
 import { STAR_OVERRIDES, isBranchStar, listIdentityTracks } from '../starTracks.js';
 import { skillWithGrowth } from '../growth.js';
-import { listStarTrackRows } from '../growthHelpers.js';
+import { listStarTrackRows, skillDisplayFor } from '../growthHelpers.js';
 import { EXPAND_ROSTER, HAND_TEMPLATE_IDS } from './expandRoster.js';
 import { ZHONGTU_ROSTER } from './zhongtuRoster.js';
 import { characterIntro } from '../intros.js';
 import { makePlaceholderSkill, ROLE_PLACEHOLDER_SKILLS } from './placeholderSkills.js';
-import { skillFingerprint } from './kitCompose.js';
+import { kitsForRarity, skillFingerprint } from './kitCompose.js';
+import { LEGENDARY_EXPAND_HOOKS } from './legendaryExpandHooks.js';
 import { REMOVED_FOREIGN_IDS } from '../../save/zhongtuMigrate.js';
 import { migrateZhongtuV16 } from '../../save/zhongtuMigrate.js';
 import { createInitialPlayer } from '../../save/player.js';
@@ -308,5 +309,125 @@ describe('zhongtu roster 200', () => {
     assert.equal(heal3.effectLine.includes('招魂'), false);
     assert.match(heal6.effectLine, /招魂/);
     assert.equal(heal6.effectLine.includes('净化'), false);
+  });
+
+  it('expand kits carry occasion hooks; deep overrides keep their own copy', () => {
+    const occKinds = new Set([
+      'execute',
+      'first_cast',
+      'vs_back',
+      'vs_high_hp',
+      'vs_shield',
+      'vs_cc',
+      'surround',
+      'heal_low_hp',
+      'self_low_hp',
+    ]);
+    const hand = new Set<string>(HAND_TEMPLATE_IDS);
+    for (const e of EXPAND_ROSTER) {
+      const skill = getSkill(`skill_${e.id}`);
+      const used = kitsForRarity(e.kits, e.rarity);
+      const n = used.length;
+      const modes = skill.softModes ?? [];
+      if (DEEP_SKILL_OVERRIDES[`skill_${e.id}`]) continue;
+      const hasFx = (skill.effects ?? []).some((x) => occKinds.has(x.kind));
+      assert.ok(modes.length > 0 || hasFx, `no occasion ${e.id}`);
+      assert.ok(modes.length <= n, `${e.id} softModes ${modes.length} > kits ${n}`);
+      assert.ok(
+        !(skill.effects ?? []).some((x) => x.kind === 'ally_grant_qi' && x.chance != null && x.chance < 1),
+        `kit grant-qi chance on ${e.id}`,
+      );
+    }
+    assert.match(getSkill('skill_xiaoqiao').softModes?.[0]?.copy ?? '', /封口/);
+    assert.match(getSkill('skill_ganning').softModes?.[0]?.copy ?? '', /猎印/);
+    assert.match(getSkill('skill_zhaoyun_longdan').softModes?.[0]?.copy ?? '', /斩杀加重/);
+    const state = createInitialPlayer(21);
+    const xq = skillDisplayFor('xiaoqiao', {
+      ...state,
+      roster: { ...state.roster, xiaoqiao: { ...state.roster.xiaoqiao!, owned: true, star: 0 } },
+    });
+    assert.match(xq!.rulesLine, /若.*封口|再封/);
+    assert.ok(!hand.has('xiaoqiao'));
+  });
+
+  it('legendary expand cards each have one unique hook, deep kits untouched', () => {
+    const deep = new Set<string>(DEEP_TEMPLATE_IDS);
+    const copies = new Set<string>();
+    for (const e of ZHONGTU_ROSTER) {
+      if (e.rarity !== 'legendary' || deep.has(e.id)) continue;
+      const hook = LEGENDARY_EXPAND_HOOKS[e.id];
+      assert.ok(hook, `missing legendary hook ${e.id}`);
+      const copy = hook.softModes[0]?.copy ?? '';
+      assert.ok(copy.length >= 4, e.id);
+      assert.equal(copies.has(copy), false, `dup hook copy ${copy}`);
+      copies.add(copy);
+      const skill = getSkill(`skill_${e.id}`);
+      assert.equal(skill.softModes?.length, 1, e.id);
+      assert.equal(skill.softModes?.[0]?.copy, copy);
+    }
+    assert.match(getSkill('skill_caocao').name, /挟天子/);
+    assert.match(getSkill('skill_guojia').name, /十胜十败/);
+    assert.equal(getSkill('skill_guojia').name.includes('诀'), false);
+    assert.match(getSkill('skill_caocao').softModes?.[0]?.copy ?? '', /号令/);
+    assert.match(getSkill('skill_zhouyu').softModes?.[0]?.copy ?? '', /业火乘乱/);
+    assert.equal('zhouyu' in LEGENDARY_EXPAND_HOOKS, false);
+  });
+
+  it('legendary expand stars deepen the same hook; deep tracks stay personal', () => {
+    const deep = new Set<string>(DEEP_TEMPLATE_IDS);
+    for (const e of ZHONGTU_ROSTER) {
+      if (e.rarity !== 'legendary' || deep.has(e.id)) continue;
+      const tracks = listIdentityTracks(e.id);
+      assert.equal(tracks.length, 2, `${e.id} needs 2 branches`);
+      assert.equal(Object.keys(STAR_OVERRIDES[e.id] ?? {}).length, 6, e.id);
+      for (const t of tracks) {
+        assert.ok(t.label.length >= 2, `${e.id} branch missing short name`);
+        assert.equal(t.star3.identityLabel, t.label);
+        assert.equal(t.star6?.identityLabel, t.label);
+        assert.ok((t.star3.effects?.length ?? 0) >= 1, `${e.id} ★3 empty ${t.label}`);
+        assert.ok((t.star6?.effects?.length ?? 0) >= 1, `${e.id} ★6 empty ${t.label}`);
+      }
+      const hasRevive = [
+        ...(STAR_OVERRIDES[e.id]![3]?.branches ?? []),
+        ...(STAR_OVERRIDES[e.id]![6]?.branches ?? []),
+      ].some((b) =>
+        b.effects.some((fx) => fx.kind === 'effect_unlock' && fx.effect.kind === 'revive_ally'),
+      );
+      assert.equal(hasRevive, false, `${e.id} must not clone 招魂`);
+    }
+    const cao = STAR_OVERRIDES.caocao!;
+    assert.ok(
+      cao[1]!.effects.some((fx) => fx.kind === 'effect_unlock' && fx.effect.kind === 'first_cast'),
+    );
+    assert.deepEqual(
+      cao[3]!.branches?.map((b) => b.identityLabel),
+      ['挟令', '奸雄'],
+    );
+    assert.ok((getSkill('skill_caocao').effects ?? []).some((e) => e.kind === 'first_cast'));
+    assert.equal(
+      (getSkill('skill_caocao').effects ?? []).some((e) => e.kind === 'vs_high_hp'),
+      false,
+    );
+    assert.deepEqual(
+      STAR_OVERRIDES.zhouyu![3]!.branches?.map((b) => b.identityLabel),
+      ['火攻', '锁江'],
+    );
+
+    const gateRe =
+      /自身生命低于\d+%时|目标生命低于\d+%时|本场首次施放时|若目标已被硬控|若目标有护盾/g;
+    const state = createInitialPlayer(3);
+    for (const e of ZHONGTU_ROSTER) {
+      if (e.rarity !== 'legendary') continue;
+      const tpl = UNIT_TEMPLATES.find((u) => u.id === e.id)!;
+      assert.equal(getSkill(tpl.skillId).name.includes('诀'), false, `${e.id} placeholder name`);
+      const line = skillDisplayFor(e.id, state)?.rulesLine ?? '';
+      const seen = new Map<string, number>();
+      for (const g of line.match(gateRe) ?? []) {
+        seen.set(g, (seen.get(g) ?? 0) + 1);
+      }
+      for (const [g, n] of seen) {
+        assert.equal(n, 1, `${e.id} repeats ${g} in ${line}`);
+      }
+    }
   });
 });

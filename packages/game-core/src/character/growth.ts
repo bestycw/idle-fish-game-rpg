@@ -558,7 +558,7 @@ export function tryBreakthrough(state: PlayerState, templateId: string): GrowthA
   );
   const perkBit = unlocked.length
     ? `，解锁「${unlocked.map((p) => p.label).join('、')}」（${unlocked
-        .flatMap((p) => p.effects.map(summarizeStarEffect))
+        .flatMap((p) => p.effects.map((fx) => summarizeStarEffect(fx)))
         .filter(Boolean)
         .join(' · ')}）`
     : '';

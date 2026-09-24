@@ -6,6 +6,7 @@
 import type { Rarity } from '../shared/types.js';
 import { isStatOnlyEffects, playablePassives } from './abilityAtoms.js';
 import { DEEP_STAR_OVERRIDES } from './deepKits.js';
+import { LEGENDARY_EXPAND_STAR_OVERRIDES } from './roster/legendaryExpandStars.js';
 import { LORE_STAR_OVERRIDES } from './roster/loreTracks.js';
 import { roleStarNode, ROLE_STAR_LADDERS } from './roleStarTracks.js';
 import type { StarBranchDef, StarNodeDef } from './starTypes.js';
@@ -94,6 +95,7 @@ export function maxStarForRarity(rarity: Rarity): number {
 /** 每卡完整个性轨：深做见 deepKits；未升格扩展卡回落职能轨 */
 export const STAR_OVERRIDES: Record<string, Partial<Record<number, StarNodeDef>>> = {
   ...LORE_STAR_OVERRIDES,
+  ...LEGENDARY_EXPAND_STAR_OVERRIDES,
   ...DEEP_STAR_OVERRIDES,
 };
 

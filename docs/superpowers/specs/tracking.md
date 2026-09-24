@@ -103,13 +103,47 @@
 | 已完成 | 战斗；双轴；B3；B1；B2；B4；人物 C1；公版换代 v9；**100 卡挂池（32 深做）+ 存档 v15**；**B21 装备生成器**；**六章强度档 + 建议战力**；**中土故事圈刀一（200 / v16）** |
 | 已完成（文档） | combat；dungeon；gacha；stamina；chapter；C1；roster；**skill-design-spec**；**文档现行/归档整理（2026-08-02）** |
 | 已完成（UI） | 伙伴名录印格；布阵；冒险战斗向；召唤结果框色；人物四页签；装备上6/中属性/下6 |
-| **当前主线** | **传说招牌剧本圣经第一刀**（待开工）：软模式运行时 + 重写刘备/赵云/吕布/周瑜。规格 [legendary-signature-kit](./2026-08-29-legendary-signature-kit-design.md)；plan [2026-08-29-legendary-signature-kit](../plans/2026-08-29-legendary-signature-kit.md) |
+| **当前主线** | **周循环闭环**（执行细节 → **§13.1**；断点 → [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md)） |
+| **暂缓** | 传说招牌圣经重开（除非点名）；54 绝品手写星；胚子打造；任务/商店/PVP |
 | **后置** | **效果触发率第一刀**（引擎 `SkillEffect.chance` + 刘备灌气 25%·56）；刀二其余绝品迁徙；封神缺口（申公豹/敖丙/太乙）。触发规格 [effect-proc-chance](./2026-08-30-effect-proc-chance-design.md)；旧刀二规格 [legendary-knife2](./2026-08-26-legendary-knife2-design.md) |
 | **文档约定** | 入口 [README](./README.md)；进度认本文；细则认 `systems/*`；归档默认不信；**每系统必带扩展口**（[tech §7.2.1](./tech.md)） |
 | 实现 plan | [传说招牌第一刀](../plans/2026-08-29-legendary-signature-kit.md)；特技池后置；手感 `npm run feel` |
 | 冻结总表 | combat；equipment（含套装 2/4 数值）；dungeon；gacha；stamina |
 | 里程碑索引 | `docs/superpowers/plans/2026-07-19-vertical-slice.md` |
 | 门禁之后 | §14 |
+| **loop 进度** | [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md) |
+
+### 13.1 dev-loop · 周循环主线计划
+
+> 阶段按「判据可独立成立」排序；每轮只做一个子阶段（dev-loop §1.4）。Cursor 心跳可用 `/loop 10m` + 下方 prompt，**须先完成 P0 再开 cron**。
+
+**Loop prompt 模板（复制后替换路径即可）：**
+
+> 按 `docs/superpowers/specs/tracking.md` §13.1 推进 moyu 周循环。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md` 定位断点。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾。
+
+#### 阶段
+
+| 阶段 | 内容 | 判据 |
+|------|------|------|
+| **P0** | loop 三件套 + WIP 叙事收口（文档指针；未提交改动按下面「P0-WIP 清单」拆 commit 或单批提交） | 存在 §13.1 + progress 文件；`git status` 与 progress「下一件」一致 |
+| **P1** | 战败/结果提示对齐「去哪刷什么」：`buildDefeatHint` + 必要时 Hub/Result 副文案；八题与 T3 口语一致 | `encounterRecipes.test.ts` 全绿；战败 hint 含镜渊/猎装指向（见测试正则）；`npm test` game-core 全绿 · **2026-09-24 hint+Hub 主路径已做** |
+| **P2** | **测试门禁**：`character growth` 3 红修绿（星轨/破境文案与深做卡一致） | `npm test` **0 fail**（当前基线 167 tests）· **2026-09-24 已绿** |
+| **P3** | 封神刀二一批：申公豹 / 敖丙 / 太乙（roster + 星轨 + 技能 compose 测） | 新 id 挂池；`roster.test.ts` / `skillCompose.test.ts` 增例绿；不碰套装 2/4 |
+| **P4** | B17 对手克制提示（战前轻提示，复用 encounter 元数据） | 战前 UI 或 Hub 一条可读提示；不硬锁进门 |
+
+**P0-WIP 清单（当前工作区，提交时建议拆 2~3 commit）：**
+
+1. 副本+遭遇+掉落+审计测试（`dungeon/*`、`encounters`、`lootTables`、`generate`、`encounterRecipes.test`、`dungeon.test`）
+2. 战斗+装备 T3/裂甲+`gearIdentity.test`（`combat/*`、`equipment/*`）
+3. 传说 expand 钩子/星 + growth 相关（若仍保留）+ Hub 副标题 + 文档
+
+#### 需要人定的决定（仅此停问）
+
+| 项 | 说明 | loop 默认 |
+|----|------|-----------|
+| 条件伤害帽 35% | tracking §11 待决 | **不动数值**，除非用户拍板 |
+| 正式产品名 / 上线存档 / 真支付 | §11 | **不实现** |
+| WIP 是否一次性 commit | 用户是否要求 git commit | **不 commit**，除非用户明确说 |
 
 ---
 

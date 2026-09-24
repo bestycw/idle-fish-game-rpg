@@ -10,6 +10,7 @@ import type {
   Role,
   SkillDef,
   SkillEffect,
+  SoftModeDef,
   TargetPattern,
 } from '../../shared/types.js';
 
@@ -117,6 +118,7 @@ interface KitPatch {
   focusPolicy?: FocusPolicyId;
   aiWeight?: number;
   blurb: string;
+  softModes?: SoftModeDef[];
 }
 
 export const KIT_PATCHES: Record<KitId, KitPatch> = {
@@ -427,6 +429,248 @@ const ROLE_BASE: Record<
   },
 };
 
+/** 已有条件效果的 kit 不再叠同条件软模式，避免正文说两遍 */
+const KIT_HOOKS: Partial<Record<KitId, SoftModeDef[]>> = {
+  guard: [
+    {
+      when: { kind: 'self_hp_below', value: 0.4 },
+      then: { multiplierDelta: 0.08 },
+      copy: '自己残血：盾更硬',
+    },
+  ],
+  taunt: [
+    {
+      when: { kind: 'first_cast' },
+      then: { statusPatches: [{ statusId: 'taunt', duration: 3 }] },
+      copy: '本场第一喝：锁敌更死',
+    },
+  ],
+  earth: [
+    {
+      when: { kind: 'self_hp_below', value: 0.4 },
+      then: { multiplierDelta: 0.1 },
+      copy: '自己残血：回春更深',
+    },
+  ],
+  team_wall: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'team_shield', multiplier: 0.4 }] },
+      copy: '本场第一道：结界更厚',
+    },
+  ],
+  bleed_pierce: [
+    {
+      when: { kind: 'target_has_status', statusId: 'bleed' },
+      then: { multiplierDelta: 0.12 },
+      copy: '已流血：穿透加码',
+    },
+  ],
+  col_kill: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.1 },
+      copy: '本场第一贯：贯穿更深',
+    },
+  ],
+  mark_hunt: [
+    {
+      when: { kind: 'target_has_status', statusId: 'mark_prey' },
+      then: { multiplierDelta: 0.12 },
+      copy: '猎印目标：印记咬得更死',
+    },
+  ],
+  row_smash: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.1 },
+      copy: '本场第一扫：排面更开',
+    },
+  ],
+  cross_hit: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.08 },
+      copy: '本场第一劈：十字更深',
+    },
+  ],
+  col_wave: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.08 },
+      copy: '本场第一浪：沿列加码',
+    },
+  ],
+  stun: [
+    {
+      when: { kind: 'target_under_cc' },
+      then: { multiplierDelta: 0.1 },
+      copy: '已被硬控：这一晕砸实',
+    },
+  ],
+  silence: [
+    {
+      when: { kind: 'target_has_status', statusId: 'silence' },
+      then: { statusPatches: [{ statusId: 'silence', duration: 1 }] },
+      copy: '已封口：再封一拍',
+    },
+  ],
+  heal_block: [
+    {
+      when: { kind: 'target_hp_below', value: 0.45 },
+      then: { multiplierDelta: 0.1 },
+      copy: '残血目标：禁疗咬死',
+    },
+  ],
+  sleep: [
+    {
+      when: { kind: 'target_has_status', statusId: 'sleep' },
+      then: { multiplierDelta: 0.1 },
+      copy: '沉眠中：再压一记',
+    },
+  ],
+  slow_pin: [
+    {
+      when: { kind: 'target_has_status', statusId: 'slow' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已迟缓：钉死脚步',
+    },
+  ],
+  havoc: [
+    {
+      when: { kind: 'target_has_status', statusId: 'havoc' },
+      then: { multiplierDelta: 0.1 },
+      copy: '已乱：心神再碎',
+    },
+  ],
+  mass_slow: [
+    {
+      when: { kind: 'target_has_status', statusId: 'slow' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已迟缓：一片钉死',
+    },
+  ],
+  mass_silence: [
+    {
+      when: { kind: 'target_has_status', statusId: 'silence' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已封口：一片再封',
+    },
+  ],
+  mass_sleep: [
+    {
+      when: { kind: 'target_has_status', statusId: 'sleep' },
+      then: { multiplierDelta: 0.08 },
+      copy: '沉眠中：大范围再压',
+    },
+  ],
+  amp_atk: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.08 },
+      copy: '本场第一咒：加持更深',
+    },
+  ],
+  amp_qi: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'ally_grant_qi', value: 24 }] },
+      copy: '本场第一灌：气更足',
+    },
+  ],
+  amp_spd: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.08 },
+      copy: '本场第一身法：更快',
+    },
+  ],
+  qi_drought: [
+    {
+      when: { kind: 'target_has_status', statusId: 'qi_drought' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已闭气：再抽一把',
+    },
+  ],
+  amp_def: [
+    {
+      when: { kind: 'self_hp_below', value: 0.4 },
+      then: { multiplierDelta: 0.08 },
+      copy: '自己残血：铁壁更深',
+    },
+  ],
+  shred_trap: [
+    {
+      when: { kind: 'target_has_status', statusId: 'shred' },
+      then: { multiplierDelta: 0.1 },
+      copy: '已破甲：陷阱咬合',
+    },
+  ],
+  shred_guard: [
+    {
+      when: { kind: 'target_has_status', statusId: 'shred' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已破甲：以械压城',
+    },
+  ],
+  heal_cleanse: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'cleanse' }] },
+      copy: '本场第一剂：净化更净',
+    },
+  ],
+  team_heal: [
+    {
+      when: { kind: 'first_cast' },
+      then: { multiplierDelta: 0.08 },
+      copy: '本场第一济：全队抬得更高',
+    },
+  ],
+  team_aegis: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'team_shield', multiplier: 0.38 }] },
+      copy: '本场第一幕：结界更厚',
+    },
+  ],
+  regen: [
+    {
+      when: { kind: 'self_hp_below', value: 0.4 },
+      then: { multiplierDelta: 0.1 },
+      copy: '自己残血：再生加快',
+    },
+  ],
+  flex_purge: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'purge' }] },
+      copy: '本场第一驱：剥一层',
+    },
+  ],
+  flex_bleed: [
+    {
+      when: { kind: 'target_has_status', statusId: 'bleed' },
+      then: { multiplierDelta: 0.1 },
+      copy: '已流血：再撕一口',
+    },
+  ],
+  flex_stun: [
+    {
+      when: { kind: 'target_under_cc' },
+      then: { multiplierDelta: 0.08 },
+      copy: '已被硬控：这一下砸实',
+    },
+  ],
+  flex_qi: [
+    {
+      when: { kind: 'first_cast' },
+      then: { effectPatches: [{ kind: 'ally_grant_qi', value: 22 }] },
+      copy: '本场第一灌：气更足',
+    },
+  ],
+};
+
 export function kitsForRarity(all: KitId[], rarity: Rarity): KitId[] {
   const n = rarity === 'common' ? 1 : rarity === 'rare' ? 2 : 3;
   return all.slice(0, Math.max(1, n));
@@ -451,6 +695,7 @@ export function composeKitSkill(opts: {
   let focusPolicy: FocusPolicyId | undefined;
   const applyStatus: ApplyStatusDef[] = [];
   const effects: SkillEffect[] = [];
+  const softModes: SoftModeDef[] = [];
   const blurbs = [opts.motif.replace(/。$/, '')];
 
   for (const kitId of used) {
@@ -465,6 +710,9 @@ export function composeKitSkill(opts: {
     if (k.aiWeight != null) aiWeight = k.aiWeight;
     if (k.applyStatus) applyStatus.push(...k.applyStatus.map((s) => ({ ...s })));
     if (k.effects) effects.push(...k.effects.map((e) => ({ ...e })));
+    if (k.softModes) softModes.push(...k.softModes.map((m) => ({ ...m, when: { ...m.when }, then: { ...m.then } })));
+    const hooks = KIT_HOOKS[kitId];
+    if (hooks) softModes.push(...hooks.map((m) => ({ ...m, when: { ...m.when }, then: { ...m.then } })));
     blurbs.push(k.blurb.replace(/。$/, ''));
   }
 
@@ -479,6 +727,7 @@ export function composeKitSkill(opts: {
     qiCost,
     applyStatus,
     effects: effects.length ? effects : undefined,
+    softModes: softModes.length ? softModes : undefined,
     damageSchool,
     focusPolicy,
     aiWeight,

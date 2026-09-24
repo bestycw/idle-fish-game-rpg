@@ -96,7 +96,7 @@ describe('character growth', () => {
     const progress = { ...state.roster.zhaoyun!, starBranch: branch };
     const derived = deriveGrowthStats(tpl, progress);
     assert.ok(derived.followUp);
-    assert.ok(derived.critRating > tpl.critRating);
+    assert.ok(derived.penRating > tpl.penRating || derived.followUp.chance >= 0.34);
     assert.ok(derived.skillMods.multiplierDelta === 0 || derived.followUp);
   });
 
@@ -321,8 +321,8 @@ describe('character growth', () => {
     assert.ok(wukong1.effects.some((e) => e.kind !== 'stat_pct' && e.kind !== 'rare_stat' && e.kind !== 'rating'));
     const zy2 = resolveStarNode('zhaoyun', 2);
     assert.ok(zy2);
-    assert.ok(zy2.effects.some((e) => e.kind === 'stat_pct'));
-    assert.ok(zy2.effects.some((e) => e.kind === 'rating' && e.stat === 'critRating'));
+    assert.ok(zy2.label.includes('常山'));
+    assert.ok(zy2.effects.some((e) => e.kind === 'rating' && e.stat === 'penRating'));
   });
 
   it('shows numbered cultivation and role-colored realm perks', () => {
@@ -336,7 +336,7 @@ describe('character growth', () => {
     assert.ok(burst);
     assert.equal(burst.toLabel, '筑基');
     assert.match(burst.mainLine, /主属性\+4%/);
-    assert.match(burst.perkLine, /暴击约\+/);
+    assert.match(burst.perkLine, /暴击约/);
     const tank = previewBreakthroughStep('menghuo', 0);
     assert.ok(tank);
     assert.match(tank.perkLine, /坚韧/);

@@ -332,7 +332,7 @@ export function listBreakthroughPerkRows(
   const unlocked = listBreakthroughPerks(templateId, tier).map((p) => ({
     tier: p.tier,
     label: p.label,
-    effectLine: p.effects.map(summarizeStarEffect).filter(Boolean).join('。'),
+    effectLine: p.effects.map((fx) => summarizeStarEffect(fx)).filter(Boolean).join('。'),
     unlocked: true as const,
   }));
   const upcoming = listNextBreakthroughPerks(templateId, tier);
@@ -341,7 +341,7 @@ export function listBreakthroughPerkRows(
         tier: upcoming[0]!.tier,
         label: upcoming.map((p) => p.label).join(' · '),
         effectLine: upcoming
-          .flatMap((p) => p.effects.map(summarizeStarEffect))
+          .flatMap((p) => p.effects.map((fx) => summarizeStarEffect(fx)))
           .filter(Boolean)
           .join('。'),
         unlocked: false,
@@ -375,7 +375,7 @@ export function previewBreakthroughStep(
     mainLine: formatMainPct(REALM_TIER_MAIN_PCT),
     perkLabel: perks.map((p) => p.label).join(' · '),
     perkLine: perks
-      .flatMap((p) => p.effects.map(summarizeStarEffect))
+      .flatMap((p) => p.effects.map((fx) => summarizeStarEffect(fx)))
       .filter(Boolean)
       .join('。'),
   };
@@ -497,6 +497,52 @@ function thenFromCopy(copy: string): string {
   return (i >= 0 ? copy.slice(i + 1) : copy).trim();
 }
 
+function sameGate(a: number | undefined, b: number | undefined): boolean {
+  if (a == null || b == null) return true;
+  return Math.abs(a - b) < 0.005;
+}
+
+/** 效果句与软模式同一门槛时合成一句，避免「低于40%」说两遍 */
+function effectMatchingSoftMode(mode: SoftModeDef, effects: SkillEffect[]): SkillEffect | undefined {
+  const w = mode.when;
+  if (w.kind === 'first_cast') return effects.find((e) => e.kind === 'first_cast');
+  if (w.kind === 'self_hp_below') {
+    return effects.find((e) => e.kind === 'self_low_hp' && sameGate(e.value, w.value));
+  }
+  if (w.kind === 'target_hp_below') {
+    return effects.find(
+      (e) =>
+        (e.kind === 'execute' || e.kind === 'heal_low_hp') && sameGate(e.value, w.value),
+    );
+  }
+  if (w.kind === 'target_under_cc') return effects.find((e) => e.kind === 'vs_cc');
+  if (w.kind === 'target_has_shield') return effects.find((e) => e.kind === 'vs_shield');
+  return undefined;
+}
+
+const CONDITION_PREFIX =
+  /^(自身生命低于[^，]+时|目标生命低于[^，]+时|目标生命高于[^，]+时|本场首次施放时|若目标带有[^，]+|若目标已被硬控|若目标有护盾|己方有人倒下时)/;
+
+function foldSameConditionSentences(parts: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of parts) {
+    const s = raw.replace(/[。]+$/, '');
+    const key = s.match(CONDITION_PREFIX)?.[1];
+    if (!key) {
+      out.push(s);
+      continue;
+    }
+    const rest = s.slice(key.length).replace(/^，|^则/, '').replace(/^并/, '');
+    const idx = out.findIndex((x) => x.startsWith(key));
+    if (idx >= 0) {
+      out[idx] = `${out[idx]}，并${rest}`;
+    } else {
+      out.push(s);
+    }
+  }
+  return out;
+}
+
 /** 软模式写成魔兽/新的开始式条件句，不用「变招」标签 */
 export function softModeSentence(mode: SoftModeDef): string {
   const then = thenFromCopy(mode.copy);
@@ -588,15 +634,25 @@ export function buildSkillRulesLine(
   const sentences = [head];
   const modes = skill.softModes ?? [];
   const effects = skill.effects ?? [];
-  const firstCastFx = effects.find((e) => e.kind === 'first_cast');
-  const firstCastModes = modes.filter((m) => m.when.kind === 'first_cast');
-  for (const e of effects) {
-    if (e.kind === 'first_cast' && firstCastModes.length > 0) continue;
-    sentences.push(tooltipEffectClause(e));
+  const folded = new Set<SkillEffect>();
+  const foldedModes = new Set<SoftModeDef>();
+  for (const mode of modes) {
+    const fx = effectMatchingSoftMode(mode, effects);
+    if (!fx || folded.has(fx)) continue;
+    folded.add(fx);
+    foldedModes.add(mode);
+    const extras = modes
+      .filter((m) => effectMatchingSoftMode(m, [fx]) === fx)
+      .map((m) => {
+        foldedModes.add(m);
+        return thenFromCopy(m.copy);
+      })
+      .join('，');
+    sentences.push(`${tooltipEffectClause(fx)}，并${extras}`);
   }
-  if (firstCastFx && firstCastModes.length > 0) {
-    const extras = firstCastModes.map((m) => thenFromCopy(m.copy)).join('，');
-    sentences.push(`${tooltipEffectClause(firstCastFx)}，并${extras}`);
+  for (const e of effects) {
+    if (folded.has(e)) continue;
+    sentences.push(tooltipEffectClause(e));
   }
   if (skill.followUp) {
     sentences.push(
@@ -604,10 +660,10 @@ export function buildSkillRulesLine(
     );
   }
   for (const mode of modes) {
-    if (mode.when.kind === 'first_cast' && firstCastFx) continue;
+    if (foldedModes.has(mode)) continue;
     sentences.push(softModeSentence(mode));
   }
-  return `${sentences.map((s) => s.replace(/[。]+$/, '')).join('。')}。`;
+  return `${foldSameConditionSentences(sentences).join('。')}。`;
 }
 
 export function skillDisplayFor(templateId: string, state: PlayerState): SkillDisplayInfo | null {

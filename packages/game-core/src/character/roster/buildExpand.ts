@@ -2,19 +2,22 @@ import type { SkillDef, UnitTemplate } from '../../shared/types.js';
 import { buildStubTemplate } from './roleBaselines.js';
 import { EXPAND_ROSTER } from './expandRoster.js';
 import { composeKitSkill } from './kitCompose.js';
+import { applyLegendaryExpandHook } from './legendaryExpandHooks.js';
 
 export function buildExpandSkills(): Record<string, SkillDef> {
   const out: Record<string, SkillDef> = {};
   for (const e of EXPAND_ROSTER) {
     const skillId = `skill_${e.id}`;
-    out[skillId] = composeKitSkill({
+    const legendarySolo = e.rarity === 'legendary';
+    const composed = composeKitSkill({
       id: skillId,
       name: e.skillName,
       role: e.role,
-      rarity: e.rarity,
+      rarity: legendarySolo ? 'common' : e.rarity,
       motif: e.motif,
-      kits: e.kits,
+      kits: legendarySolo ? [e.kits[0]!] : e.kits,
     });
+    out[skillId] = applyLegendaryExpandHook(e.id, composed, e.motif);
   }
   return out;
 }
