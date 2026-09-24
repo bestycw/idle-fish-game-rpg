@@ -842,7 +842,9 @@ function chooseAiAction(
       if ((hurt || canRevive) && roll < skill.aiWeight) return 'skill';
     }
     if (skill.tags.includes('guard')) {
+      const keepStacking = skill.tags.includes('sustain');
       const need =
+        keepStacking ||
         unit.hp / unit.maxHp < 0.55 ||
         livingUnits(allies).some((u) => rowOf(u.slot) === 'front' && u.hp / u.maxHp < 0.5);
       if (need && roll < skill.aiWeight) return 'skill';
@@ -1136,19 +1138,25 @@ export function buildDefeatHint(state: BattleState): string {
     return '战败提示：敌方前排很肉，试试群体攻击或终伤磨盾，术士沉默掐禁疗。';
   }
   if (state.encounterId === 'archers') {
-    return '战败提示：后排被点爆了。可上刺客穿透反打，或加强前排尽快撕开口子。';
+    return '战败提示：后排被点爆了。穿透反打或撕前排；猎装刷量、镜渊补对症 T3。';
   }
   if (state.encounterId === 'raiders') {
     return '战败提示：敌方身法太快且有控制/混乱。给坦克开护盾，或调整站位优先秒脆皮。';
   }
   if (state.encounterId === 'spirit_wall') {
-    return '战败提示：物防极高，力队吃瘪。上灵伤输出或深破甲（诸葛），别纯力普攻硬凿。';
+    return '战败提示：物防极高，力队吃瘪。上灵伤或破甲/裂甲 T3，解法装→镜渊试炼；别纯力硬凿。';
   }
   if (state.encounterId === 'chaos_rite') {
     return '战败提示：敌方群乱心。优先斩祭师，上净化治疗或护盾稳住阵脚。';
   }
   if (state.encounterId === 'boss_warden') {
     return '战败提示：首领肉且会控。破甲/流血磨血，先清侧卫再集火首领。';
+  }
+  if (state.encounterId === 'oil_cask') {
+    return '战败提示：后排在抬血。禁疗/斩杀或穿透点医士；净疗/禁疗 T3→镜渊试炼。';
+  }
+  if (state.encounterId === 'shield_stack') {
+    return '战败提示：敌方反复叠盾。带对盾增伤/破盾 T3，解法装→镜渊试炼，别和盾墙对磨。';
   }
   if (highDefFront) {
     return '战败提示：敌方前排很肉，试试群体攻击或终伤磨盾，术士沉默掐禁疗。';
@@ -1231,7 +1239,8 @@ function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntim
     qi: BATTLE_START_QI,
     maxQi: 100,
     skill: getSkill(spec.skillId),
-    shield: 0,
+    shield: spec.startShield ? scaleStat(spec.startShield, pressure) : 0,
+    shieldPurgeFactor: spec.shieldPurgeFactor,
     statuses: [],
     rank: spec.rank ?? 'normal',
     ccDr: {},

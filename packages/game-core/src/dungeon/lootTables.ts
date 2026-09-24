@@ -1,4 +1,17 @@
-import { generateEquipment, type GenerateEquipmentOptions } from '../equipment/equipment.js';
+import {
+  generateEquipment,
+  type GenerateEquipmentOptions,
+} from '../equipment/equipment.js';
+
+/** 镜渊：高压本掉「对症 T3」，不绑套装 */
+export const ABYSS_SOLUTION_T3_WEIGHTS: { id: string; weight: number }[] = [
+  { id: 'fx_skill_shred', weight: 4 },
+  { id: 'fx_purge_hit', weight: 4 },
+  { id: 'fx_heal_cleanse', weight: 3 },
+  { id: 'fx_skill_mark', weight: 2 },
+  { id: 'fx_cc_cut', weight: 2 },
+  { id: 'fx_self_cleanse', weight: 2 },
+];
 import { itemLevelFromProgress } from '../equipment/catalog/rarity.js';
 import { deployedT3Ids } from '../equipment/loadout.js';
 import { createRng } from '../shared/rng.js';
@@ -40,16 +53,15 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     stardust: [0, 2],
     characterExp: [18, 32],
   },
-  /** 镜渊：经验向；修为仅塔产 */
+  /** 镜渊：高压 + 必掉装；偏紫/金与解法 T3；套装留给猎装 */
   loot_abyss_mirror: {
     id: 'loot_abyss_mirror',
-    guaranteeEquipment: false,
-    equipmentChance: 0.4,
-    setIdChance: 0.35,
+    guaranteeEquipment: true,
+    setIdChance: 0.1,
     setIdWeights: [
       { id: 'set_pojun', weight: 1 },
       { id: 'set_tiebi', weight: 1 },
-      { id: 'set_jishi', weight: 2 },
+      { id: 'set_jishi', weight: 1 },
     ],
     gold: [8, 18],
     xiuwei: [0, 0],
@@ -118,6 +130,10 @@ export function grantDungeonReward(
     setIdWeights: table.setIdWeights,
     itemLevel: itemLevelFromProgress(state.chapterCleared ?? 0, state.chapterNodeIndex ?? 0),
   };
+  if (dungeonId === 'abyss_mirror') {
+    equipOpts.rarityWeights = { rare: 28, epic: 45, legendary: 12 };
+    equipOpts.t3IdWeights = ABYSS_SOLUTION_T3_WEIGHTS;
+  }
 
   let loot: Equipment | null = null;
   const rollEquip =

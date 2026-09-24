@@ -124,6 +124,8 @@ export const CHAPTERS: ChapterDef[] = [
       { kind: 'dungeon', id: 'abyss_mirror' },
       { kind: 'encounter', id: 'chaos_rite' },
       { kind: 'encounter', id: 'spirit_wall' },
+      { kind: 'encounter', id: 'oil_cask' },
+      { kind: 'encounter', id: 'shield_stack' },
       ...gachaUnlocks(...expandIdsByUnlock('ch2')),
     ],
   },

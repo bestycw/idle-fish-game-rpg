@@ -304,6 +304,7 @@ describe('extension registries', () => {
     assert.equal(hits, 0);
     assert.equal(events[0]?.code, 'effect_miss');
     assert.equal(events[0]?.payload.actor, '刘备');
+    assert.equal(events[0]?.payload.effect, '效果');
     runSkillEffects([{ kind: 'test_proc_chance', chance: 0.25 }], {
       ...ctx({ next: () => 0.1, int: () => 0, pick: <T>(xs: readonly T[]) => xs[0]! }),
     });

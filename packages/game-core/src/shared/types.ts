@@ -325,6 +325,8 @@ export interface UnitRuntime {
   maxQi: number;
   skill: SkillDef;
   shield: number;
+  /** 驱散只削该比例的盾（叠盾题）；缺省 1=整层驱散 */
+  shieldPurgeFactor?: number;
   statuses: StatusInstance[];
   rank: UnitRank;
   ccDr: Partial<Record<string, CcDrEntry>>;

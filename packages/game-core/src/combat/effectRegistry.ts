@@ -55,8 +55,9 @@ function applyPurge(ctx: SkillEffectContext, target: UnitRuntime): void {
   const pick = pickPurgeTarget(target, ctx.rng);
   if (!pick) return;
   if (pick === 'shield') {
-    const amount = target.shield;
-    target.shield = 0;
+    const factor = target.shieldPurgeFactor ?? 1;
+    const amount = Math.max(1, Math.floor(target.shield * factor));
+    target.shield = Math.max(0, target.shield - amount);
     ctx.emit(ctx.state, 'status_remove', {
       actor: ctx.actor.name,
       target: target.name,
@@ -421,7 +422,15 @@ registerSkillEffect('time_rewind', (ctx) => {
 
 function effectMissLabel(kind: SkillEffectKind): string {
   if (kind === 'ally_grant_qi' || kind === 'grant_qi') return '灌气';
-  return kind;
+  if (kind === 'execute') return '斩杀';
+  if (kind === 'vs_shield') return '对盾增伤';
+  if (kind === 'first_cast') return '先声';
+  if (kind === 'purge' || kind === 'cleanse' || kind === 'team_cleanse' || kind === 'cleanse_self') {
+    return kind === 'purge' ? '驱散' : '净化';
+  }
+  if (kind === 'revive_ally') return '招魂';
+  if (kind === 'team_shield' || kind === 'self_shield') return '结界';
+  return '效果';
 }
 
 export function runSkillEffects(

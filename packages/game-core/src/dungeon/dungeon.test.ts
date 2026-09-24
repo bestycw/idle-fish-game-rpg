@@ -8,7 +8,7 @@ import {
   listBattleDungeons,
   pickEncounterIndex,
 } from './defs.js';
-import { getLootTable, grantDungeonReward } from './lootTables.js';
+import { ABYSS_SOLUTION_T3_WEIGHTS, getLootTable, grantDungeonReward } from './lootTables.js';
 import { climbTower } from './tower.js';
 
 describe('dungeon defs', () => {
@@ -59,6 +59,20 @@ describe('dungeon loot', () => {
   it('rejects instant dungeon on battle reward API', () => {
     const player = createInitialPlayer(1);
     assert.throws(() => grantDungeonReward(player, 'tower'));
+  });
+
+  it('abyss mirror drops gear biased to solution T3', () => {
+    const solutionIds = new Set(ABYSS_SOLUTION_T3_WEIGHTS.map((w) => w.id));
+    let withSolutionT3 = 0;
+    let n = 0;
+    for (let i = 0; i < 120; i += 1) {
+      const player = createInitialPlayer(2000 + i);
+      const { loot } = grantDungeonReward(player, 'abyss_mirror');
+      assert.ok(loot, 'abyss should guarantee equipment');
+      n += 1;
+      if (loot.effectAffixId && solutionIds.has(loot.effectAffixId)) withSolutionT3 += 1;
+    }
+    assert.ok(withSolutionT3 > 25, `expected solution T3 bias, got ${withSolutionT3}/${n}`);
   });
 
   it('tower instant still grants xiuwei', () => {

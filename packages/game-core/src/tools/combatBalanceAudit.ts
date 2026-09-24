@@ -156,6 +156,8 @@ function main() {
     'guanyu',
     'nezha',
     'dianwei',
+    'yangjian',
+    'sunbin',
   ];
 
   const starterState = withRoster(fresh, starterIds, { level: 1, star: 0 });
@@ -181,9 +183,9 @@ function main() {
     { pressure: 1.3 },
   );
   runSuite(
-    '养成破阵 lv8 ★2 · pressure1.3 镜渊（核+诸葛）',
+    '养成破阵 lv8 ★2 · pressure1.3 镜渊（核+孙膑）',
     midState,
-    ['hero', 'zhangfei', 'zhuge', 'zhaoyun', 'huatuo'],
+    ['hero', 'zhangfei', 'sunbin', 'zhaoyun', 'huatuo'],
     abyssEnc,
     { quietStatus: true, pressure: 1.3 },
   );
@@ -201,7 +203,7 @@ function main() {
   const noShred = runSuite(
     '门·无破甲 · 核+典韦（盾）',
     midState,
-    ['hero', 'zhangfei', 'zhaoyun', 'huatuo', 'dianwei'],
+    ['hero', 'zhangfei', 'huatuo', 'wukong', 'dianwei'],
     ['wall', 'boss_warden', 'spirit_wall'],
     { quietStatus: true, pressure: 1.3 },
   );
@@ -219,25 +221,75 @@ function main() {
     ['spirit_wall'],
     { quietStatus: true, pressure: 1.3 },
   );
-  const noPierce = runSuite(
-    '门·无穿透 · 张飞/悟空/华佗/关羽打弓手',
+  const noHealCut = runSuite(
+    '门·无点奶 · 核+悟空/典韦打油桶',
     midState,
-    ['hero', 'zhangfei', 'wukong', 'huatuo', 'guanyu'],
-    ['archers'],
+    ['hero', 'zhangfei', 'huatuo', 'wukong', 'dianwei'],
+    ['oil_cask'],
     { quietStatus: true, pressure: 1 },
+  );
+  const withHealCut = runSuite(
+    '门·有穿透/禁疗轴 · 核+赵云/西施打油桶',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'zhaoyun', 'xishi'],
+    ['oil_cask'],
+    { quietStatus: true, pressure: 1 },
+  );
+  const noShieldBreak = runSuite(
+    '门·无对盾 · 核+悟空/典韦打叠盾',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'wukong', 'dianwei'],
+    ['shield_stack'],
+    { quietStatus: true, pressure: 1 },
+  );
+  const withShieldBreak = runSuite(
+    '门·有对盾 · 核+赵云打叠盾',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'zhaoyun', 'yangjian'],
+    ['shield_stack'],
+    { quietStatus: true, pressure: 1 },
+  );
+  const noPierce = runSuite(
+    '门·无穿透 · 核+悟空/典韦打弓手',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'wukong', 'dianwei'],
+    ['archers'],
+    { quietStatus: true, pressure: 1.55 },
   );
   const withPierce = runSuite(
-    '门·有穿透 · 开局五人打弓手',
+    '门·有穿透 · 核+赵云/后羿打弓手',
     midState,
-    starterIds,
+    ['hero', 'zhangfei', 'huatuo', 'zhaoyun', 'houyi'],
     ['archers'],
-    { quietStatus: true, pressure: 1 },
+    { quietStatus: true, pressure: 1.55 },
   );
+  const glassCtrl = ['hero', 'baigujing', 'daji', 'xishi', 'diaochan'] as const;
   const ctrlBoss = runSuite(
     '门·硬控 · 白骨/妲己/西施/貂蝉',
     midState,
-    ['hero', 'baigujing', 'daji', 'xishi', 'diaochan'],
+    [...glassCtrl],
     ['boss_warden', 'chaos_rite'],
+    { quietStatus: true, pressure: 1.3 },
+  );
+  const noTankRaid = runSuite(
+    '门·无坦 · 控场五人打速攻',
+    midState,
+    [...glassCtrl],
+    ['raiders'],
+    { quietStatus: true, pressure: 1.55 },
+  );
+  const withTankRaid = runSuite(
+    '门·有坦奶 · 核+典韦打速攻',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'dianwei', 'zhaoyun'],
+    ['raiders'],
+    { quietStatus: true, pressure: 1.55 },
+  );
+  const chaosCleanse = runSuite(
+    '门·有净化轴 · 核+诸葛打乱心',
+    midState,
+    ['hero', 'zhangfei', 'huatuo', 'zhaoyun', 'zhuge'],
+    ['chaos_rite'],
     { quietStatus: true, pressure: 1.3 },
   );
 
@@ -251,17 +303,28 @@ function main() {
       ` · 盾辅无破甲 ${wr(noShred.spirit_wall)}%`,
   );
   console.log(
-    `  后排弓 p1：无穿 ${wr(noPierce.archers)}% → 有穿 ${wr(withPierce.archers)}%`,
+    `  后排弓 p1.55：无穿 ${wr(noPierce.archers)}% → 有穿 ${wr(withPierce.archers)}%`,
+  );
+  console.log(
+    `  油桶 p1：无点奶 ${wr(noHealCut.oil_cask)}% → 穿/禁疗 ${wr(withHealCut.oil_cask)}%`,
+  );
+  console.log(
+    `  叠盾 p1：无对盾 ${wr(noShieldBreak.shield_stack)}% → 有对盾 ${wr(withShieldBreak.shield_stack)}%`,
   );
   console.log(
     `  Boss/乱心：硬控 boss ${wr(ctrlBoss.boss_warden)}% / chaos ${wr(ctrlBoss.chaos_rite)}%` +
-      ` · 破阵 boss ${wr(deepShred.boss_warden)}%`,
+      ` · 破阵 boss ${wr(deepShred.boss_warden)}%` +
+      ` · 净化 chaos ${wr(chaosCleanse.chaos_rite)}%`,
+  );
+  console.log(
+    `  速攻 p1.55：无坦 ${wr(noTankRaid.raiders)}% → 坦奶 ${wr(withTankRaid.raiders)}%`,
   );
 
   console.log('\n=== 目标带 ===');
-  console.log('开局 p1：wall/archers 70–88% · raiders 50–70%');
-  console.log('养成默认镜渊 p1.3：spirit 宜 <40%（卡关上诸葛）；破阵 spirit/boss 明显高于默认');
+  console.log('开局 p1：wall/archers/raiders 宜 ≥40%（有赵云穿透+张飞）');
+  console.log('养成默认镜渊 p1.3：spirit 宜 <40%；破阵（孙膑）spirit/boss 明显高于默认');
   console.log('解法门：轻破甲 << 深破甲（铁壁）；硬控 Boss ≈0%；盾辅可另开生存解但不该全面碾压破甲');
+  console.log('新题：油桶 无点奶 < 穿/禁疗；叠盾 无对盾 < 有对盾');
 }
 
 main();

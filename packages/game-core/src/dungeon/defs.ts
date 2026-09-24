@@ -39,7 +39,7 @@ export const DUNGEONS: DungeonDef[] = [
     kind: 'gear',
     runMode: 'battle',
     // 早期本不含铁壁灵阵（力队吃瘪），避免开局软锁；灵阵进镜渊
-    encounterPool: ['wall', 'archers', 'raiders'],
+    encounterPool: ['wall', 'archers', 'raiders', 'oil_cask', 'shield_stack'],
     lootTableId: 'loot_gear_trial',
     blurb: '刷装备；套装碎片倾向更高',
     staminaCost: 10,
