@@ -69,11 +69,15 @@ export function listEquipmentSkillModifiers(state: PlayerState, templateId?: str
     multiplierDelta: 0.05,
   };
 
-  // Add status patches based on morph type
   if (morphId === 'morph_bleed_edge') {
     mod.statusPatches = [{ statusId: 'bleed', duration: 2, layers: 1 }];
   } else if (morphId === 'morph_frost_touch') {
     mod.statusPatches = [{ statusId: 'slow', duration: 1 }];
+  } else if (morphId === 'morph_shield_break') {
+    mod.effectPatches = [{ kind: 'vs_shield', multiplier: 1.4 }];
+  } else if (morphId === 'morph_cleanse_heal') {
+    mod.effectPatches = [{ kind: 'cleanse' }];
+    mod.addTags = ['cleanse'];
   }
 
   return [mod];

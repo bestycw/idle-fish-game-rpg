@@ -29,7 +29,7 @@ const DEFS: T3Def[] = [
   { id: 'fx_splash', name: '震荡', group: 'weapon', scope: 'combat', description: '单体命中 15%→溅射相邻（该下 25%）' },
   { id: 'fx_bleed_spread', name: '溅血', group: 'weapon', scope: 'combat', description: '击杀流血目标→相邻继承 1 层' },
   { id: 'fx_skill_mark', name: '点印', group: 'weapon', scope: 'combat', description: '技能命中 20%→猎印 1 回合' },
-  { id: 'fx_skill_shred', name: '裂甲', group: 'weapon', scope: 'combat', description: '技能命中 20%→破甲 1 回合' },
+  { id: 'fx_skill_shred', name: '裂甲', group: 'weapon', scope: 'combat', description: '技能命中 35%→破甲 1 回合' },
   { id: 'fx_purge_hit', name: '破灵', group: 'weapon', scope: 'combat', description: '命中有盾则驱散，每回合最多 1 次' },
   { id: 'fx_soul_rip', name: '夺魂', group: 'weapon', scope: 'combat', description: '击杀 +6 气' },
   { id: 'fx_shield_qi', name: '破盾息', group: 'weapon', scope: 'combat', description: '打破/驱散护盾时 +4 气' },

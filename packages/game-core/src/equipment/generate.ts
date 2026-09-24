@@ -31,6 +31,10 @@ export type GenerateEquipmentOptions = {
   setIdWeights?: { id: string; weight: number }[];
   itemLevel?: number;
   rarity?: Rarity;
+  /** 覆盖全局品级权重；未列出的品级权重为 0 */
+  rarityWeights?: Partial<Record<Rarity, number>>;
+  /** T3 池内按 id 加权；仅对本槽位合法 id 生效 */
+  t3IdWeights?: { id: string; weight: number }[];
 };
 
 let equipSeq = 0;
@@ -40,7 +44,19 @@ export function createEquipmentId(rng: Rng): string {
   return `eq_${rng.int(1000, 9999)}_${equipSeq}`;
 }
 
-function rollRarity(rng: Rng): Rarity {
+function rollRarity(rng: Rng, weights?: Partial<Record<Rarity, number>>): Rarity {
+  if (weights && Object.keys(weights).length > 0) {
+    const rows = (Object.entries(weights) as [Rarity, number][]).filter(([, w]) => w > 0);
+    const total = rows.reduce((s, [, w]) => s + w, 0);
+    if (total > 0) {
+      let roll = rng.int(1, total);
+      for (const [rarity, w] of rows) {
+        roll -= w;
+        if (roll <= 0) return rarity;
+      }
+      return rows[0]![0];
+    }
+  }
   const total = DROPTABLE.reduce((s, r) => s + r.weight, 0);
   let roll = rng.int(1, total);
   for (const row of DROPTABLE) {
@@ -48,6 +64,24 @@ function rollRarity(rng: Rng): Rarity {
     if (roll <= 0) return row.rarity;
   }
   return 'common';
+}
+
+function pickWeightedT3(
+  rng: Rng,
+  slot: EquipSlot,
+  weights: { id: string; weight: number }[],
+): string | undefined {
+  const pool = listT3ForSlot(slot);
+  const byId = new Map(pool.map((d) => [d.id, d]));
+  const rows = weights.filter((w) => w.weight > 0 && byId.has(w.id));
+  if (rows.length === 0) return pool.length > 0 ? pickFrom(rng, pool).id : undefined;
+  const total = rows.reduce((s, w) => s + w.weight, 0);
+  let roll = rng.int(1, total);
+  for (const row of rows) {
+    roll -= row.weight;
+    if (roll <= 0) return row.id;
+  }
+  return rows[0]!.id;
 }
 
 function pickWeightedSetId(rng: Rng, weights: { id: string; weight: number }[]): string | undefined {
@@ -155,7 +189,7 @@ export function generateEquipment(
   opts?: GenerateEquipmentOptions,
 ): Equipment {
   const chosenSlot = slot ?? rng.pick(EQUIP_SLOTS);
-  const rarity = opts?.rarity ?? rollRarity(rng);
+  const rarity = opts?.rarity ?? rollRarity(rng, opts?.rarityWeights);
   const table = droptableOf(rarity);
   const itemLevel = Math.max(1, Math.min(100, opts?.itemLevel ?? 1));
 
@@ -172,8 +206,12 @@ export function generateEquipment(
 
   let effectAffixId: string | undefined;
   if (table.t3 > 0 && rng.next() < table.t3) {
-    const pool = listT3ForSlot(chosenSlot);
-    if (pool.length > 0) effectAffixId = pickFrom(rng, pool).id;
+    if (opts?.t3IdWeights?.length) {
+      effectAffixId = pickWeightedT3(rng, chosenSlot, opts.t3IdWeights);
+    } else {
+      const pool = listT3ForSlot(chosenSlot);
+      if (pool.length > 0) effectAffixId = pickFrom(rng, pool).id;
+    }
   }
 
   const socketCount: 0 | 1 = table.socket >= 1 ? 1 : table.socket > 0 && rng.next() < table.socket ? 1 : 0;

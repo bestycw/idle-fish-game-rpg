@@ -49,8 +49,8 @@ export const SET_DEFS: SetDef[] = [
         pieces: 2,
         label: '2件·铁壁骨',
         apply: (b) => {
-          b.maxHp += 18;
-          b.def += 4;
+          b.maxHp += 32;
+          b.def += 7;
         },
       },
       {

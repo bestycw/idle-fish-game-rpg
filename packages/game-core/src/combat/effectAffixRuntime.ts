@@ -179,7 +179,7 @@ registerT3Hooks('fx_skill_mark', {
 registerT3Hooks('fx_skill_shred', {
   onHitTarget: ({ state, rng, actor, target, skillHit, damage }) => {
     if (!skillHit || !actor || !target || !damage || !isLiving(target)) return;
-    if (rng.next() >= 0.2) return;
+    if (rng.next() >= 0.35) return;
     applyStatusOnce(state, actor, target, 'shred', 1, { value: 0.7 });
     logFx(state, `${actor.name}【裂甲】附带破甲。`);
   },
