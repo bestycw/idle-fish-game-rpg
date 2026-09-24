@@ -131,7 +131,23 @@
 | **P3** | 封神刀二一批：申公豹 / 敖丙 / 太乙（roster + 星轨 + 技能 compose 测） | 新 id 挂池；`roster.test.ts` / `skillCompose.test.ts` 增例绿；不碰套装 2/4 · **2026-09-24 expand+测例** |
 | **P4** | B17 对手克制提示（战前轻提示，复用 encounter 元数据） | 战前 UI 或 Hub 一条可读提示；不硬锁进门 · **2026-09-24 `prepHint`+战斗页** |
 
-**P0-WIP 清单（当前工作区，提交时建议拆 2~3 commit）：**
+### 13.2 dev-loop · 上古 expand（进行中）
+
+> **Loop 真源**：本节 + [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md)。Cursor 发：`/loop 10m` + 下方 **§13.2 prompt**。
+
+**§13.2 Loop prompt：**
+
+> 按 `docs/superpowers/specs/tracking.md` §13.2 推进上古 expand。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md`。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾；一轮一个子阶段；有进展则 1 commit。
+
+| 子阶段 | 内容 | 判据 |
+|--------|------|------|
+| **P5a** | 黄帝/蚩尤/西王母/伏羲/大禹：`roster.test` 专测（招牌名、钩子 copy、★3 岔路、无招魂） | 五人测例绿；`npm test` 全绿 |
+| **P5b** | `zhongtuRoster` 五人 `motif/skillName` 去「诀」占位（若仍有） | 五人 `getSkill().name` 无裸「诀」 |
+| **P5c** | `skillCompose.test` 各 1 条 ★3 分支技能 diff（可选） | 新增测例绿 |
+
+**P5a** · 五人 roster 专测 · **2026-09-24 loop 第 1 轮完成**
+
+**P0-WIP 清单（历史 · 已提交）：**
 
 1. 副本+遭遇+掉落+审计测试（`dungeon/*`、`encounters`、`lootTables`、`generate`、`encounterRecipes.test`、`dungeon.test`）
 2. 战斗+装备 T3/裂甲+`gearIdentity.test`（`combat/*`、`equipment/*`）

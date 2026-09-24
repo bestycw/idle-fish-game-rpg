@@ -18,6 +18,7 @@ import { characterIntro } from '../intros.js';
 import { makePlaceholderSkill, ROLE_PLACEHOLDER_SKILLS } from './placeholderSkills.js';
 import { kitsForRarity, skillFingerprint } from './kitCompose.js';
 import { LEGENDARY_EXPAND_HOOKS } from './legendaryExpandHooks.js';
+import { LORE_DEFS } from './loreTracks.js';
 import { REMOVED_FOREIGN_IDS } from '../../save/zhongtuMigrate.js';
 import { migrateZhongtuV16 } from '../../save/zhongtuMigrate.js';
 import { createInitialPlayer } from '../../save/player.js';
@@ -406,6 +407,46 @@ describe('zhongtu roster 200', () => {
       STAR_OVERRIDES.shengongbao![3]!.branches?.map((b) => b.identityLabel),
       ['说反', '阻截'],
     );
+  });
+
+  it('shanggu legendary expand: huangdi, chiyou, xiwangmu, fuxi, dayu', () => {
+    const hd = getSkill('skill_huangdi');
+    assert.match(hd.name, /涿鹿/);
+    assert.match(hd.softModes?.[0]?.copy ?? '', /涿鹿/);
+
+    const cy = getSkill('skill_chiyou');
+    assert.equal(cy.name, '兵主开战');
+    assert.match(cy.softModes?.[0]?.copy ?? '', /兵主/);
+
+    const xw = getSkill('skill_xiwangmu');
+    assert.match(xw.name, /瑶池/);
+    assert.match(xw.softModes?.[0]?.copy ?? '', /硬控|瑶池/);
+
+    const fx = getSkill('skill_fuxi');
+    assert.match(fx.name, /一画开天/);
+    assert.match(fx.softModes?.[0]?.copy ?? '', /开天/);
+
+    const dy = getSkill('skill_dayu');
+    assert.match(dy.name, /疏河/);
+    assert.match(dy.softModes?.[0]?.copy ?? '', /河道/);
+
+    for (const id of ['huangdi', 'chiyou', 'xiwangmu', 'fuxi', 'dayu'] as const) {
+      assert.equal(listIdentityTracks(id).length, 2, id);
+      assert.deepEqual(
+        STAR_OVERRIDES[id]![3]!.branches?.map((b) => b.identityLabel),
+        LORE_DEFS[id]?.paths ?? [],
+        id,
+      );
+      const shred = [
+        ...(STAR_OVERRIDES[id]![3]?.branches ?? []),
+        ...(STAR_OVERRIDES[id]![6]?.branches ?? []),
+      ].some((b) =>
+        b.effects.some(
+          (fx) => fx.kind === 'status_unlock' && fx.status.statusId === 'shred',
+        ),
+      );
+      assert.equal(shred, false, id);
+    }
   });
 
   it('legendary expand stars deepen the same hook; deep tracks stay personal', () => {
