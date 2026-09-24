@@ -168,7 +168,7 @@ export const LORE_DEFS: Record<string, LoreDef> = {
   shaseng: { titles: ['流沙', '宝杖', '卷帘'] },
   taibai: { titles: ['招安', '金星', '天庭'] },
   huangfeng: { titles: ['黄风', '虎先锋', '灵吉'] },
-  shengongbao: { titles: ['北海', '反殷', '申公豹', '敖丙', '灭商', '阻截'], paths: ['说反', '阻截'] },
+  shengongbao: { titles: ['北海', '反殷', '说反', '斗法', '灭商', '阻截'], paths: ['说反', '阻截'] },
   aobing: { titles: ['龙宫', '陈塘', '敖丙', '抽筋', '莲身', '华盖'], paths: ['龙息', '莲身'] },
   taiyi: { titles: ['乾元', '莲花', '太乙', '哪吒', '金光', '金霞'], paths: ['莲化', '金光'] },
   wenzhong: { titles: ['闻太师', '金鞭', '绝龙岭', '墨麒麟', '摘星'], paths: ['金鞭', '绝龙'] },

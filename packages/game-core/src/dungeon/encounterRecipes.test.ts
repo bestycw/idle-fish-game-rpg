@@ -53,6 +53,10 @@ function winRate(
 
 describe('encounter recipes', () => {
   it('keeps 8 recipe ids; wall no longer double-exams heal_block', () => {
+    for (const e of ENCOUNTERS) {
+      assert.ok(e.prepHint && e.prepHint.length >= 8, `${e.id} missing prepHint`);
+    }
+
     const ids = ENCOUNTERS.map((e) => e.id);
     for (const id of [
       'wall',

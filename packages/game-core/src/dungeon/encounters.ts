@@ -29,6 +29,8 @@ export interface EnemySpec {
 export interface EncounterDef {
   id: string;
   name: string;
+  /** 战前一句：堆装/站位方向（不锁进门） */
+  prepHint?: string;
   enemies: EnemySpec[];
 }
 
@@ -52,6 +54,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'wall',
     name: '盾墙巡逻',
+    prepHint: '前排极肉：破甲/群攻磨盾，术士可禁疗 · 猎装刷装',
     enemies: [
       {
         name: '铁壁恶徒',
@@ -87,6 +90,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'archers',
     name: '后排伏击',
+    prepHint: '先撕前排否则后排点杀：穿透/切后 · 猎装量、镜渊对症 T3',
     enemies: [
       {
         name: '挡箭杂兵',
@@ -136,6 +140,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'raiders',
     name: '速攻刺客',
+    prepHint: '身法快带控：护盾/坦阵，优先秒脆皮后排',
     enemies: [
       {
         name: '点穴客',
@@ -199,6 +204,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'spirit_wall',
     name: '铁壁灵阵',
+    prepHint: '物防极高：灵伤或裂甲/破甲 T3 · 解法装→镜渊试炼',
     enemies: [
       {
         name: '铁壁灵卫',
@@ -247,6 +253,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'chaos_rite',
     name: '乱心仪式',
+    prepHint: '群乱心：先斩祭师，净化/护盾稳住',
     enemies: [
       {
         name: '乱心祭师',
@@ -310,6 +317,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'boss_warden',
     name: '守卫首领',
+    prepHint: '首领厚血抗控：破甲/流血，先清侧卫再集火',
     enemies: [
       {
         name: '镇狱守卫',
@@ -360,6 +368,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'oil_cask',
     name: '油桶续命',
+    prepHint: '后排双医抬血：禁疗/斩杀/穿透点医 · 净疗/禁疗 T3→镜渊',
     enemies: [
       {
         name: '油桶门板',
@@ -421,6 +430,7 @@ export const ENCOUNTERS: EncounterDef[] = [
   {
     id: 'shield_stack',
     name: '叠盾铁阵',
+    prepHint: '反复叠盾：对盾增伤/破盾 T3 · 解法装→镜渊试炼',
     enemies: [
       {
         name: '叠盾甲',

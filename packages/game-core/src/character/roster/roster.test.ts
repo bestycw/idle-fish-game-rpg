@@ -373,6 +373,41 @@ describe('zhongtu roster 200', () => {
     assert.equal('zhouyu' in LEGENDARY_EXPAND_HOOKS, false);
   });
 
+  it('fengshen legendary expand: shengongbao, aobing, taiyi', () => {
+    const sg = getSkill('skill_shengongbao');
+    assert.equal(sg.name, '妨贤害能');
+    assert.ok(sg.applyStatus.some((s) => s.statusId === 'sleep'));
+    assert.match(sg.softModes?.[0]?.copy ?? '', /沉眠/);
+
+    const ab = getSkill('skill_aobing');
+    assert.equal(ab.name, '龙太子浪');
+    assert.match(ab.softModes?.[0]?.copy ?? '', /龙浪/);
+
+    const ty = getSkill('skill_taiyi');
+    assert.equal(ty.name, '莲花化身');
+    assert.match(ty.softModes?.[0]?.copy ?? '', /莲台/);
+
+    for (const id of ['shengongbao', 'aobing', 'taiyi'] as const) {
+      const tracks = listIdentityTracks(id);
+      assert.equal(tracks.length, 2, id);
+      assert.deepEqual(
+        STAR_OVERRIDES[id]![3]!.branches?.map((b) => b.identityLabel),
+        tracks.map((t) => t.label),
+      );
+      const hasRevive = [
+        ...(STAR_OVERRIDES[id]![3]?.branches ?? []),
+        ...(STAR_OVERRIDES[id]![6]?.branches ?? []),
+      ].some((b) =>
+        b.effects.some((fx) => fx.kind === 'effect_unlock' && fx.effect.kind === 'revive_ally'),
+      );
+      assert.equal(hasRevive, false, id);
+    }
+    assert.deepEqual(
+      STAR_OVERRIDES.shengongbao![3]!.branches?.map((b) => b.identityLabel),
+      ['说反', '阻截'],
+    );
+  });
+
   it('legendary expand stars deepen the same hook; deep tracks stay personal', () => {
     const deep = new Set<string>(DEEP_TEMPLATE_IDS);
     for (const e of ZHONGTU_ROSTER) {

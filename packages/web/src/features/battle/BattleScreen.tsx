@@ -101,8 +101,9 @@ export function BattleScreen({
   onHeroManualManual,
 }: BattleScreenProps) {
   const heroInBattle = battle.player.units.find((u) => u.isHero);
-  const encounterName =
-    ENCOUNTERS.find((e) => e.id === battle.encounterId)?.name ?? battle.encounterId;
+  const encounter = ENCOUNTERS.find((e) => e.id === battle.encounterId);
+  const encounterName = encounter?.name ?? battle.encounterId;
+  const prepHint = encounter?.prepHint;
 
   const statusLine = battle.awaitingHeroAction
     ? '等待指令'
@@ -146,10 +147,11 @@ export function BattleScreen({
           eyebrow={`第 ${battle.turn} 回合 · ${statusLine}`}
           title={encounterName}
           paragraphs={[
+            prepHint ?? '',
             player.heroManual
               ? '手动：轮到你时从下方选招。索敌仍自动。'
               : '自动交锋。可切手动亲自出手。',
-          ]}
+          ].filter(Boolean)}
         />
         <BoardStrip battle={battle} />
         {/* 窄屏：战报在指令上方；宽屏战报进右栏 */}
