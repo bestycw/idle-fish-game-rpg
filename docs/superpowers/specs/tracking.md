@@ -142,7 +142,7 @@
 | 子阶段 | 内容 | 判据 |
 |--------|------|------|
 | **P5a** | 黄帝/蚩尤/西王母/伏羲/大禹：`roster.test` 专测（招牌名、钩子 copy、★3 岔路、无招魂） | 五人测例绿；`npm test` 全绿 |
-| **P5b** | `zhongtuRoster` 五人 `motif/skillName` 去「诀」占位（若仍有） | 五人 `getSkill().name` 无裸「诀」 |
+| **P5b** | `zhongtuRoster` 五人 `motif/skillName` 去「诀」占位（若仍有） | 五人 `getSkill().name` 无裸「诀」 · **2026-09-24 loop 第 2 轮** |
 | **P5c** | `skillCompose.test` 各 1 条 ★3 分支技能 diff（可选） | 新增测例绿 |
 
 **P5a** · 五人 roster 专测 · **2026-09-24 loop 第 1 轮完成**
