@@ -409,6 +409,28 @@ describe('zhongtu roster 200', () => {
     );
   });
 
+  it('qunxiong legendary expand: caocao, simayi, guojia', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['caocao', /挟天子/, /号令/],
+      ['simayi', /冢虎隐忍/, /冢虎|残血/],
+      ['guojia', /十胜十败/, /十胜|第一筹/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+      assert.deepEqual(
+        STAR_OVERRIDES[id]![3]!.branches?.map((b) => b.identityLabel),
+        LORE_DEFS[id]?.paths ?? [],
+        id,
+      );
+    }
+    assert.ok(getSkill('skill_caocao').effects?.some((e) => e.kind === 'first_cast'));
+    assert.ok(getSkill('skill_simayi').effects?.some((e) => e.kind === 'self_low_hp'));
+  });
+
   it('wuyue legendary expand: nieyinniang, jingke, ganjiang, moye, libai, wuzixu', () => {
     const cases: [string, RegExp, RegExp][] = [
       ['nieyinniang', /飞剑取首/, /隐锋|残血/],

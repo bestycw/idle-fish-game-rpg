@@ -20,4 +20,8 @@ export const LOOP_COMBAT_SPOTLIGHT: readonly string[] = [
   'moye',
   'libai',
   'wuzixu',
+  // 群雄 expand（§13.4）
+  'caocao',
+  'simayi',
+  'guojia',
 ];
