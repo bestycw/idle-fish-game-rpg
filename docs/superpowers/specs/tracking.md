@@ -119,7 +119,17 @@
 
 **Loop prompt 模板（复制后替换路径即可）：**
 
-> 按 `docs/superpowers/specs/tracking.md` §13.1 推进 moyu 周循环。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md` 定位断点。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾。
+> 按 `docs/superpowers/specs/tracking.md` §13.x 推进 moyu 周循环。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md` 定位断点。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾；**收尾前 `npm test`（含 combatFlowSmoke）**。
+
+#### 每轮固定门禁（伤害 / 技能流）
+
+| 命令 | 作用 |
+|------|------|
+| `npm test` | 全量 + **combatFlowSmoke**：八题×5 种子 + spotlight 卡 wall/oil 各 3 种子 |
+| `npm run test:combat-flow` | 仅战斗流冒烟 |
+| `npm run feel -- --seeds 15` | 可选：看胜率/战报 |
+
+本批验收卡：`packages/game-core/src/combat/combatFlowSpotlight.ts`（新 expand 批次追加 id）。
 
 #### 阶段
 
@@ -154,7 +164,7 @@
 | **P6a** | 聂隐娘/荆轲/干将/莫邪/李白/伍子胥：`roster.test` 专测（hooks 已在 `legendaryExpandHooks`） | 六人测例绿 |
 | **P6b** | 名册 skillName 与 motif 对齐 | 无裸「诀」 |
 
-**§13.3 Loop prompt：** 同 §13.2，将「§13.2 / 上古」改为「§13.3 / 吴越」。
+**§13.3 Loop prompt：** 同 §13.1 模板，将计划节改为 **§13.3 / 吴越**；新六人进队后更新 `combatFlowSpotlight.ts`。
 
 **P0-WIP 清单（历史 · 已提交）：**
 

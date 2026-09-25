@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/combat/combat.test.js dist/combat/skillRules.test.js dist/combat/conditionRuntime.test.js dist/character/growth.test.js dist/character/skillCompose.test.js dist/character/abilityAtoms.test.js dist/character/termLexicon.test.js dist/character/roster/roster.test.js dist/equipment/equipment.test.js dist/equipment/affixDisplay.test.js dist/equipment/gearIdentity.test.js dist/dungeon/tower.test.js dist/dungeon/dungeon.test.js dist/dungeon/encounterRecipes.test.js dist/dungeon/hubExtras.test.js dist/gacha/gacha.test.js dist/stamina/stamina.test.js dist/chapter/chapter.test.js",
+    "test": "tsc -p tsconfig.json && node --test dist/combat/combat.test.js dist/combat/combatFlowSmoke.test.js dist/combat/skillRules.test.js dist/combat/conditionRuntime.test.js dist/character/growth.test.js dist/character/skillCompose.test.js dist/character/abilityAtoms.test.js dist/character/termLexicon.test.js dist/character/roster/roster.test.js dist/equipment/equipment.test.js dist/equipment/affixDisplay.test.js dist/equipment/gearIdentity.test.js dist/dungeon/tower.test.js dist/dungeon/dungeon.test.js dist/dungeon/encounterRecipes.test.js dist/dungeon/hubExtras.test.js dist/gacha/gacha.test.js dist/stamina/stamina.test.js dist/chapter/chapter.test.js",
+    "test:combat-flow": "tsc -p tsconfig.json && node --test dist/combat/combatFlowSmoke.test.js",
     "feel": "tsc -p tsconfig.json && node dist/tools/combatFeel.js"
   },
   "devDependencies": {
