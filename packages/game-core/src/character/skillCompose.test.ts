@@ -318,4 +318,48 @@ describe('skill compose foundation', () => {
     assert.match(s2.effectsLine ?? '', /25% 灌气 \+64/);
     assert.doesNotMatch(s0.effectsLine ?? '', /命中率/);
   });
+
+  it('shanggu expand: huangdi ★3 涿鹿线 first_cast 高于垂衣线', () => {
+    const tpl = getTemplate('huangdi')!;
+    const progress = {
+      templateId: 'huangdi',
+      level: 1,
+      exp: 0,
+      breakthroughTier: 0,
+      star: 3,
+      owned: true,
+      cardShards: 0,
+    };
+    const zhuolu = skillWithGrowth(tpl, { ...progress, starBranch: { 3: 'a' } });
+    const chuiyi = skillWithGrowth(tpl, { ...progress, starBranch: { 3: 'b' } });
+    const fcHook = zhuolu.effects!.find((e) => e.kind === 'first_cast')!;
+    const fcKit = chuiyi.effects!.find((e) => e.kind === 'first_cast')!;
+    assert.ok(fcHook.multiplier! > fcKit.multiplier!);
+    assert.equal(fcHook.multiplier, 1.2);
+    assert.equal(fcKit.multiplier, 1.16);
+  });
+
+  it('shanggu expand: dayu ★3 省能与 purge 与 ★0 可区分', () => {
+    const tpl = getTemplate('dayu')!;
+    const star0 = {
+      templateId: 'dayu',
+      level: 1,
+      exp: 0,
+      breakthroughTier: 0,
+      star: 0,
+      owned: true,
+      cardShards: 0,
+    };
+    const star3 = { ...star0, star: 3, starBranch: { 3: 'a' } };
+    const s0 = skillWithGrowth(tpl, star0);
+    const s3 = skillWithGrowth(tpl, star3);
+    assert.ok(s3.qiCost < s0.qiCost);
+    assert.ok(s3.multiplier > s0.multiplier);
+    assert.ok(s3.effects?.some((e) => e.kind === 'purge'));
+    const info = skillDisplayFor('dayu', {
+      ...createInitialPlayer(20),
+      roster: { ...createInitialPlayer(20).roster, dayu: { ...star3, owned: true } },
+    });
+    assert.match(info!.softModeLine ?? '', /河道/);
+  });
 });

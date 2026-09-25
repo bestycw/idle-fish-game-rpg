@@ -131,7 +131,7 @@
 | **P3** | 封神刀二一批：申公豹 / 敖丙 / 太乙（roster + 星轨 + 技能 compose 测） | 新 id 挂池；`roster.test.ts` / `skillCompose.test.ts` 增例绿；不碰套装 2/4 · **2026-09-24 expand+测例** |
 | **P4** | B17 对手克制提示（战前轻提示，复用 encounter 元数据） | 战前 UI 或 Hub 一条可读提示；不硬锁进门 · **2026-09-24 `prepHint`+战斗页** |
 
-### 13.2 dev-loop · 上古 expand（进行中）
+### 13.2 dev-loop · 上古 expand（**已完成 2026-09-25**）
 
 > **Loop 真源**：本节 + [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md)。Cursor 发：`/loop 10m` + 下方 **§13.2 prompt**。
 
@@ -143,9 +143,18 @@
 |--------|------|------|
 | **P5a** | 黄帝/蚩尤/西王母/伏羲/大禹：`roster.test` 专测（招牌名、钩子 copy、★3 岔路、无招魂） | 五人测例绿；`npm test` 全绿 |
 | **P5b** | `zhongtuRoster` 五人 `motif/skillName` 去「诀」占位（若仍有） | 五人 `getSkill().name` 无裸「诀」 · **2026-09-24 loop 第 2 轮** |
-| **P5c** | `skillCompose.test` 各 1 条 ★3 分支技能 diff（可选） | 新增测例绿 |
+| **P5c** | `skillCompose.test` 黄帝/大禹 compose 测例 | 新增测例绿 · **2026-09-25 loop 第 3 轮** |
 
-**P5a** · 五人 roster 专测 · **2026-09-24 loop 第 1 轮完成**
+**P5a–P5c 均已落地**；下一 loop 见 **§13.3**。
+
+### 13.3 dev-loop · 吴越 expand（待开）
+
+| 子阶段 | 内容 | 判据 |
+|--------|------|------|
+| **P6a** | 聂隐娘/荆轲/干将/莫邪/李白/伍子胥：`roster.test` 专测（hooks 已在 `legendaryExpandHooks`） | 六人测例绿 |
+| **P6b** | 名册 skillName 与 motif 对齐 | 无裸「诀」 |
+
+**§13.3 Loop prompt：** 同 §13.2，将「§13.2 / 上古」改为「§13.3 / 吴越」。
 
 **P0-WIP 清单（历史 · 已提交）：**
 
