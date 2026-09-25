@@ -157,12 +157,12 @@
 
 **P5a–P5c 均已落地**；下一 loop 见 **§13.3**。
 
-### 13.3 dev-loop · 吴越 expand（待开）
+### 13.3 dev-loop · 吴越 expand（**已完成 2026-09-25**）
 
 | 子阶段 | 内容 | 判据 |
 |--------|------|------|
-| **P6a** | 聂隐娘/荆轲/干将/莫邪/李白/伍子胥：`roster.test` 专测（hooks 已在 `legendaryExpandHooks`） | 六人测例绿 |
-| **P6b** | 名册 skillName 与 motif 对齐 | 无裸「诀」 |
+| **P6a** | 聂隐娘/荆轲/干将/莫邪/李白/伍子胥：`roster.test` 专测 | 六人测例绿 · **loop 完成** |
+| **P6b** | 名册 skillName 与 motif 对齐 + `combatFlowSpotlight` 六 id | 无裸「诀」；combatFlowSmoke 绿 |
 
 **§13.3 Loop prompt：** 同 §13.1 模板，将计划节改为 **§13.3 / 吴越**；新六人进队后更新 `combatFlowSpotlight.ts`。
 

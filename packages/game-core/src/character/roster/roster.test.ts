@@ -409,6 +409,30 @@ describe('zhongtu roster 200', () => {
     );
   });
 
+  it('wuyue legendary expand: nieyinniang, jingke, ganjiang, moye, libai, wuzixu', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['nieyinniang', /飞剑取首/, /隐锋|残血/],
+      ['jingke', /图穷匕见/, /图穷/],
+      ['ganjiang', /铸剑开锋/, /开锋|第一锤/],
+      ['moye', /雌剑噬满/, /满血|第一噬/],
+      ['libai', /将进酒/, /将进酒|第一斗/],
+      ['wuzixu', /过昭关夜/, /昭关|残血/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+      assert.deepEqual(
+        STAR_OVERRIDES[id]![3]!.branches?.map((b) => b.identityLabel),
+        LORE_DEFS[id]?.paths ?? [],
+        id,
+      );
+    }
+    assert.ok(getSkill('skill_moye').effects?.some((e) => e.kind === 'vs_high_hp'));
+    assert.equal(getSkill('skill_nieyinniang').name.includes('诀'), false);
+  });
+
   it('shanggu legendary expand: huangdi, chiyou, xiwangmu, fuxi, dayu', () => {
     const hd = getSkill('skill_huangdi');
     assert.match(hd.name, /涿鹿/);

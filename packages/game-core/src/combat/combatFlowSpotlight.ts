@@ -13,4 +13,11 @@ export const LOOP_COMBAT_SPOTLIGHT: readonly string[] = [
   'xiwangmu',
   'fuxi',
   'dayu',
+  // 吴越 expand（§13.3）
+  'nieyinniang',
+  'jingke',
+  'ganjiang',
+  'moye',
+  'libai',
+  'wuzixu',
 ];
