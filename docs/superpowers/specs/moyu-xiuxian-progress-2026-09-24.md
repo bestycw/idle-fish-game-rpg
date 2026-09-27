@@ -1,12 +1,20 @@
-# moyu-xiuxian · loop 进度记忆（2026-09-24）
+# moyu-xiuxian · loop 进度记忆
 
-> §13.2–§13.4 expand 圈批已关。下一批按 [legendary-knife2-design §5](./2026-08-26-legendary-knife2-design.md) 开新 §13.x 或转玩法/Hub。
+> [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md)
 
-## 每轮必跑
+## 本轮（loop tick #6 · W11 E2）
 
-`cd packages/game-core && npm test`（**175** tests + combatFlowSmoke）
+- **阵位共鸣 MVP**：`formation/resonance.ts`（铁壁前排满 / 守望后排≥2）· 开战注入 def/res · 3 测例
+- **191/191** pass · commit 0
 
-## **How to apply:**
+## 当前 Wave
 
-1. 若无新 expand 批次：loop 可停；或做 B17 深化 / 章节 / UI。
-2. 新批次模板：§13.3 表格 + roster 测例 + zhongtuRoster + `combatFlowSpotlight.ts` + `npm test`。
+**W12 · Hub/章节文案抛光**
+
+## 已完成
+
+W1–W9 expand · W10 E1 · **W11 E2**
+
+## **How to apply**
+
+下一：Hub/章节解锁句 + Result 与 prepHint 一致抽查 → W13 feel

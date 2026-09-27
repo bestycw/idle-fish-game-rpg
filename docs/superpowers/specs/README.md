@@ -22,6 +22,7 @@
 2. 做哪个系统 → `systems/<name>.md`。  
 3. 产品定位 → [product.md](./product.md)。  
 4. 下一刀 / 待决 → [tracking.md](./tracking.md)。  
+4b. **Loop 总路线** → [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md) + [progress 断点](./moyu-xiuxian-progress-2026-09-24.md)。  
 5. 技术栈 → [tech.md](./tech.md)。  
 6. 新卡技能/星章 → [skill-design-spec](./2026-08-02-skill-design-spec.md)。  
 7. Agent 多轮自治 → [autonomous-polish-charter](./2026-08-01-autonomous-polish-charter.md)（**不自行 commit**）。

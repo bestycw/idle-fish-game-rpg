@@ -103,23 +103,66 @@
 | 已完成 | 战斗；双轴；B3；B1；B2；B4；人物 C1；公版换代 v9；**100 卡挂池（32 深做）+ 存档 v15**；**B21 装备生成器**；**六章强度档 + 建议战力**；**中土故事圈刀一（200 / v16）** |
 | 已完成（文档） | combat；dungeon；gacha；stamina；chapter；C1；roster；**skill-design-spec**；**文档现行/归档整理（2026-08-02）** |
 | 已完成（UI） | 伙伴名录印格；布阵；冒险战斗向；召唤结果框色；人物四页签；装备上6/中属性/下6 |
-| **当前主线** | **周循环闭环**（执行细节 → **§13.1**；断点 → [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md)） |
-| **暂缓** | 传说招牌圣经重开（除非点名）；54 绝品手写星；胚子打造；任务/商店/PVP |
-| **后置** | **效果触发率第一刀**（引擎 `SkillEffect.chance` + 刘备灌气 25%·56）；刀二其余绝品迁徙；封神缺口（申公豹/敖丙/太乙）。触发规格 [effect-proc-chance](./2026-08-30-effect-proc-chance-design.md)；旧刀二规格 [legendary-knife2](./2026-08-26-legendary-knife2-design.md) |
+| **当前主线** | **Loop 总路线** → [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md)；断点 → [progress](./moyu-xiuxian-progress-2026-09-24.md)；**下一 Wave：W12 Hub 抛光** |
+| **暂缓** | 传说招牌圣经重开；54 绝品深做星；胚子打造；套装 2/4 大改；任务/商店/PVP |
+| **后置** | 效果触发率深化；副本绑套装身份；真支付/云存档 |
 | **文档约定** | 入口 [README](./README.md)；进度认本文；细则认 `systems/*`；归档默认不信；**每系统必带扩展口**（[tech §7.2.1](./tech.md)） |
 | 实现 plan | [传说招牌第一刀](../plans/2026-08-29-legendary-signature-kit.md)；特技池后置；手感 `npm run feel` |
 | 冻结总表 | combat；equipment（含套装 2/4 数值）；dungeon；gacha；stamina |
 | 里程碑索引 | `docs/superpowers/plans/2026-07-19-vertical-slice.md` |
 | 门禁之后 | §14 |
 | **loop 进度** | [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md) |
+| **loop 总计划** | [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md) |
+
+### 13.0 Loop 总路线（权威顺序）
+
+> 阶段表与 W1–W12 见 **[loop-master-plan](./moyu-xiuxian-loop-master-plan.md)**。本节只保留历史 §13.1–§13.4 明细。
+
+**当前指针：** **W10 · E1 遭遇词缀 MVP**（见 loop-master-plan §4）。
+
+### 13.13 dev-loop · 聊斋 expand（**W9 · 2026-09-27 已验收**）
+
+| ids | `zhangdaoling`, `niexiaoqian`, `yanchixia`, `huapi` |
+| 判据 | 184 tests pass |
+
+### 13.12 dev-loop · 宝莲+降妖 expand（**W8 · 2026-09-27 已验收**）
+
+| ids | `chenxiang`, `sanshengmu`, `zhongkui`, `xuxun`, `jigong` |
+
+### 13.11 dev-loop · 瓦岗 expand（**W7 · 2026-09-27 已验收**）
+
+| ids | `qinqiong`, `lishimin`, `yuchigong`, `luocheng` |
+
+### 13.10 dev-loop · 梁山 expand（**W6 · 2026-09-27 已验收**）
+
+| ids | `linchong`, `wusong`, `luzhishen`, `songjiang` |
+| 判据 | master-plan §1 配方 + `npm test` 181 pass |
+
+### 13.9 dev-loop · 忠烈 expand（**W5 · 2026-09-27 已验收**）
+
+| ids | `muguiying`, `yangye`, `mulan`, `shetaijun` |
+| 判据 | master-plan §1 配方 + `npm test` 180 pass |
+
+### 13.8 dev-loop · 兵家 expand（**W4 · 2026-09-27 已验收**）
+
+| ids | `guiguzi`, `sunwu`, `gongshuban`, `pangjuan` |
+| 判据 | master-plan §1 配方 + `npm test` 179 pass |
+
+### 13.7 dev-loop · 楚汉 expand（**W3 · 2026-09-27 已验收**）
+
+| ids | `liubang`, `hanxin`, `zhangliang`, `yuji` |
+| 判据 | master-plan §1 配方 + `npm test` 178 pass |
+
+### 13.6 dev-loop · 江南 expand（**W2 · 2026-09-27 已验收**）
+
+| ids | `baisuzhen`, `xiaoqing`, `fahai`, `zhinu` |
+| 判据 | master-plan §1 配方 + `npm test` 177 pass |
 
 ### 13.1 dev-loop · 周循环主线计划
 
 > 阶段按「判据可独立成立」排序；每轮只做一个子阶段（dev-loop §1.4）。Cursor 心跳可用 `/loop 10m` + 下方 prompt，**须先完成 P0 再开 cron**。
 
-**Loop prompt 模板（复制后替换路径即可）：**
-
-> 按 `docs/superpowers/specs/tracking.md` §13.x 推进 moyu 周循环。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md` 定位断点。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾；**收尾前 `npm test`（含 combatFlowSmoke）**。
+**Loop prompt（统一 · 复制到 `/loop 10m` 后）：** 见 [loop-master-plan §6](./moyu-xiuxian-loop-master-plan.md#6-统一-loop-promptcursor-loop-10m)。
 
 #### 每轮固定门禁（伤害 / 技能流）
 
@@ -170,7 +213,14 @@
 
 | 子阶段 | 内容 | 判据 |
 |--------|------|------|
-| **P7** | 曹操/司马懿/郭嘉：roster 测例 + skillName + spotlight | 174+ tests 绿；combatFlowSmoke 含三人 |
+| **P7** | 曹操/司马懿/郭嘉：roster 测例 + skillName + spotlight | 175 tests 绿 · **已完成** |
+
+### 13.5 dev-loop · 八仙+东海 expand（**W1 · 2026-09-25 已验收**）
+
+| ids | `lvdongbin`, `hanzhongli`, `tieguaili`, `aoguang` |
+| 判据 | master-plan §1 配方 + `npm test` 绿 |
+
+（§13.6–§13.13 批次表见 [loop-master-plan §3](./moyu-xiuxian-loop-master-plan.md#3-expand-清尾w1w9-按圈-batch)。）
 
 **P0-WIP 清单（历史 · 已提交）：**
 
@@ -185,6 +235,14 @@
 | 条件伤害帽 35% | tracking §11 待决 | **不动数值**，除非用户拍板 |
 | 正式产品名 / 上线存档 / 真支付 | §11 | **不实现** |
 | WIP 是否一次性 commit | 用户是否要求 git commit | **不 commit**，除非用户明确说 |
+
+#### V1 缺口优先级（2026-09-25 拍板 · 真源 [loop-master-plan §3.1](./moyu-xiuxian-loop-master-plan.md#31-用户拍板2026-09-25--loop-遵从此序)）
+
+| 已拍板 | 结论 |
+|--------|------|
+| W9 后加厚 | E1 → E2 → Hub 抛光 → feel → bundle 扫尾 |
+| 200 池 | 广收集；构筑核心 = 传说 expand + 深做卡 |
+| 塔 | V1 薄壳，不加深塔战斗 |
 
 ---
 
