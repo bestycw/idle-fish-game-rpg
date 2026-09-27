@@ -12,6 +12,7 @@ import {
   type ContentUnlock,
   type UnlockKind,
 } from './defs.js';
+import { formatUnlockSummary } from './unlockLabels.js';
 
 export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
 
@@ -157,8 +158,7 @@ function finishNode(state: PlayerState): {
     };
   }
   const cleared = ch.order;
-  const unlockNames = ch.unlocksOnClear.map((u) => `${u.kind}:${u.id}`).join('、');
-  const suffix = unlockNames ? ` 解锁：${unlockNames}` : '';
+  const suffix = formatUnlockSummary(ch.unlocksOnClear);
   return {
     state: {
       ...state,
@@ -166,7 +166,7 @@ function finishNode(state: PlayerState): {
       chapterNodeIndex: 0,
     },
     clearedChapter: ch,
-    message: `通关${ch.name}。${suffix}`.trim(),
+    message: [ `通关${ch.name}。`, suffix ].filter(Boolean).join(' ').trim(),
   };
 }
 

@@ -1,4 +1,5 @@
 import {
+  ENCOUNTERS,
   firstWearableDeployed,
   wearLoot,
   type BattleState,
@@ -31,6 +32,7 @@ export function ResultScreen({
   pushNotice,
 }: ResultScreenProps) {
   const won = battle.status === 'won';
+  const prepHint = ENCOUNTERS.find((e) => e.id === battle.encounterId)?.prepHint;
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-4">
@@ -50,6 +52,11 @@ export function ResultScreen({
         </h2>
         {!won && battle.defeatHint ? (
           <p className="mx-auto mt-3 max-w-md text-sm text-foreground/85">{battle.defeatHint}</p>
+        ) : null}
+        {!won && prepHint ? (
+          <p className="mx-auto mt-2 max-w-md font-mono text-[11px] leading-relaxed text-muted-foreground">
+            战前对策：{prepHint}
+          </p>
         ) : null}
         {won && !lastLoot ? (
           <p className="mt-3 text-sm text-muted-foreground">进度已记下（本场无猎装掉落）</p>

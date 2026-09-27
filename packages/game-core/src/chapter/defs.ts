@@ -160,7 +160,7 @@ export const CHAPTERS: ChapterDef[] = [
         kind: 'story',
         title: '整备',
         place: '中途营地',
-        blurb: '占位：回去刷装、抽人，再来。',
+        blurb: '卡关时：看八题战前提示 → 猎装刷量 / 镜渊对症 T3，再改阵挑战。',
       },
       {
         id: 'ch4_n2',

@@ -60,6 +60,8 @@ describe('chapter', () => {
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'baigujing'), true);
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'nuwa'), false);
     assert.ok(listUnlockedIds(p, 'encounter').includes('raiders'));
+    assert.match(s2.message, /八题·速攻来袭|解锁：/);
+    assert.doesNotMatch(s2.message, /encounter:raiders/);
   });
 
   it('exposes a place-named route for the current chapter', () => {

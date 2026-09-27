@@ -11,6 +11,7 @@ import {
   doMine,
   getChapterBand,
   getChapterRoute,
+  ENCOUNTERS,
   getChapterView,
   getTowerFloor,
   isContentUnlocked,
@@ -98,10 +99,16 @@ export function HubScreen({
 
   const chapterTitle = playing?.name ?? route.chapter?.name ?? '旅途';
   const here = node ? nodePlace(node) : null;
+  const battlePrep =
+    node?.kind === 'battle' && node.encounterId
+      ? ENCOUNTERS.find((e) => e.id === node.encounterId)?.prepHint
+      : undefined;
   const blurb = chapter.finished
-    ? '主线骨架已走完。去刷装、秘境或召唤吧。'
+    ? '主线骨架已走完。猎装刷量、镜渊对症 T3、八题轮换 —— 按战前提示改阵即可。'
     : node
-      ? `${playing?.blurb ?? ''} ${node.blurb}`
+      ? [playing?.blurb ?? '', node.blurb, battlePrep ? `战前：${battlePrep}` : '']
+          .filter(Boolean)
+          .join(' ')
       : '夜色里，试炼的门还亮着。';
 
   const enterCurrent = () => {
@@ -239,6 +246,9 @@ export function HubScreen({
 
       <div>
         <p className="mb-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground">历练</p>
+        <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+          周循环：八题看战前提示 · 缺装量→猎装 · 缺对症 T3→镜渊（第二章后）
+        </p>
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <EntryCard
             title="猎装试炼"

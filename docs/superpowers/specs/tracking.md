@@ -103,7 +103,7 @@
 | 已完成 | 战斗；双轴；B3；B1；B2；B4；人物 C1；公版换代 v9；**100 卡挂池（32 深做）+ 存档 v15**；**B21 装备生成器**；**六章强度档 + 建议战力**；**中土故事圈刀一（200 / v16）** |
 | 已完成（文档） | combat；dungeon；gacha；stamina；chapter；C1；roster；**skill-design-spec**；**文档现行/归档整理（2026-08-02）** |
 | 已完成（UI） | 伙伴名录印格；布阵；冒险战斗向；召唤结果框色；人物四页签；装备上6/中属性/下6 |
-| **当前主线** | **Loop 总路线** → [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md)；断点 → [progress](./moyu-xiuxian-progress-2026-09-24.md)；**下一 Wave：W12 Hub 抛光** |
+| **当前主线** | **Loop 总路线** → [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md)；断点 → [progress](./moyu-xiuxian-progress-2026-09-24.md)；**可选 W14 扫尾 / feel 已录** |
 | **暂缓** | 传说招牌圣经重开；54 绝品深做星；胚子打造；套装 2/4 大改；任务/商店/PVP |
 | **后置** | 效果触发率深化；副本绑套装身份；真支付/云存档 |
 | **文档约定** | 入口 [README](./README.md)；进度认本文；细则认 `systems/*`；归档默认不信；**每系统必带扩展口**（[tech §7.2.1](./tech.md)） |

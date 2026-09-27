@@ -2,19 +2,28 @@
 
 > [moyu-xiuxian-loop-master-plan.md](./moyu-xiuxian-loop-master-plan.md)
 
-## 本轮（loop tick #6 · W11 E2）
+## feel 基线（W13 · 2026-09-27）
 
-- **阵位共鸣 MVP**：`formation/resonance.ts`（铁壁前排满 / 守望后排≥2）· 开战注入 def/res · 3 测例
-- **191/191** pass · commit 0
+默认队（主角/张飞/赵云/孙悟空/华佗）· **15 seeds** · `wall,oil_cask,archers`
+
+| 遭遇 | 胜率 | 备注 |
+|------|------|------|
+| wall | **67%** (10/15) | 33% 败；部分「战局过久」 |
+| oil_cask | **53%** (8/15) | 败因禁疗/医士提示与过久混合 |
+| archers | **53%** (8/15) | 败因多「后排点爆」+ 猎装/镜渊 hint |
+| **合计** | **58%** (26/45) | 未调参（绿灯区间，仅记录） |
+
+命令：`cd packages/game-core && npm run feel -- --seeds 15 --encounters wall,oil_cask,archers`
 
 ## 当前 Wave
 
-**W12 · Hub/章节文案抛光**
+**W14 · bundle/诀 扫尾**（可选）或停 loop
 
 ## 已完成
 
-W1–W9 expand · W10 E1 · **W11 E2**
+W1–W12 · **W13 feel**
 
 ## **How to apply**
 
-下一：Hub/章节解锁句 + Result 与 prepHint 一致抽查 → W13 feel
+- W12 代码未 commit（Hub/unlockLabels/Result）
+- W14：`characterBundle` / 名册裸「诀」扫尾（zhongtu 仍有非 expand 占位时可改）
