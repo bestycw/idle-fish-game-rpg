@@ -398,6 +398,10 @@ export interface BattleState {
   pendingHeroUid: string | null;
   encounterId: string;
   defeatHint: string | null;
+  /** E1 遭遇词缀 id（本场规则修饰） */
+  encounterModifierIds?: string[];
+  /** E2 阵位共鸣 id（开战布阵判定） */
+  formationResonanceIds?: string[];
 }
 
 export interface CharacterProgress {

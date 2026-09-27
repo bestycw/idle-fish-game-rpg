@@ -1,6 +1,19 @@
 import { getSkill } from '../character/skills.js';
+import {
+  applyEncounterRowDots,
+  encounterOutgoingSchoolMult,
+  encounterQiRegenMult,
+  modifierLogLines,
+  resolveEncounterModifiers,
+  rollEncounterModifiers,
+} from '../dungeon/encounterModifiers.js';
 import { ENCOUNTERS, type EnemySpec } from '../dungeon/encounters.js';
 import { rowOf, rowRank } from '../formation/grid.js';
+import {
+  applyFormationResonanceEffects,
+  resonanceLogLines,
+  resolveFormationResonances,
+} from '../formation/resonance.js';
 import { createRng } from '../shared/rng.js';
 import type {
   ActionKind,
@@ -117,6 +130,10 @@ export type { StepOptions };
 const BLOCK_REDUCTION = 0.3;
 /** 开战能量：不够放技能，需普攻攒能 */
 export const BATTLE_START_QI = 20;
+
+function unitBattleSide(state: BattleState, unit: UnitRuntime): 'player' | 'enemy' {
+  return state.player.units.some((u) => u.uid === unit.uid) ? 'player' : 'enemy';
+}
 
 function cloneUnit(u: UnitRuntime): UnitRuntime {
   return {
@@ -296,6 +313,7 @@ function rollCrit(actor: UnitRuntime, target: UnitRuntime, rng: Rng, skillHit = 
 }
 
 function computeDamage(
+  state: BattleState,
   actor: UnitRuntime,
   target: UnitRuntime,
   multiplier: number,
@@ -325,6 +343,7 @@ function computeDamage(
   raw *= statusIncomingDamageMult(target);
   const hitKind = opts.hitKind ?? (opts.skill ? 'skill' : 'attack');
   raw *= conditionOutgoingMult(actor, target, hitKind);
+  raw *= encounterOutgoingSchoolMult(state, school);
   if (hitKind === 'attack') raw *= followUpAttackMult(actor);
   const crit = rollCrit(actor, target, rng, hitKind === 'skill');
   if (crit) raw *= 1.5 + critDmgExtra;
@@ -534,7 +553,7 @@ function applyDamageToTarget(
   if (dealt > 0 && rng) {
     if (isLiving(target)) {
       onTakeDamage(state, actor, target, dealt, rng);
-      applyQiOnHit(target, (u, amt) => gainQi(state, u, amt));
+      applyQiOnHit(target, (u, amt) => gainQi(state, u, amt, unitBattleSide(state, u)));
     }
     const foes = state.player.units.includes(target) ? state.player.units : state.enemy.units;
     onHitTarget(state, actor, target, dealt, foes, rng, skillHit);
@@ -716,7 +735,7 @@ function applySkillEffects(
     allies: allies ?? [],
     rng,
     emit,
-    grantQi: gainQi,
+    grantQi: (s, u, amt) => gainQi(s, u, amt, unitBattleSide(s, u)),
     attackPower,
     shieldMasteryMult,
   });
@@ -748,17 +767,22 @@ function tickStatusesOnAct(state: BattleState, unit: UnitRuntime, rng: Rng): voi
   for (const id of expired) onStatusExpire(state, unit, id, rng);
 }
 
-function applyQiGain(unit: UnitRuntime, amount: number): number {
+function applyQiGain(state: BattleState, unit: UnitRuntime, amount: number, side: 'player' | 'enemy'): number {
   if (unitHasStatusFlag(unit, 'blocksQiGain')) return 0;
-  const scaled = Math.max(0, amount);
+  const scaled = Math.max(0, amount * encounterQiRegenMult(state, side));
   const before = unit.qi;
   unit.qi = Math.min(unit.maxQi, unit.qi + scaled);
   return unit.qi - before;
 }
 
-function turnStart(state: BattleState, unit: UnitRuntime, rng: Rng): void {
+function turnStart(state: BattleState, unit: UnitRuntime, side: 'player' | 'enemy', rng: Rng): void {
+  const dot = applyEncounterRowDots(state, unit, side);
+  if (dot > 0) {
+    state.log.push(`${unit.name} 受词缀压迫 ${dot} 点。`);
+    markDeadIfNeeded(unit);
+  }
   const room = Math.min(5, unit.maxQi - unit.qi);
-  const gained = room > 0 ? applyQiGain(unit, room) : 0;
+  const gained = room > 0 ? applyQiGain(state, unit, room, side) : 0;
   emit(state, 'turn_start', {
     actor: unit.name,
     qiGain: gained,
@@ -773,8 +797,8 @@ function turnStart(state: BattleState, unit: UnitRuntime, rng: Rng): void {
   fxTurnStart(state, unit, rng);
 }
 
-function gainQi(state: BattleState, unit: UnitRuntime, amount: number): void {
-  const gained = applyQiGain(unit, amount);
+function gainQi(state: BattleState, unit: UnitRuntime, amount: number, side: 'player' | 'enemy'): void {
+  const gained = applyQiGain(state, unit, amount, side);
   if (gained > 0) {
     emit(state, 'qi_gain', { actor: unit.name, qiGain: gained, qi: unit.qi, maxQi: unit.maxQi });
   }
@@ -883,9 +907,9 @@ function applyAttack(
   }
   if (!target) return;
 
-  const result = computeDamage(actor, target, 1, { single: true, school: 'phys', hitKind: 'attack', foes }, rng);
+  const result = computeDamage(state, actor, target, 1, { single: true, school: 'phys', hitKind: 'attack', foes }, rng);
   applyDamageToTarget(state, actor, target, result.amount, result.crit, result.blocked, result.dodged, rng, false);
-  gainQi(state, actor, 20 + (actor.basicQiBonus ?? 0));
+  gainQi(state, actor, 20 + (actor.basicQiBonus ?? 0), unitBattleSide(state, actor));
 }
 
 function applySkill(
@@ -936,10 +960,11 @@ function applySkill(
       emit(state, 'heal', { actor: actor.name, target: actor.name, amount: fromTaken });
     }
     onSkillCast(state, actor, rng, allies);
-    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
+    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund, unitBattleSide(state, actor));
     return;
   }
 
+  const actorSide = unitBattleSide(state, actor);
   const { targets } = resolveSkillTargets(actor, baseSkill, allies, foes, allUnits, rng);
   const skill = resolveSoftModes(baseSkill, { actor, allies, foes, targets });
 
@@ -971,7 +996,7 @@ function applySkill(
     afterHealSkill(state, actor, skill, allies, healedAmount, emit);
     actor.skillCastCount = castIndex + 1;
     onSkillCast(state, actor, rng, allies);
-    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
+    if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund, actorSide);
     return;
   }
 
@@ -990,6 +1015,7 @@ function applySkill(
   let totalDealt = 0;
   for (const target of targets) {
     const result = computeDamage(
+      state,
       actor,
       target,
       skill.multiplier,
@@ -1003,7 +1029,14 @@ function applySkill(
   if (actor.echo > 0 && rng.next() < actor.echo && targets.length > 0) {
     const echoTarget = targets.find((t) => isLiving(t));
     if (echoTarget) {
-      const echoResult = computeDamage(actor, echoTarget, skill.multiplier * 0.5, { pierce, aoe: false, single: true, school, skill, hitKind: 'skill', foes }, rng);
+      const echoResult = computeDamage(
+        state,
+        actor,
+        echoTarget,
+        skill.multiplier * 0.5,
+        { pierce, aoe: false, single: true, school, skill, hitKind: 'skill', foes },
+        rng,
+      );
       state.log.push(`${actor.name}【回响】技能再次爆发！`);
       applyDamageToTarget(state, actor, echoTarget, echoResult.amount, echoResult.crit, echoResult.blocked, echoResult.dodged, rng, true);
     }
@@ -1018,6 +1051,7 @@ function applySkill(
     const focus = targets[0]!;
     if (isLiving(focus)) {
       const result = computeDamage(
+        state,
         actor,
         focus,
         mult,
@@ -1036,7 +1070,7 @@ function applySkill(
   const killCount = targets.filter((t) => livingBefore.has(t.uid) && t.dead).length;
   const refund = qiRefundOnKill(skill, killCount, actor);
   if (refund > 0) {
-    gainQi(state, actor, refund);
+    gainQi(state, actor, refund, actorSide);
   }
   const killHeal = hpHealOnKill(actor, skill, killCount);
   if (killHeal > 0 && !unitHasStatusFlag(actor, 'healBlocked')) {
@@ -1074,6 +1108,7 @@ function applySkill(
     emit,
     hitTarget: (t, multiplier) => {
       const result = computeDamage(
+        state,
         actor,
         t,
         multiplier,
@@ -1086,7 +1121,7 @@ function applySkill(
 
   actor.skillCastCount = castIndex + 1;
   onSkillCast(state, actor, rng, allies);
-  if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund);
+  if (actor.qiRefund > 0) gainQi(state, actor, actor.qiRefund, actorSide);
 }
 
 function applyAction(
@@ -1254,6 +1289,10 @@ function enemyFromSpec(spec: EnemySpec, index: number, pressure = 1): UnitRuntim
 export type CreateBattleOpts = {
   /** 敌人攻防血压力系数，默认 1。开战侧传 章档 × 本种压力。 */
   pressure?: number;
+  /** E1：本场遭遇词缀 id（0–1 条常见） */
+  encounterModifierIds?: string[];
+  /** 未传 ids 时用 seed 掷词缀（约 65% 无、35% 有 1 条） */
+  rollEncounterModifiers?: boolean;
 };
 
 export function createBattle(
@@ -1294,8 +1333,18 @@ export function createBattle(
     pendingHeroUid: null,
     encounterId: encounter.id,
     defeatHint: null,
+    encounterModifierIds:
+      opts.encounterModifierIds ??
+      (opts.rollEncounterModifiers ? rollEncounterModifiers(_seed) : []),
   };
   state.log.push(`遭遇【${encounter.name}】，开战。`);
+  for (const line of modifierLogLines(resolveEncounterModifiers(state.encounterModifierIds ?? []))) {
+    state.log.push(line);
+  }
+  const resonances = resolveFormationResonances(state.player.units);
+  state.formationResonanceIds = resonances.map((r) => r.id);
+  for (const line of resonanceLogLines(resonances)) state.log.push(line);
+  applyFormationResonanceEffects(state.player.units, resonances);
   const startRng = createRng(_seed);
   for (const u of [...state.player.units, ...state.enemy.units]) {
     onBattleStart(state, u, startRng);
@@ -1320,7 +1369,7 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
     }
 
     const rng = createRng(seed + next.turn * 1009 + next.actedUids.length * 17 + hero.slot);
-    turnStart(next, hero, rng);
+    turnStart(next, hero, 'player', rng);
 
     let kind = options.heroAction;
     if (!kind) {
@@ -1370,7 +1419,7 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
   }
 
   const rng = createRng(seed + next.turn * 1009 + next.actedUids.length * 17 + liveActor.slot);
-  turnStart(next, liveActor, rng);
+  turnStart(next, liveActor, isPlayer ? 'player' : 'enemy', rng);
 
   const allies = isPlayer ? next.player.units : next.enemy.units;
   const foes = isPlayer ? next.enemy.units : next.player.units;
