@@ -24,4 +24,50 @@ export const LOOP_COMBAT_SPOTLIGHT: readonly string[] = [
   'caocao',
   'simayi',
   'guojia',
+  // W1 八仙+东海（§13.5）
+  'lvdongbin',
+  'hanzhongli',
+  'tieguaili',
+  'aoguang',
+  // W2 江南（§13.6）
+  'baisuzhen',
+  'xiaoqing',
+  'fahai',
+  'zhinu',
+  // W3 楚汉（§13.7）
+  'liubang',
+  'hanxin',
+  'zhangliang',
+  'yuji',
+  // W4 兵家（§13.8）
+  'guiguzi',
+  'sunwu',
+  'gongshuban',
+  'pangjuan',
+  // W5 忠烈（§13.9）
+  'muguiying',
+  'yangye',
+  'mulan',
+  'shetaijun',
+  // W6 梁山（§13.10）
+  'linchong',
+  'wusong',
+  'luzhishen',
+  'songjiang',
+  // W7 瓦岗（§13.11）
+  'qinqiong',
+  'lishimin',
+  'yuchigong',
+  'luocheng',
+  // W8 宝莲+降妖（§13.12）
+  'chenxiang',
+  'sanshengmu',
+  'zhongkui',
+  'xuxun',
+  'jigong',
+  // W9 聊斋（§13.13）
+  'zhangdaoling',
+  'niexiaoqian',
+  'yanchixia',
+  'huapi',
 ];

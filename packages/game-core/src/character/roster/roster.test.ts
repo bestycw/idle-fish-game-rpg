@@ -409,6 +409,151 @@ describe('zhongtu roster 200', () => {
     );
   });
 
+  it('wagang legendary expand: qinqiong, lishimin, yuchigong, luocheng', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['qinqiong', /锏震瓦岗/, /残血|双锏/],
+      ['lishimin', /天策开府/, /天策|第一令/],
+      ['yuchigong', /黑鞭守门/, /第一鞭|守门/],
+      ['luocheng', /银枪先发/, /第一枪|罗成/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('baolian xiangyao legendary expand: chenxiang, sanshengmu, zhongkui, xuxun, jigong', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['chenxiang', /斧劈华山/, /开裂|神斧/],
+      ['sanshengmu', /宝莲灯暖/, /宝莲|第一暖/],
+      ['zhongkui', /捉鬼啖邪/, /残血|鬼判/],
+      ['xuxun', /斩蛟贯列/, /斩蛟|第一贯/],
+      ['jigong', /癫僧覆袖/, /破袖|第一幕/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('liaozhai legendary expand: zhangdaoling, niexiaoqian, yanchixia, huapi', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['zhangdaoling', /龙虎山睡/, /沉眠|符印/],
+      ['niexiaoqian', /兰若惊魂/, /硬控|兰若/],
+      ['yanchixia', /道袍猎妖/, /木剑|第一剑/],
+      ['huapi', /画皮换面/, /已乱|人皮/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('liangshan legendary expand: linchong, wusong, luzhishen, songjiang', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['linchong', /风雪山神/, /见血|豹子头/],
+      ['wusong', /打虎景阳/, /景阳|第一拳/],
+      ['luzhishen', /倒拔垂杨/, /禅杖|第一喝/],
+      ['songjiang', /及时雨令/, /及时雨|第一令/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('zhonglie legendary expand: muguiying, yangye, mulan, shetaijun', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['muguiying', /挂帅破阵/, /挂帅|第一阵/],
+      ['yangye', /李陵碑前/, /李陵|第一道/],
+      ['mulan', /替父从军/, /红妆|第一刀/],
+      ['shetaijun', /佘太君点将/, /杨门|第一令/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('bingjia legendary expand: guiguzi, sunwu, gongshuban, pangjuan', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['guiguzi', /纵横捭阖/, /纵横|第一纵横/],
+      ['sunwu', /不战屈人/, /闭气|不战/],
+      ['gongshuban', /云梯攻城/, /破甲|云梯/],
+      ['pangjuan', /马陵争道/, /马陵|第一道/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('chuhan legendary expand: liubang, hanxin, zhangliang, yuji', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['liubang', /约法三章/, /约法|第一令/],
+      ['hanxin', /背水一战/, /背水|残血/],
+      ['zhangliang', /进履得书/, /硬控|兵书/],
+      ['yuji', /垓下舞剑/, /垓下|第一舞/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('jiangnan legendary expand: baisuzhen, xiaoqing, fahai, zhinu', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['baisuzhen', /西湖救许/, /西湖|第一救/],
+      ['xiaoqing', /青蛇猎印/, /猎印|青鳞/],
+      ['fahai', /钵印迟妖/, /迟缓|金钵/],
+      ['zhinu', /鹊桥织锦/, /鹊桥|第一织/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
+  it('baxian legendary expand: lvdongbin, hanzhongli, tieguaili, aoguang', () => {
+    const cases: [string, RegExp, RegExp][] = [
+      ['lvdongbin', /剑仙斩妖/, /纯阳|见血/],
+      ['hanzhongli', /轻摇宝扇/, /宝扇|第一摇/],
+      ['tieguaili', /铁拐济世/, /葫芦|第一剂/],
+      ['aoguang', /龙王掀浪/, /龙浪|迟缓/],
+    ];
+    for (const [id, nameRe, copyRe] of cases) {
+      const sk = getSkill(`skill_${id}`);
+      assert.match(sk.name, nameRe, id);
+      assert.equal(sk.name.includes('诀'), false, id);
+      assert.match(sk.softModes?.[0]?.copy ?? '', copyRe, id);
+      assert.equal(listIdentityTracks(id).length, 2, id);
+    }
+  });
+
   it('qunxiong legendary expand: caocao, simayi, guojia', () => {
     const cases: [string, RegExp, RegExp][] = [
       ['caocao', /挟天子/, /号令/],
