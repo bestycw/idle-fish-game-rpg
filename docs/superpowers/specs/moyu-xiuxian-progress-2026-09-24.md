@@ -15,15 +15,19 @@
 
 命令：`cd packages/game-core && npm run feel -- --seeds 15 --encounters wall,oil_cask,archers`
 
-## 当前 Wave
+## Loop 状态
 
-**W14 · bundle/诀 扫尾**（可选）或停 loop
+**已停**（2026-09-27 · 用户要求；**2026-09-28** 确认结束后台 `AGENT_LOOP_TICK` PID 85039）。勿再挂 `/loop 10m`，除非重新开跑。
+
+## 当前 Wave（手动续做时）
+
+**V1 最小补齐包 · 已完成 2026-09-28**（未 commit  unless 用户要求）
 
 ## 已完成
 
-W1–W12 · **W13 feel**
+W1–W13 · **V1 最小补齐包**：Web `rollEncounterModifiers`；布阵/Hub 共鸣预览；战斗词缀+共鸣文案；Hub 三步引导（`moyu_hub_onboard_v1`）；ch1–ch2 叙事；expand compose 遇「诀」用 motif；`.gitignore` 增 `.claude/` 等。
 
 ## **How to apply**
 
-- W12 代码未 commit（Hub/unlockLabels/Result）
-- W14：`characterBundle` / 名册裸「诀」扫尾（zhongtu 仍有非 expand 占位时可改）
+- 本地验证：Hub 首屏引导 → 主线/猎装一战看「本场词缀」→ 布阵前排满 3 看铁壁提示
+- 可选后续：zhongtu 表内非 expand 路径的「诀」、tracking §13 历史段落压缩

@@ -202,6 +202,7 @@ export default function App() {
     const encIdx = pickUnlockedEncounterIndex(spend.state, dungeonId, spend.state.encounterIndex);
     const initial = createBattle(party, spend.state.seed + spend.state.wins, encIdx, {
       pressure: battlePressure(spend.state.chapterCleared ?? 0, pressureForDungeon(dungeonId)),
+      rollEncounterModifiers: true,
     });
     battleRef.current = initial;
     setBattle(initial);
@@ -227,6 +228,7 @@ export default function App() {
     dungeonRef.current = DEFAULT_BATTLE_DUNGEON;
     const initial = createBattle(party, player.seed + player.wins + 1000, encIdx, {
       pressure: battlePressure(player.chapterCleared ?? 0),
+      rollEncounterModifiers: true,
     });
     battleRef.current = initial;
     setBattle(initial);

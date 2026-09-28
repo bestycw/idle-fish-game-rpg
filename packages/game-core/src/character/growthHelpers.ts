@@ -6,7 +6,9 @@ import {
 import { getStatusDef, statusLabel } from '../combat/statusFx.js';
 import { sumEquipmentBonuses } from '../equipment/equipment.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
+import { buildPlayerParty } from '../formation/formation.js';
 import { rowLabel, rowOf } from '../formation/grid.js';
+import { resolveFormationResonances } from '../formation/resonance.js';
 import type {
   ApplyStatusDef,
   GridSlot,
@@ -729,10 +731,27 @@ export function skillDisplayFor(templateId: string, state: PlayerState): SkillDi
 export interface FormationHints {
   /** 缺职能一句；无则 null */
   missingRoleLine: string | null;
+  /** 已触发共鸣或差一步提示；无则 null */
+  resonanceLine: string | null;
   /** templateId → 推荐排名 */
   preferredRowById: Record<string, string>;
   /** 推荐格位集合（空位高亮） */
   preferredSlots: GridSlot[];
+}
+
+const FRONT_SLOTS: GridSlot[] = [1, 2, 3];
+
+function formationResonanceLine(party: ReturnType<typeof buildPlayerParty>): string | null {
+  if (party.length === 0) return null;
+  const active = resolveFormationResonances(party);
+  if (active.length > 0) {
+    return active.map((d) => `共鸣：${d.label}`).join(' · ');
+  }
+  const frontFilled = FRONT_SLOTS.filter((s) => party.some((u) => u.slot === s)).length;
+  if (frontFilled === 2) return '前排再填 1 人 → 铁壁共鸣（全队防↑）';
+  const backCount = party.filter((u) => rowOf(u.slot) === 'back').length;
+  if (backCount === 1) return '后排再填 1 人 → 守望共鸣（全队抗↑）';
+  return null;
 }
 
 export function formationHints(state: PlayerState): FormationHints {
@@ -754,6 +773,8 @@ export function formationHints(state: PlayerState): FormationHints {
     }
   }
 
+  const party = buildPlayerParty(state);
+
   return {
     missingRoleLine:
       missing.length > 0 && onField.length > 0
@@ -761,9 +782,15 @@ export function formationHints(state: PlayerState): FormationHints {
         : missing.length > 0 && onField.length === 0
           ? '尚未上阵；建议先上坦克与治疗'
           : null,
+    resonanceLine: formationResonanceLine(party),
     preferredRowById,
     preferredSlots: [...new Set(preferredSlots)],
   };
+}
+
+/** Hub/布阵外简短共鸣预览 */
+export function formationResonancePreview(state: PlayerState): string | null {
+  return formationResonanceLine(buildPlayerParty(state));
 }
 
 /** 列表排序：稀有度 → 等级 → 名称 */

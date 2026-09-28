@@ -400,4 +400,14 @@ describe('character growth', () => {
     const hints = formationHints(next);
     assert.ok(hints.missingRoleLine?.includes('治疗'));
   });
+
+  it('formationHints shows iron wall when front row full', () => {
+    const state = createInitialPlayer(8);
+    const next = {
+      ...state,
+      formation: { zhangfei: 1 as const, hero: 2 as const, zhaoyun: 3 as const },
+    };
+    const hints = formationHints(next);
+    assert.match(hints.resonanceLine ?? '', /铁壁共鸣/);
+  });
 });

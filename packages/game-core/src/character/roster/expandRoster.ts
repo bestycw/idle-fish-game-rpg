@@ -33,7 +33,3 @@ export const EXPAND_ROSTER: ExpandEntry[] = ZHONGTU_ROSTER.filter((e) => !HAND.h
 export function expandIdsByUnlock(batch: UnlockBatch): string[] {
   return ZHONGTU_ROSTER.filter((e) => e.unlock === batch).map((e) => e.id);
 }
-
-export function idsByUnlock(batch: UnlockBatch): string[] {
-  return expandIdsByUnlock(batch);
-}

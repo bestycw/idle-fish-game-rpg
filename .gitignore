@@ -8,3 +8,6 @@ dist
 coverage
 *.log
 .superpowers/
+.claude/
+.oneskill-cli/
+*.tsbuildinfo

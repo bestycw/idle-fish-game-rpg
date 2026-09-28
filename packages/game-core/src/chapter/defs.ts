@@ -68,21 +68,21 @@ export const CHAPTERS: ChapterDef[] = [
     id: 'ch1',
     order: 1,
     name: '第一章 · 启程',
-    blurb: '占位：踏入试炼之地。',
+    blurb: '关外试炼初开，盾墙挡路——先看战前提示再进场。',
     nodes: [
       {
         id: 'ch1_n1',
         kind: 'story',
         title: '上路',
         place: '城门驿道',
-        blurb: '占位过场：你整理行装，前方有盾墙拦路。',
+        blurb: '驿道尘土里，你闻到铁与血。关隘那头，有人用盾墙试你底细。',
       },
       {
         id: 'ch1_n2',
         kind: 'battle',
         title: '初战盾墙',
         place: '盾墙关隘',
-        blurb: '占位：击败盾墙遭遇。',
+        blurb: '盾阵压上，先破前排再谈速攻。',
         encounterId: 'wall',
       },
       {
@@ -90,7 +90,7 @@ export const CHAPTERS: ChapterDef[] = [
         kind: 'story',
         title: '落脚',
         place: '关外营地',
-        blurb: '占位：初战结束；速攻遭遇将解锁。',
+        blurb: '营火渐起。初战落定后，更乱的阵脚还在林道那头等着。',
       },
     ],
     unlocksOnClear: [
@@ -102,21 +102,21 @@ export const CHAPTERS: ChapterDef[] = [
     id: 'ch2',
     order: 2,
     name: '第二章 · 乱阵',
-    blurb: '占位：对手开始玩弄心神。',
+    blurb: '林道伏兵频出，有人专打阵脚与后排。',
     nodes: [
       {
         id: 'ch2_n1',
         kind: 'story',
         title: '异兆',
         place: '乱阵林道',
-        blurb: '占位：有人能扰乱阵脚。',
+        blurb: '林里脚步声乱，像是故意引你分兵；速攻部队就在侧翼。',
       },
       {
         id: 'ch2_n2',
         kind: 'battle',
         title: '速攻来袭',
         place: '密林伏击',
-        blurb: '占位：应对高机动敌人。',
+        blurb: '高机动切入，备好治疗与坦克换位。',
         encounterId: 'raiders',
       },
     ],

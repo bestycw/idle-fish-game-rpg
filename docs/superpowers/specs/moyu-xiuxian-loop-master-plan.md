@@ -25,7 +25,7 @@
 1. `roster.test.ts` 本批专测（名、softMode、★3 岔路、禁招魂/禁乱开 shred 等）
 2. `zhongtuRoster.ts` skillName 与 motif 对齐（无裸「诀」）
 3. `combatFlowSpotlight.ts` **追加本批 id**（战斗流多轮验伤害/技能）
-4. tracking 对应 §13.x 标完成；progress 写下一 Wave
+4. progress 写下一 Wave（tracking 只更新 §13 指针，不重复抄批次）
 
 ---
 
@@ -33,10 +33,10 @@
 
 | 代号 | 内容 |
 |------|------|
-| **W0·玩法** | §13.1 P0–P4：周循环、镜渊 T3、八题、prepHint、growth 测例 |
-| **W0·expand** | §13.2 封神 3 · §13.3 上古 5 · §13.4 吴越 6 · §13.4 群雄 3 |
-| **W1·expand** | §13.5 八仙+东海 4 人 |
-| **W7–W9·expand** | §13.11–13.13 瓦岗/宝莲降妖/聊斋 |
+| **W0·玩法** | P0–P4：周循环、镜渊 T3、八题、prepHint、growth 测例 |
+| **W0·expand** | 封神 3 · 上古 5 · 吴越 6 · 群雄 3 |
+| **W1·expand** | 八仙+东海 4 人（见 §3 表） |
+| **W7–W9·expand** | 瓦岗 / 宝莲+降妖 / 聊斋（见 §3 表） |
 | **门禁** | `combatFlowSmoke.test.ts` + `npm test` 基线 **184** |
 
 ---
@@ -105,7 +105,7 @@ W9 已完成：**expand 清尾**；进入 **§3.1 拍板后的 V1 加厚顺序**
 ## 6. 统一 Loop Prompt（Cursor `/loop 10m`）
 
 ```text
-按 docs/superpowers/specs/moyu-xiuxian-loop-master-plan.md 与 tracking.md §13.x 推进。先读 docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md 断点。一轮一个 Wave 子步骤；收尾前 packages/game-core 下 npm test。仅 tracking「需要人定」可问用户。dev-loop §2 开场、§4 收尾；有进展且用户曾要求提交时再 commit。
+按 docs/superpowers/specs/moyu-xiuxian-loop-master-plan.md 与 tracking.md §13 指针推进。先读 docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md 断点。一轮一个 Wave 子步骤；收尾前 packages/game-core 下 npm test。仅 tracking「需要人定」可问用户。dev-loop §2 开场、§4 收尾；有进展且用户曾要求提交时再 commit。
 ```
 
 **间隔建议：** `10m` 或 cron `7,22,37,52 * * * *`（避开整点）。

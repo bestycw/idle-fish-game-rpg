@@ -2,6 +2,8 @@ import {
   ALLY_BATTLE_ROWS,
   ENCOUNTERS,
   ENEMY_BATTLE_ROWS,
+  getEncounterModifier,
+  getFormationResonance,
   isLiving,
   type ActionKind,
   type BattleState,
@@ -104,6 +106,12 @@ export function BattleScreen({
   const encounter = ENCOUNTERS.find((e) => e.id === battle.encounterId);
   const encounterName = encounter?.name ?? battle.encounterId;
   const prepHint = encounter?.prepHint;
+  const modifierLabels = (battle.encounterModifierIds ?? [])
+    .map((id) => getEncounterModifier(id)?.label)
+    .filter((l): l is string => Boolean(l));
+  const resonanceLabels = (battle.formationResonanceIds ?? [])
+    .map((id) => getFormationResonance(id)?.label)
+    .filter((l): l is string => Boolean(l));
 
   const statusLine = battle.awaitingHeroAction
     ? '等待指令'
@@ -147,6 +155,8 @@ export function BattleScreen({
           eyebrow={`第 ${battle.turn} 回合 · ${statusLine}`}
           title={encounterName}
           paragraphs={[
+            modifierLabels.length > 0 ? `本场词缀：${modifierLabels.join(' · ')}` : '',
+            resonanceLabels.length > 0 ? `阵位：${resonanceLabels.join(' · ')}` : '',
             prepHint ?? '',
             player.heroManual
               ? '手动：轮到你时从下方选招。索敌仍自动。'

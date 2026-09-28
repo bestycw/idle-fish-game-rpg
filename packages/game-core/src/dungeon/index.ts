@@ -1,4 +1,5 @@
 export * from './encounters.js';
+export * from './encounterModifiers.js';
 export * from './tower.js';
 export * from './stardustRealm.js';
 export * from './dailyClaim.js';

@@ -24,6 +24,10 @@ export function listFormationResonanceIds(): string[] {
   return [...REGISTRY.keys()];
 }
 
+export function getFormationResonance(id: string): FormationResonanceDef | undefined {
+  return REGISTRY.get(id);
+}
+
 const ROW_SLOTS: Record<Row, GridSlot[]> = {
   front: [1, 2, 3],
   mid: [4, 5, 6],

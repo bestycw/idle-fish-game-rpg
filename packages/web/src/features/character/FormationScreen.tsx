@@ -65,6 +65,9 @@ export function FormationScreen({
           {hints.missingRoleLine ? (
             <p className="mt-1 font-mono text-[11px] text-amber-200/85">{hints.missingRoleLine}</p>
           ) : null}
+          {hints.resonanceLine ? (
+            <p className="mt-1 font-mono text-[11px] text-teal-200/85">{hints.resonanceLine}</p>
+          ) : null}
         </div>
         <button
           type="button"

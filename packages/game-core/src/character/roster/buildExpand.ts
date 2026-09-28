@@ -11,7 +11,7 @@ export function buildExpandSkills(): Record<string, SkillDef> {
     const legendarySolo = e.rarity === 'legendary';
     const composed = composeKitSkill({
       id: skillId,
-      name: e.skillName,
+      name: /诀/.test(e.skillName) ? e.motif : e.skillName,
       role: e.role,
       rarity: legendarySolo ? 'common' : e.rarity,
       motif: e.motif,

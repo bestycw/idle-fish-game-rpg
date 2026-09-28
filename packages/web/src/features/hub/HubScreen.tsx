@@ -20,6 +20,7 @@ import {
   MINE_DEFS,
   MINE_STAMINA_COST,
   nodePlace,
+  formationResonancePreview,
   partyPower,
   pressureForDungeon,
   runStardustRealm,
@@ -31,6 +32,7 @@ import {
 import { useState } from 'react';
 import { EntryCard } from '@/components/game/EntryCard';
 import { ChapterRoute } from './ChapterRoute';
+import { HubOnboarding } from './HubOnboarding';
 
 type HubScreenProps = {
   player: PlayerState;
@@ -72,6 +74,7 @@ export function HubScreen({
   const towerUnlocked = isContentUnlocked(player, 'dungeon', 'tower');
   const stardustUnlocked = isContentUnlocked(player, 'dungeon', 'stardust_realm');
   const formationCount = Object.keys(player.formation).length;
+  const resonancePreview = formationResonancePreview(player);
   const node = chapter.node;
   const playing = chapter.playing;
   const dailyReady = canClaimDaily(player);
@@ -331,12 +334,21 @@ export function HubScreen({
         >
           去布阵
         </button>
+        {resonancePreview ? (
+          <>
+            <span className="mx-1.5 text-border">·</span>
+            <span className="text-teal-300/85">{resonancePreview}</span>
+          </>
+        ) : null}
       </p>
     </div>
   );
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-3 pb-4 sm:space-y-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-5 lg:space-y-0">
+      <div className="space-y-3 lg:col-span-2">
+        <HubOnboarding />
+      </div>
       {storyPanel}
       {playPanel}
       {showMinePicker && (

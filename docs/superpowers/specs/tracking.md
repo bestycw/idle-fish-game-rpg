@@ -68,7 +68,7 @@
 | 升星消耗 | 同名碎片加码：★1–3×1 / ★4–5×2 / ★6×3；**星尘仅兑碎片**（200/片·日1·助到★4）（2026-08-02） |
 | 品级星上限 | **凡★3 / 良★4 / 珍★5 / 绝★6**（2026-08-03 落地） |
 | 修为/破境 | 天梯表现行至大罗（只许往后加）× 每境 10 小层 + 破境；修为**仅塔**；见 [xiuwei-cultivation](./2026-08-02-xiuwei-cultivation-design.md) |
-| 文档整理 | README 拆**现行/归档**；依赖层级写死；growth-draft/C1/roster/旧单体/旧 plan 标归档；存档现网 **v15**；卡池权威 [中土故事圈](./2026-08-26-zhongtu-roster-circles-design.md)（代码未迁仍 100） |
+| 文档整理 | README 拆**现行/归档**；依赖层级写死；growth-draft/C1/roster/旧单体/旧 plan 标归档；存档现网 **v15**；卡池权威 [中土故事圈](./2026-08-26-zhongtu-roster-circles-design.md)（代码 **200 expand + 手填深做**） |
 | 眩晕/异常 | 经典异常骨架 + DR；Boss 抗控分级；显示名随皮 |
 | 技能资源 | 全员统一 **qi（能量）**；普攻/行动回，技能消耗；与急速形成「勤度」轴 |
 | 伤害类型 | **力·灵双轴已落地**（2026-07-21）；`physAtk`/`spiritAtk`/`physDef`/`spiritDef` + `damageSchool`；旧 atk/def 词缀并入力系 |
@@ -116,117 +116,17 @@
 
 ### 13.0 Loop 总路线（权威顺序）
 
-> 阶段表与 W1–W12 见 **[loop-master-plan](./moyu-xiuxian-loop-master-plan.md)**。本节只保留历史 §13.1–§13.4 明细。
-
-**当前指针：** **W10 · E1 遭遇词缀 MVP**（见 loop-master-plan §4）。
-
-### 13.13 dev-loop · 聊斋 expand（**W9 · 2026-09-27 已验收**）
-
-| ids | `zhangdaoling`, `niexiaoqian`, `yanchixia`, `huapi` |
-| 判据 | 184 tests pass |
-
-### 13.12 dev-loop · 宝莲+降妖 expand（**W8 · 2026-09-27 已验收**）
-
-| ids | `chenxiang`, `sanshengmu`, `zhongkui`, `xuxun`, `jigong` |
-
-### 13.11 dev-loop · 瓦岗 expand（**W7 · 2026-09-27 已验收**）
-
-| ids | `qinqiong`, `lishimin`, `yuchigong`, `luocheng` |
-
-### 13.10 dev-loop · 梁山 expand（**W6 · 2026-09-27 已验收**）
-
-| ids | `linchong`, `wusong`, `luzhishen`, `songjiang` |
-| 判据 | master-plan §1 配方 + `npm test` 181 pass |
-
-### 13.9 dev-loop · 忠烈 expand（**W5 · 2026-09-27 已验收**）
-
-| ids | `muguiying`, `yangye`, `mulan`, `shetaijun` |
-| 判据 | master-plan §1 配方 + `npm test` 180 pass |
-
-### 13.8 dev-loop · 兵家 expand（**W4 · 2026-09-27 已验收**）
-
-| ids | `guiguzi`, `sunwu`, `gongshuban`, `pangjuan` |
-| 判据 | master-plan §1 配方 + `npm test` 179 pass |
-
-### 13.7 dev-loop · 楚汉 expand（**W3 · 2026-09-27 已验收**）
-
-| ids | `liubang`, `hanxin`, `zhangliang`, `yuji` |
-| 判据 | master-plan §1 配方 + `npm test` 178 pass |
-
-### 13.6 dev-loop · 江南 expand（**W2 · 2026-09-27 已验收**）
-
-| ids | `baisuzhen`, `xiaoqing`, `fahai`, `zhinu` |
-| 判据 | master-plan §1 配方 + `npm test` 177 pass |
-
-### 13.1 dev-loop · 周循环主线计划
-
-> 阶段按「判据可独立成立」排序；每轮只做一个子阶段（dev-loop §1.4）。Cursor 心跳可用 `/loop 10m` + 下方 prompt，**须先完成 P0 再开 cron**。
-
-**Loop prompt（统一 · 复制到 `/loop 10m` 后）：** 见 [loop-master-plan §6](./moyu-xiuxian-loop-master-plan.md#6-统一-loop-promptcursor-loop-10m)。
+**当前指针：** **Loop 已停** · **V1 最小补齐包** 见 [progress](./moyu-xiuxian-progress-2026-09-24.md)。阶段表、W0–W13、expand W1–W9 批次与统一 loop prompt → **[loop-master-plan](./moyu-xiuxian-loop-master-plan.md)**（勿在本文件重复抄批次表）。
 
 #### 每轮固定门禁（伤害 / 技能流）
 
 | 命令 | 作用 |
 |------|------|
-| `npm test` | 全量 + **combatFlowSmoke**：八题×5 种子 + spotlight 卡 wall/oil 各 3 种子 |
+| `npm test` | 全量 + **combatFlowSmoke** |
 | `npm run test:combat-flow` | 仅战斗流冒烟 |
-| `npm run feel -- --seeds 15` | 可选：看胜率/战报 |
+| `npm run feel -- --seeds 15` | 可选：胜率/战报 |
 
-本批验收卡：`packages/game-core/src/combat/combatFlowSpotlight.ts`（新 expand 批次追加 id）。
-
-#### 阶段
-
-| 阶段 | 内容 | 判据 |
-|------|------|------|
-| **P0** | loop 三件套 + WIP 叙事收口（文档指针；未提交改动按下面「P0-WIP 清单」拆 commit 或单批提交） | 存在 §13.1 + progress 文件；`git status` 与 progress「下一件」一致 |
-| **P1** | 战败/结果提示对齐「去哪刷什么」：`buildDefeatHint` + 必要时 Hub/Result 副文案；八题与 T3 口语一致 | `encounterRecipes.test.ts` 全绿；战败 hint 含镜渊/猎装指向（见测试正则）；`npm test` game-core 全绿 · **2026-09-24 hint+Hub 主路径已做** |
-| **P2** | **测试门禁**：`character growth` 3 红修绿（星轨/破境文案与深做卡一致） | `npm test` **0 fail**（当前基线 167 tests）· **2026-09-24 已绿** |
-| **P3** | 封神刀二一批：申公豹 / 敖丙 / 太乙（roster + 星轨 + 技能 compose 测） | 新 id 挂池；`roster.test.ts` / `skillCompose.test.ts` 增例绿；不碰套装 2/4 · **2026-09-24 expand+测例** |
-| **P4** | B17 对手克制提示（战前轻提示，复用 encounter 元数据） | 战前 UI 或 Hub 一条可读提示；不硬锁进门 · **2026-09-24 `prepHint`+战斗页** |
-
-### 13.2 dev-loop · 上古 expand（**已完成 2026-09-25**）
-
-> **Loop 真源**：本节 + [moyu-xiuxian-progress-2026-09-24.md](./moyu-xiuxian-progress-2026-09-24.md)。Cursor 发：`/loop 10m` + 下方 **§13.2 prompt**。
-
-**§13.2 Loop prompt：**
-
-> 按 `docs/superpowers/specs/tracking.md` §13.2 推进上古 expand。先读 `docs/superpowers/specs/moyu-xiuxian-progress-2026-09-24.md`。自行决策；仅 §13.1「需要人定的决定」可问用户。每轮 dev-loop §2 开场、§4 收尾；一轮一个子阶段；有进展则 1 commit。
-
-| 子阶段 | 内容 | 判据 |
-|--------|------|------|
-| **P5a** | 黄帝/蚩尤/西王母/伏羲/大禹：`roster.test` 专测（招牌名、钩子 copy、★3 岔路、无招魂） | 五人测例绿；`npm test` 全绿 |
-| **P5b** | `zhongtuRoster` 五人 `motif/skillName` 去「诀」占位（若仍有） | 五人 `getSkill().name` 无裸「诀」 · **2026-09-24 loop 第 2 轮** |
-| **P5c** | `skillCompose.test` 黄帝/大禹 compose 测例 | 新增测例绿 · **2026-09-25 loop 第 3 轮** |
-
-**P5a–P5c 均已落地**；下一 loop 见 **§13.3**。
-
-### 13.3 dev-loop · 吴越 expand（**已完成 2026-09-25**）
-
-| 子阶段 | 内容 | 判据 |
-|--------|------|------|
-| **P6a** | 聂隐娘/荆轲/干将/莫邪/李白/伍子胥：`roster.test` 专测 | 六人测例绿 · **loop 完成** |
-| **P6b** | 名册 skillName 与 motif 对齐 + `combatFlowSpotlight` 六 id | 无裸「诀」；combatFlowSmoke 绿 |
-
-**§13.3 Loop prompt：** 同 §13.1 模板，将计划节改为 **§13.3 / 吴越**；新六人进队后更新 `combatFlowSpotlight.ts`。
-
-### 13.4 dev-loop · 群雄 expand（**已完成 2026-09-25**）
-
-| 子阶段 | 内容 | 判据 |
-|--------|------|------|
-| **P7** | 曹操/司马懿/郭嘉：roster 测例 + skillName + spotlight | 175 tests 绿 · **已完成** |
-
-### 13.5 dev-loop · 八仙+东海 expand（**W1 · 2026-09-25 已验收**）
-
-| ids | `lvdongbin`, `hanzhongli`, `tieguaili`, `aoguang` |
-| 判据 | master-plan §1 配方 + `npm test` 绿 |
-
-（§13.6–§13.13 批次表见 [loop-master-plan §3](./moyu-xiuxian-loop-master-plan.md#3-expand-清尾w1w9-按圈-batch)。）
-
-**P0-WIP 清单（历史 · 已提交）：**
-
-1. 副本+遭遇+掉落+审计测试（`dungeon/*`、`encounters`、`lootTables`、`generate`、`encounterRecipes.test`、`dungeon.test`）
-2. 战斗+装备 T3/裂甲+`gearIdentity.test`（`combat/*`、`equipment/*`）
-3. 传说 expand 钩子/星 + growth 相关（若仍保留）+ Hub 副标题 + 文档
+新 expand 批次验收 id：`packages/game-core/src/combat/combatFlowSpotlight.ts`。
 
 #### 需要人定的决定（仅此停问）
 
@@ -274,7 +174,7 @@
 |------|----|------|------|
 | B9 | 官方短主线文案 | 替换占位皮 | 已记录 |
 | B10 | AI 有限剧情 | 框架内选项 + 默认线；见 §9 | 已记录 |
-| B11 | 卡池扩至 16–24→100→中土 200 | 刀一 200；刀二深做 5；expand 圈批：封神/上古/吴越/群雄（见 §13.2–§13.4） | **下一批：design §5 圈序（八仙/梁山等）按需开 §13.x** |
+| B11 | 卡池扩至 16–24→100→中土 200 | 刀一 200；刀二深做 5；expand 圈批 W0–W9 已清（见 loop-master-plan §3） | **维护：深做/传说 hook，非再开大批 expand** |
 
 ### 14.4 工程与体验（可穿插）
 
