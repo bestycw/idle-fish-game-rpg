@@ -87,10 +87,18 @@ export default function App() {
   const battleSourceRef = useRef<BattleSource>('dungeon');
   const noticeTimerRef = useRef<number | null>(null);
 
+  const dismissNotice = () => {
+    if (noticeTimerRef.current != null) {
+      window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = null;
+    }
+    setNotice(null);
+  };
+
   const pushNotice = (msg: string) => {
     setNotice(msg);
     if (noticeTimerRef.current != null) window.clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = window.setTimeout(() => setNotice(null), 4200);
+    noticeTimerRef.current = window.setTimeout(() => dismissNotice(), 4200);
   };
 
   useEffect(() => {
@@ -390,6 +398,7 @@ export default function App() {
         screen === 'bag'
       }
       notice={notice}
+      onDismissNotice={dismissNotice}
       dock={
         showDock ? (
           <BottomNav active={screenToTab(screen)} onChange={onNav} />

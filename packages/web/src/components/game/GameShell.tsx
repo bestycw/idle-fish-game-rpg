@@ -5,6 +5,8 @@ type GameShellProps = {
   subtitle?: string;
   status?: React.ReactNode;
   notice?: string | null;
+  /** 关闭居中提示（遮罩/卡片点击） */
+  onDismissNotice?: () => void;
   /** 底栏导航等；战斗页可隐藏 */
   dock?: React.ReactNode;
   children: React.ReactNode;
@@ -28,6 +30,7 @@ export function GameShell({
   subtitle,
   status,
   notice,
+  onDismissNotice,
   dock,
   children,
   className,
@@ -69,15 +72,6 @@ export function GameShell({
           ) : null}
         </header>
 
-        {notice ? (
-          <div
-            role="status"
-            className="mb-2 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-3 py-2 font-mono text-xs text-primary sm:mb-3 sm:text-sm"
-          >
-            {notice}
-          </div>
-        ) : null}
-
         <main
           className={cn(
             'min-h-0 flex-1',
@@ -89,6 +83,35 @@ export function GameShell({
           {children}
         </main>
       </div>
+
+      {notice ? (
+        <button
+          type="button"
+          aria-live="polite"
+          aria-label="关闭提示"
+          onClick={() => onDismissNotice?.()}
+          className="fixed inset-0 z-[60] flex cursor-default items-center justify-center bg-black/45 px-5 backdrop-blur-[2px] sm:px-8"
+        >
+          <div
+            role="status"
+            className="game-notice-pop max-w-[min(100%,22rem)] cursor-pointer rounded-xl border border-primary/55 bg-card/96 px-5 py-4 text-center shadow-[0_12px_48px_rgba(0,0,0,0.55)] sm:max-w-md sm:px-6 sm:py-4"
+          >
+            <p
+              className={cn(
+                'leading-snug',
+                notice.length > 72
+                  ? 'font-mono text-xs leading-relaxed text-foreground/95 sm:text-sm'
+                  : 'font-display text-base tracking-wide text-primary sm:text-lg',
+              )}
+            >
+              {notice}
+            </p>
+            <p className="mt-2.5 font-mono text-[10px] tracking-wide text-muted-foreground">
+              点击关闭
+            </p>
+          </div>
+        </button>
+      ) : null}
 
       {dock ? (
         <div className="z-20 w-full shrink-0 border-border/60 bg-background/95 backdrop-blur-md">
