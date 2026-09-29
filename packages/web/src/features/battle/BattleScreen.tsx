@@ -1,21 +1,15 @@
 import {
-  ALLY_BATTLE_ROWS,
   ENCOUNTERS,
-  ENEMY_BATTLE_ROWS,
   getEncounterModifier,
   getFormationResonance,
-  isLiving,
   type ActionKind,
   type BattleState,
-  type GridSlot,
   type PlayerState,
-  type UnitRuntime,
 } from '@moyu/game-core';
 import { ChoiceList } from '@/components/game/ChoiceList';
-import { Narrative } from '@/components/game/Narrative';
 import { BattleLog } from '../shared/battleLog';
-import { unitAt } from '../shared/unitViews';
-import { cn } from '@/lib/utils';
+import { BattleGrid } from './BattleGrid';
+import { BattleEncounterBar } from './BattleEncounterBar';
 
 type BattleScreenProps = {
   player: PlayerState;
@@ -25,74 +19,6 @@ type BattleScreenProps = {
   onHeroManualAuto: () => void;
   onHeroManualManual: () => void;
 };
-
-function CompactLine({
-  label,
-  units,
-  slots,
-}: {
-  label: string;
-  units: UnitRuntime[];
-  slots: GridSlot[];
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] sm:text-[11px]">
-      <span className="w-7 shrink-0 text-muted-foreground sm:w-8">{label}</span>
-      {slots.map((slot) => {
-        const u = unitAt(units, slot);
-        if (!u) {
-          return (
-            <span key={slot} className="text-border">
-              ·
-            </span>
-          );
-        }
-        const down = !isLiving(u);
-        const pct = u.maxHp > 0 ? Math.round((Math.max(0, u.hp) / u.maxHp) * 100) : 0;
-        return (
-          <span
-            key={slot}
-            className={cn(
-              'inline-flex items-baseline gap-1',
-              down && 'opacity-40 line-through',
-              u.isHero && 'text-primary',
-            )}
-            title={`${u.name} HP ${u.hp}/${u.maxHp}`}
-          >
-            <span className="max-w-[4.5rem] truncate sm:max-w-none">
-              {u.name.replace('主角·', '')}
-            </span>
-            <span className="text-muted-foreground">{pct}%</span>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function BoardStrip({ battle }: { battle: BattleState }) {
-  return (
-    <div className="space-y-1 rounded-lg border border-border/70 bg-card/50 px-2.5 py-2 sm:px-3">
-      {ENEMY_BATTLE_ROWS.map(({ row, slots }) => (
-        <CompactLine
-          key={`e-${row}`}
-          label={row === 'back' ? '敌后' : row === 'mid' ? '敌中' : '敌前'}
-          units={battle.enemy.units}
-          slots={slots}
-        />
-      ))}
-      <div className="my-1 border-t border-dashed border-border/60" />
-      {ALLY_BATTLE_ROWS.map(({ row, slots }) => (
-        <CompactLine
-          key={`a-${row}`}
-          label={row === 'front' ? '我前' : row === 'mid' ? '我中' : '我后'}
-          units={battle.player.units}
-          slots={slots}
-        />
-      ))}
-    </div>
-  );
-}
 
 export function BattleScreen({
   player,
@@ -105,7 +31,6 @@ export function BattleScreen({
   const heroInBattle = battle.player.units.find((u) => u.isHero);
   const encounter = ENCOUNTERS.find((e) => e.id === battle.encounterId);
   const encounterName = encounter?.name ?? battle.encounterId;
-  const prepHint = encounter?.prepHint;
   const modifierLabels = (battle.encounterModifierIds ?? [])
     .map((id) => getEncounterModifier(id)?.label)
     .filter((l): l is string => Boolean(l));
@@ -116,7 +41,7 @@ export function BattleScreen({
   const statusLine = battle.awaitingHeroAction
     ? '等待指令'
     : playing
-      ? '战报中…'
+      ? '战报中'
       : '暂停';
 
   const actions =
@@ -149,37 +74,27 @@ export function BattleScreen({
         ];
 
   return (
-    <div className="space-y-4 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)] lg:gap-5 lg:space-y-0">
-      <div className="space-y-4">
-        <Narrative
-          eyebrow={`第 ${battle.turn} 回合 · ${statusLine}`}
-          title={encounterName}
-          paragraphs={[
-            modifierLabels.length > 0 ? `本场词缀：${modifierLabels.join(' · ')}` : '',
-            resonanceLabels.length > 0 ? `阵位：${resonanceLabels.join(' · ')}` : '',
-            prepHint ?? '',
-            player.heroManual
-              ? '手动：轮到你时从下方选招。索敌仍自动。'
-              : '自动交锋。可切手动亲自出手。',
-          ].filter(Boolean)}
-        />
-        <BoardStrip battle={battle} />
-        {/* 窄屏：战报在指令上方；宽屏战报进右栏 */}
-        <div className="lg:hidden">
-          <p className="mb-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-            战报
-          </p>
-          <BattleLog battle={battle} />
-        </div>
-        <ChoiceList choices={actions} />
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <BattleEncounterBar
+        turn={battle.turn}
+        statusLine={statusLine}
+        encounterName={encounterName}
+        modifierLabels={modifierLabels}
+        resonanceLabels={resonanceLabels}
+        heroManual={player.heroManual}
+      />
+
+      <div className="shrink-0">
+        <BattleGrid battle={battle} compact layout="focus" />
       </div>
 
-      <aside className="hidden lg:block lg:sticky lg:top-4">
-        <p className="mb-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-          战报
-        </p>
-        <BattleLog battle={battle} tall />
-      </aside>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <BattleLog battle={battle} compact />
+      </div>
+
+      <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/50 bg-background/95 pt-2 pb-0.5">
+        <ChoiceList choices={actions} />
+      </div>
     </div>
   );
 }

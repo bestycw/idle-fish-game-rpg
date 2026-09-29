@@ -5,6 +5,8 @@ type StatusBarProps = {
   player: PlayerState;
   chapterLabel?: string;
   className?: string;
+  /** 战斗/战前：单行体力 + 章节，省高度 */
+  compact?: boolean;
   /** 顶栏系统入口（邮件 / 设置） */
   onMail?: () => void;
   onSettings?: () => void;
@@ -23,10 +25,27 @@ export function StatusBar({
   player,
   chapterLabel,
   className,
+  compact,
   onMail,
   onSettings,
 }: StatusBarProps) {
   const stamina = getStaminaView(player);
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2 font-mono text-[10px] text-muted-foreground',
+          className,
+        )}
+      >
+        <span className="tabular-nums">
+          体力 {stamina.current}/{stamina.max}
+          {chapterLabel ? ` · ${chapterLabel}` : ''}
+        </span>
+        <span className="tabular-nums text-foreground/80">胜 {player.wins ?? 0}</span>
+      </div>
+    );
+  }
   return (
     <div
       className={cn(

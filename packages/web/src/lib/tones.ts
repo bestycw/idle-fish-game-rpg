@@ -74,6 +74,7 @@ export function logTone(tone: string): string {
     'log-shield': 'text-sky-300/90',
     'log-mitigation': 'text-slate-300/80',
     'log-down': 'text-destructive font-medium',
+    'log-hit': 'text-foreground/80',
   };
   return map[tone] ?? 'text-foreground/75';
 }

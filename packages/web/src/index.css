@@ -71,7 +71,21 @@
   html,
   body,
   #root {
-    min-height: 100%;
+    height: 100%;
+    max-height: 100dvh;
+  }
+
+  #root {
+    overflow: hidden;
+  }
+
+  .formation-scroll,
+  .dock-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   *::-webkit-scrollbar {
@@ -147,6 +161,10 @@
   .log-line-enter {
     animation: log-in 0.28s ease-out both;
   }
+
+  .log-crit-pop {
+    animation: log-crit-pop 0.45s ease-out both;
+  }
 }
 
 @keyframes narrative-in {
@@ -179,6 +197,20 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes log-crit-pop {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -276,5 +308,29 @@
   .realm-ring,
   .skill-star-pulse {
     animation: none;
+  }
+}
+
+/* 布阵格：选中 / 可放置目标 */
+.formation-slot-selected {
+  z-index: 1;
+  box-shadow:
+    0 0 0 2px var(--primary),
+    0 0 14px var(--ink-glow),
+    inset 0 0 0 1px rgba(226, 160, 74, 0.25);
+  background-color: rgba(226, 160, 74, 0.14) !important;
+  transform: scale(1.03);
+}
+
+.formation-slot-target {
+  border-style: dashed !important;
+  border-color: rgba(226, 160, 74, 0.75) !important;
+  background-color: rgba(226, 160, 74, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(226, 160, 74, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formation-slot-selected {
+    transform: none;
   }
 }

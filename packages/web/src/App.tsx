@@ -2,7 +2,6 @@ import {
   buildPlayerParty,
   chapterProgressLabel,
   completeChapterBattle,
-  createBattle,
   currentChapterEncounterIndex,
   getDungeon,
   grantDungeonReward,
@@ -10,8 +9,6 @@ import {
   loadOrCreatePlayer,
   persistPlayer,
   pickUnlockedEncounterIndex,
-  pressureForDungeon,
-  battlePressure,
   staminaCostForDungeon,
   stepBattle,
   syncStamina,
@@ -30,6 +27,10 @@ import { BottomNav, type NavTab } from '@/components/game/BottomNav';
 import { GameShell } from '@/components/game/GameShell';
 import { StatusBar } from '@/components/game/StatusBar';
 import { BattleScreen } from './features/battle/BattleScreen';
+import {
+  BattlePrepScreen,
+  type BattlePrepConfig,
+} from './features/battle/BattlePrepScreen';
 import { CharacterList, CharacterSheet } from './features/character/CharacterScreens';
 import { FormationScreen } from './features/character/FormationScreen';
 import { HubScreen } from './features/hub/HubScreen';
@@ -39,6 +40,7 @@ import { ResultScreen } from './features/result/ResultScreen';
 
 type Screen =
   | 'hub'
+  | 'battle_prep'
   | 'battle'
   | 'result'
   | 'characters'
@@ -69,7 +71,10 @@ export default function App() {
   const [characterBack, setCharacterBack] = useState<'hub' | 'characters' | 'formation'>(
     'characters',
   );
-  const [formationBack, setFormationBack] = useState<'hub' | 'characters'>('characters');
+  const [formationBack, setFormationBack] = useState<'hub' | 'characters' | 'battle_prep'>(
+    'characters',
+  );
+  const [battlePrep, setBattlePrep] = useState<BattlePrepConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const timerRef = useRef<number | null>(null);
@@ -180,61 +185,70 @@ export default function App() {
     timerRef.current = window.setInterval(tick, BATTLE_TICK_MS);
   };
 
-  const startBattle = (dungeonId: DungeonId = DEFAULT_BATTLE_DUNGEON) => {
+  const openDungeonPrep = (dungeonId: DungeonId = DEFAULT_BATTLE_DUNGEON) => {
     stopPlayback();
     const dungeon = getDungeon(dungeonId);
     if (dungeon.runMode !== 'battle') return;
-    const spend = trySpendStamina(player, staminaCostForDungeon(dungeonId));
-    if (!spend.ok) {
-      pushNotice(spend.message);
-      setPlayer(spend.state);
-      return;
-    }
-    setPlayer(spend.state);
-    const party = buildPlayerParty(spend.state);
-    if (party.length === 0) {
-      pushNotice('阵上无人，先去布阵。');
-      return;
-    }
+    const encIdx = pickUnlockedEncounterIndex(player, dungeonId, player.encounterIndex);
     battleSourceRef.current = 'dungeon';
     setActiveDungeonId(dungeonId);
     dungeonRef.current = dungeonId;
-    const encIdx = pickUnlockedEncounterIndex(spend.state, dungeonId, spend.state.encounterIndex);
-    const initial = createBattle(party, spend.state.seed + spend.state.wins, encIdx, {
-      pressure: battlePressure(spend.state.chapterCleared ?? 0, pressureForDungeon(dungeonId)),
-      rollEncounterModifiers: true,
-    });
-    battleRef.current = initial;
-    setBattle(initial);
-    setLastLoot(null);
-    setScreen('battle');
-    startPlayback();
+    setBattlePrep({ kind: 'dungeon', dungeonId, encounterIndex: encIdx });
+    setScreen('battle_prep');
   };
 
-  const startChapterBattle = () => {
+  const openChapterPrep = () => {
     stopPlayback();
     const encIdx = currentChapterEncounterIndex(player);
     if (encIdx == null) {
       pushNotice('当前不是章节战斗节点。');
       return;
     }
-    const party = buildPlayerParty(player);
-    if (party.length === 0) {
-      pushNotice('阵上无人，先去布阵。');
-      return;
-    }
     battleSourceRef.current = 'chapter';
     setActiveDungeonId(DEFAULT_BATTLE_DUNGEON);
     dungeonRef.current = DEFAULT_BATTLE_DUNGEON;
-    const initial = createBattle(party, player.seed + player.wins + 1000, encIdx, {
-      pressure: battlePressure(player.chapterCleared ?? 0),
-      rollEncounterModifiers: true,
+    setBattlePrep({
+      kind: 'chapter',
+      dungeonId: DEFAULT_BATTLE_DUNGEON,
+      encounterIndex: encIdx,
     });
+    setScreen('battle_prep');
+  };
+
+  const commitBattleStart = (initial: BattleState) => {
+    stopPlayback();
+    const prep = battlePrep;
+    if (!prep) return;
+    let base = player;
+    if (prep.kind === 'dungeon') {
+      const spend = trySpendStamina(player, staminaCostForDungeon(prep.dungeonId));
+      if (!spend.ok) {
+        pushNotice(spend.message);
+        setPlayer(spend.state);
+        return;
+      }
+      setPlayer(spend.state);
+      base = spend.state;
+    }
+    if (buildPlayerParty(base).length === 0) {
+      pushNotice('阵上无人，请先布阵。');
+      return;
+    }
     battleRef.current = initial;
     setBattle(initial);
     setLastLoot(null);
+    setBattlePrep(null);
     setScreen('battle');
     startPlayback();
+  };
+
+  /** 结算页「再打一局」：先进战前整备 */
+  const restartBattlePrep = () => {
+    if (battleSourceRef.current === 'chapter') {
+      openChapterPrep();
+    } else {
+      openDungeonPrep(activeDungeonId);
+    }
   };
 
   const submitHeroAction = (kind: ActionKind) => {
@@ -347,7 +361,7 @@ export default function App() {
     setScreen('character');
   };
 
-  const openFormation = (back: 'hub' | 'characters' = 'characters') => {
+  const openFormation = (back: 'hub' | 'characters' | 'battle_prep' = 'characters') => {
     setFormationBack(back);
     setScreen('formation');
   };
@@ -358,6 +372,8 @@ export default function App() {
   const subtitle =
     screen === 'battle'
       ? '战报翻页中'
+      : screen === 'battle_prep'
+        ? '战前整备'
       : screen === 'result'
         ? '尘埃落定'
         : screen === 'formation'
@@ -366,11 +382,14 @@ export default function App() {
             ? '行囊'
             : '布阵刷装 · 摸鱼深构筑';
 
-  const showDock = screen !== 'battle' && screen !== 'result';
+  const combatFocus =
+    screen === 'battle_prep' || screen === 'battle' || screen === 'result';
+  const showDock = screen !== 'battle' && screen !== 'battle_prep' && screen !== 'result';
   const onNav = (tab: NavTab) => {
     stopPlayback();
-    if (tab === 'hub') setScreen('hub');
-    else if (tab === 'gacha') setScreen('gacha');
+    if (tab === 'hub') {
+      setScreen(battlePrep ? 'battle_prep' : 'hub');
+    } else if (tab === 'gacha') setScreen('gacha');
     else if (tab === 'characters') setScreen('characters');
     else setScreen('bag');
   };
@@ -379,33 +398,45 @@ export default function App() {
     <GameShell
       subtitle={subtitle}
       layout={
+        screen === 'gacha' || screen === 'characters' ? 'home' : 'focus'
+      }
+      hideBrand={
         screen === 'battle' ||
+        screen === 'battle_prep' ||
+        screen === 'result' ||
         screen === 'character' ||
         screen === 'formation' ||
         screen === 'bag'
-          ? 'focus'
-          : 'home'
       }
-      hideBrand={screen === 'character' || screen === 'formation' || screen === 'bag'}
       notice={notice}
       dock={
         showDock ? (
           <BottomNav active={screenToTab(screen)} onChange={onNav} />
         ) : undefined
       }
+      className={combatFocus ? 'pt-2 sm:pt-2' : undefined}
       status={
         <div className="space-y-1.5">
           <StatusBar
             player={player}
             chapterLabel={chapterProgressLabel(player)}
-            onMail={() => pushNotice('邮件后置：系统信件将挂在顶栏。')}
-            onSettings={() => {
-              if (screen === 'hub') {
-                pushNotice('设置后置。可用下方「清空存档」重置 Demo。');
-              } else {
-                pushNotice('设置后置；清档请回冒险页。');
-              }
-            }}
+            compact={combatFocus}
+            onMail={
+              combatFocus
+                ? undefined
+                : () => pushNotice('邮件后置：系统信件将挂在顶栏。')
+            }
+            onSettings={
+              combatFocus
+                ? undefined
+                : () => {
+                    if (screen === 'hub') {
+                      pushNotice('设置后置。可用下方「清空存档」重置 Demo。');
+                    } else {
+                      pushNotice('设置后置；清档请回冒险页。');
+                    }
+                  }
+            }
           />
           {screen === 'hub' ? (
             <div className="flex justify-end gap-3">
@@ -432,11 +463,25 @@ export default function App() {
         <HubScreen
           player={player}
           setPlayer={setPlayer}
-          onStartGearTrial={() => startBattle('gear_trial')}
-          onStartAbyssMirror={() => startBattle('abyss_mirror')}
-          onStartChapterBattle={startChapterBattle}
+          onStartGearTrial={() => openDungeonPrep('gear_trial')}
+          onStartAbyssMirror={() => openDungeonPrep('abyss_mirror')}
+          onStartChapterBattle={openChapterPrep}
           onOpenFormation={() => openFormation('hub')}
           pushNotice={pushNotice}
+        />
+      )}
+
+      {screen === 'battle_prep' && battlePrep && (
+        <BattlePrepScreen
+          player={player}
+          setPlayer={setPlayer}
+          config={battlePrep}
+          pushNotice={pushNotice}
+          onBack={() => {
+            setBattlePrep(null);
+            setScreen('hub');
+          }}
+          onConfirmStart={commitBattleStart}
         />
       )}
 
@@ -457,9 +502,7 @@ export default function App() {
           lastLoot={lastLoot}
           dungeonName={dungeonName}
           setPlayer={setPlayer}
-          onRestartBattle={() =>
-            battleSourceRef.current === 'chapter' ? startChapterBattle() : startBattle(activeDungeonId)
-          }
+          onRestartBattle={restartBattlePrep}
           onBackToHub={handleBackToHub}
           pushNotice={pushNotice}
         />

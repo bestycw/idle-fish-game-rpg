@@ -33,12 +33,7 @@ export function GameShell({
   hideBrand = false,
 }: GameShellProps) {
   return (
-    <div
-      className={cn(
-        'relative flex flex-col',
-        layout === 'focus' ? 'h-dvh max-h-dvh overflow-hidden' : 'min-h-dvh',
-      )}
-    >
+    <div className="relative flex h-dvh max-h-dvh flex-col overflow-hidden">
       <div
         className={cn(
           'mx-auto flex w-full min-h-0 flex-1 flex-col px-3 sm:px-5',
