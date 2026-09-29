@@ -10,12 +10,12 @@ import {
   persistPlayer,
   pickUnlockedEncounterIndex,
   staminaCostForDungeon,
+  runAutoBattle,
   stepBattle,
   syncStamina,
   trySpendStamina,
   STAMINA_MAX,
   UNIT_TEMPLATES,
-  type ActionKind,
   type BattleState,
   type DungeonId,
   type Equipment,
@@ -27,6 +27,7 @@ import { BottomNav, type NavTab } from '@/components/game/BottomNav';
 import { GameShell } from '@/components/game/GameShell';
 import { StatusBar } from '@/components/game/StatusBar';
 import { BattleScreen } from './features/battle/BattleScreen';
+import type { BattleSpeed } from './features/battle/BattleSpeedControls';
 import {
   BattlePrepScreen,
   type BattlePrepConfig,
@@ -58,7 +59,7 @@ function screenToTab(screen: Screen): NavTab {
 }
 
 const DEFAULT_BATTLE_DUNGEON: DungeonId = 'gear_trial';
-const BATTLE_TICK_MS = 280;
+const BATTLE_BASE_TICK_MS = 380;
 
 export default function App() {
   const [player, setPlayer] = useState<PlayerState>(() => loadOrCreatePlayer(localSaveAdapter));
@@ -76,11 +77,12 @@ export default function App() {
   );
   const [battlePrep, setBattlePrep] = useState<BattlePrepConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [battleSpeed, setBattleSpeed] = useState<BattleSpeed>(1);
 
   const timerRef = useRef<number | null>(null);
+  const battleSpeedRef = useRef<BattleSpeed>(1);
   const battleRef = useRef<BattleState | null>(null);
   const playerRef = useRef(player);
-  const heroManualRef = useRef(player.heroManual);
   const dungeonRef = useRef<DungeonId>(activeDungeonId);
   const battleSourceRef = useRef<BattleSource>('dungeon');
   const noticeTimerRef = useRef<number | null>(null);
@@ -93,8 +95,11 @@ export default function App() {
 
   useEffect(() => {
     playerRef.current = player;
-    heroManualRef.current = player.heroManual;
   }, [player]);
+
+  useEffect(() => {
+    battleSpeedRef.current = battleSpeed;
+  }, [battleSpeed]);
 
   useEffect(() => {
     dungeonRef.current = activeDungeonId;
@@ -159,14 +164,7 @@ export default function App() {
   const tick = () => {
     const cur = battleRef.current;
     if (!cur || cur.status !== 'ongoing') return;
-    if (cur.awaitingHeroAction) {
-      stopPlayback();
-      return;
-    }
-
-    const next = stepBattle(cur, playerRef.current.seed, {
-      heroManual: heroManualRef.current,
-    });
+    const next = stepBattle(cur, playerRef.current.seed, { heroManual: false });
     battleRef.current = next;
     setBattle({ ...next, log: [...next.log], events: [...next.events] });
 
@@ -174,15 +172,29 @@ export default function App() {
       finishBattle(next, playerRef.current);
       return;
     }
-    if (next.awaitingHeroAction) {
-      stopPlayback();
-    }
   };
 
   const startPlayback = () => {
     stopPlayback();
     setPlaying(true);
-    timerRef.current = window.setInterval(tick, BATTLE_TICK_MS);
+    const ms = Math.max(48, Math.round(BATTLE_BASE_TICK_MS / battleSpeedRef.current));
+    timerRef.current = window.setInterval(tick, ms);
+  };
+
+  const setBattlePlaybackSpeed = (speed: BattleSpeed) => {
+    setBattleSpeed(speed);
+    battleSpeedRef.current = speed;
+    if (battleRef.current?.status === 'ongoing') startPlayback();
+  };
+
+  const skipBattleToResult = () => {
+    const cur = battleRef.current;
+    if (!cur || cur.status !== 'ongoing') return;
+    stopPlayback();
+    const final = runAutoBattle(cur, playerRef.current.seed);
+    battleRef.current = final;
+    setBattle({ ...final, log: [...final.log], events: [...final.events] });
+    finishBattle(final, playerRef.current);
   };
 
   const openDungeonPrep = (dungeonId: DungeonId = DEFAULT_BATTLE_DUNGEON) => {
@@ -238,6 +250,8 @@ export default function App() {
     setBattle(initial);
     setLastLoot(null);
     setBattlePrep(null);
+    setBattleSpeed(1);
+    battleSpeedRef.current = 1;
     setScreen('battle');
     startPlayback();
   };
@@ -249,22 +263,6 @@ export default function App() {
     } else {
       openDungeonPrep(activeDungeonId);
     }
-  };
-
-  const submitHeroAction = (kind: ActionKind) => {
-    const cur = battleRef.current;
-    if (!cur?.awaitingHeroAction) return;
-    const next = stepBattle(cur, playerRef.current.seed, {
-      heroManual: true,
-      heroAction: kind,
-    });
-    battleRef.current = next;
-    setBattle({ ...next, log: [...next.log], events: [...next.events] });
-    if (next.status !== 'ongoing') {
-      finishBattle(next, playerRef.current);
-      return;
-    }
-    startPlayback();
   };
 
   const resetSave = () => {
@@ -323,30 +321,6 @@ export default function App() {
     pushNotice('🔧 DEV：全资源拉满（含样装/强化石/宝石/形态石）');
   };
 
-  const handleHeroManualAuto = () => {
-    setPlayer((p) => ({ ...p, heroManual: false }));
-    heroManualRef.current = false;
-    const cur = battleRef.current;
-    if (cur?.awaitingHeroAction) {
-      const next = stepBattle(cur, playerRef.current.seed, { heroManual: false });
-      battleRef.current = next;
-      setBattle({ ...next, log: [...next.log], events: [...next.events] });
-      if (next.status !== 'ongoing') {
-        finishBattle(next, playerRef.current);
-      } else {
-        startPlayback();
-      }
-    } else if (!playing && screen === 'battle') {
-      startPlayback();
-    }
-  };
-
-  const handleHeroManualManual = () => {
-    setPlayer((p) => ({ ...p, heroManual: true }));
-    heroManualRef.current = true;
-    pushNotice('主角改为手动：轮到时暂停选招。');
-  };
-
   const handleBackToHub = () => {
     stopPlayback();
     setScreen('hub');
@@ -385,6 +359,12 @@ export default function App() {
   const combatFocus =
     screen === 'battle_prep' || screen === 'battle' || screen === 'result';
   const showDock = screen !== 'battle' && screen !== 'battle_prep' && screen !== 'result';
+  const scrollMain =
+    screen === 'hub' ||
+    screen === 'gacha' ||
+    screen === 'characters' ||
+    screen === 'bag' ||
+    screen === 'character';
   const onNav = (tab: NavTab) => {
     stopPlayback();
     if (tab === 'hub') {
@@ -396,6 +376,7 @@ export default function App() {
 
   return (
     <GameShell
+      scrollMain={scrollMain}
       subtitle={subtitle}
       layout={
         screen === 'gacha' || screen === 'characters' ? 'home' : 'focus'
@@ -487,12 +468,11 @@ export default function App() {
 
       {screen === 'battle' && battle && (
         <BattleScreen
-          player={player}
           battle={battle}
           playing={playing}
-          onSubmitHeroAction={submitHeroAction}
-          onHeroManualAuto={handleHeroManualAuto}
-          onHeroManualManual={handleHeroManualManual}
+          speed={battleSpeed}
+          onSpeed={setBattlePlaybackSpeed}
+          onSkip={skipBattleToResult}
         />
       )}
 

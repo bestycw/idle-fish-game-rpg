@@ -4,6 +4,7 @@ import {
   RARITY_LABELS,
   UNIT_TEMPLATES,
   benchUnit,
+  characterPower,
   formationHints,
   getProgress,
   getSkill,
@@ -17,7 +18,7 @@ import {
   type Rarity,
   type UnitTemplate,
 } from '@moyu/game-core';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { rarityFrame } from '@/lib/tones';
 
@@ -27,7 +28,7 @@ export type FormationEditorProps = {
   pushNotice: (msg: string) => void;
   /** 战前嵌入：更紧凑的格子与伙伴条 */
   compact?: boolean;
-  /** 战前：由外层容器滚动，席下不再套一层 max-height 滚动 */
+  /** 战前：九宫固定，仅席下区域使用 formation-scroll 滚动 */
   parentScroll?: boolean;
   /** 独立布阵页：选中后可在操作条打开养卡详情 */
   onOpenCharacter?: (templateId: string) => void;
@@ -43,6 +44,16 @@ type BenchRarityFilter = 'all' | Rarity;
 const LONG_PRESS_MS = 480;
 
 const BENCH_GRID_CLASS = 'grid grid-cols-4 gap-1 sm:grid-cols-5';
+
+function compareByPower(a: UnitTemplate, b: UnitTemplate, player: PlayerState): number {
+  const diff = characterPower(player, b.id) - characterPower(player, a.id);
+  if (diff !== 0) return diff;
+  return a.name.localeCompare(b.name, 'zh');
+}
+
+function sortTemplatesByPower(list: UnitTemplate[], player: PlayerState): UnitTemplate[] {
+  return [...list].sort((a, b) => compareByPower(a, b, player));
+}
 
 function partnerIntroText(t: UnitTemplate): { title: string; lines: string[] } {
   const skill = getSkill(t.skillId);
@@ -62,6 +73,7 @@ function formationUnchanged(a: PlayerState['formation'], b: PlayerState['formati
 }
 
 function PartnerChip({
+  player,
   template,
   selected,
   onField,
@@ -69,6 +81,7 @@ function PartnerChip({
   onClick,
   onShowIntro,
 }: {
+  player: PlayerState;
   template: UnitTemplate;
   selected: boolean;
   onField: boolean;
@@ -76,6 +89,8 @@ function PartnerChip({
   onClick: () => void;
   onShowIntro: () => void;
 }) {
+  const prog = getProgress(player, template.id);
+  const power = characterPower(player, template.id);
   const longTimer = useRef<number | null>(null);
   const longFired = useRef(false);
 
@@ -108,8 +123,8 @@ function PartnerChip({
         onClick();
       }}
       className={cn(
-        'rounded-lg border text-left transition select-none touch-manipulation',
-        dense ? 'min-w-0 px-1 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs',
+        'rounded-lg border text-left transition select-none touch-pan-y',
+        dense ? 'min-h-[2.65rem] min-w-0 px-1 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs',
         rarityFrame(template.rarity),
         selected && 'formation-slot-selected brightness-110',
         onField && !selected && 'opacity-80',
@@ -118,16 +133,25 @@ function PartnerChip({
       <span className={cn('block truncate font-medium', dense && 'leading-tight')}>
         {template.name}
       </span>
-      {!dense ? (
-        <span
-          className={cn(
-            'ml-1.5 inline-block rounded px-1 py-px font-mono text-[8px] leading-none',
-            onField ? 'bg-teal-500/25 text-teal-100/90' : 'bg-muted text-muted-foreground',
-          )}
-        >
-          {onField ? '阵' : '席'}
+      {dense ? (
+        <span className="mt-0.5 block truncate font-mono text-[8px] leading-tight text-muted-foreground">
+          Lv{prog.level} · ★{prog.star} · {power}
         </span>
-      ) : null}
+      ) : (
+        <>
+          <span className="mt-0.5 block font-mono text-[9px] text-muted-foreground">
+            Lv{prog.level} · ★{prog.star} · 战力 {power}
+          </span>
+          <span
+            className={cn(
+              'mt-0.5 inline-block rounded px-1 py-px font-mono text-[8px] leading-none',
+              onField ? 'bg-teal-500/25 text-teal-100/90' : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {onField ? '阵' : '席'}
+          </span>
+        </>
+      )}
     </button>
   );
 }
@@ -158,10 +182,11 @@ export function FormationEditor({
       if (player.formation[t.id]) onField.push(t);
       else bench.push(t);
     }
-    onField.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
-    bench.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
-    return { onFieldPartners: onField, benchPartners: bench };
-  }, [owned, player.formation]);
+    return {
+      onFieldPartners: sortTemplatesByPower(onField, player),
+      benchPartners: sortTemplatesByPower(bench, player),
+    };
+  }, [owned, player, player.formation]);
 
   const selectedTemplate =
     selectedId != null ? UNIT_TEMPLATES.find((t) => t.id === selectedId) : undefined;
@@ -234,13 +259,20 @@ export function FormationEditor({
   }, [benchPartners]);
 
   const filteredBench = useMemo(() => {
-    if (benchRarityFilter === 'all') return benchPartners;
-    return benchPartners.filter((t) => t.rarity === benchRarityFilter);
-  }, [benchPartners, benchRarityFilter]);
+    const list =
+      benchRarityFilter === 'all'
+        ? benchPartners
+        : benchPartners.filter((t) => t.rarity === benchRarityFilter);
+    return sortTemplatesByPower(list, player);
+  }, [benchPartners, benchRarityFilter, player]);
 
   const benchShowGrouped = benchRarityFilter === 'all' && filteredBench.length > 0;
 
   const useBenchPanel = benchPartners.length > BENCH_INLINE_MAX;
+
+  useEffect(() => {
+    if (parentScroll && useBenchPanel) setBenchPanelOpen(true);
+  }, [parentScroll, useBenchPanel]);
 
   const showIntro = (templateId: string) => {
     const t = UNIT_TEMPLATES.find((u) => u.id === templateId);
@@ -256,8 +288,192 @@ export function FormationEditor({
 
   const intro = introTemplate ? partnerIntroText(introTemplate) : null;
 
+  const benchSection =
+    benchPartners.length > 0 ? (
+      <div className={cn(!parentScroll && 'space-y-2')}>
+        {!compact ? (
+          <div>
+            <p className="mb-1 font-mono text-[9px] tracking-[0.14em] text-muted-foreground">
+              阵上 · {onFieldPartners.length} 人
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {onFieldPartners.map((t) => (
+                <PartnerChip
+                  key={t.id}
+                  player={player}
+                  template={t}
+                  selected={selectedId === t.id}
+                  onField
+                  onClick={() => selectPartner(t.id)}
+                  onShowIntro={() => showIntro(t.id)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {useBenchPanel ? (
+          <div className="rounded-lg border border-border/80 bg-card/50">
+            <button
+              type="button"
+              onClick={() => setBenchPanelOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left"
+            >
+              <span className="font-mono text-[10px] text-muted-foreground">
+                席下 <span className="text-foreground">{benchPartners.length}</span> 人 ·
+                按品级换入
+              </span>
+              <span className="font-mono text-[10px] text-primary">
+                {benchPanelOpen ? '收起' : '展开'}
+              </span>
+            </button>
+            {benchPanelOpen ? (
+              <div className="space-y-2 border-t border-border/60 px-2.5 pb-2.5 pt-2">
+                <div className="flex shrink-0 gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setBenchRarityFilter('all')}
+                    className={cn(
+                      'shrink-0 rounded-md border px-2 py-1 font-mono text-[10px] transition',
+                      benchRarityFilter === 'all'
+                        ? 'border-primary/60 bg-primary/15 text-primary'
+                        : 'border-border bg-muted/40 text-muted-foreground',
+                    )}
+                  >
+                    全部 {benchPartners.length}
+                  </button>
+                  {RARITY_TIER_ORDER.map((r) =>
+                    benchCountByRarity[r] > 0 ? (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setBenchRarityFilter(r)}
+                        className={cn(
+                          'shrink-0 rounded-md border px-2 py-1 font-mono text-[10px] transition',
+                          benchRarityFilter === r
+                            ? 'border-primary/60 bg-primary/15 text-primary'
+                            : cn('border-border bg-muted/40 text-muted-foreground', rarityFrame(r)),
+                        )}
+                      >
+                        {RARITY_LABELS[r]} {benchCountByRarity[r]}
+                      </button>
+                    ) : null,
+                  )}
+                </div>
+                <p className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                  {benchRarityFilter === 'all'
+                    ? '按品级分组 · 组内战力高在前 · 长按看介绍'
+                    : `${RARITY_LABELS[benchRarityFilter]} · ${filteredBench.length} 人 · 战力序 · 长按看介绍`}
+                </p>
+                <div
+                  className={cn(
+                    parentScroll
+                      ? undefined
+                      : 'max-h-[min(40dvh,320px)] overflow-y-auto overscroll-contain',
+                  )}
+                >
+                  {filteredBench.length === 0 ? (
+                    <p className="py-4 text-center text-xs text-muted-foreground">
+                      该品级下没有伙伴
+                    </p>
+                  ) : benchShowGrouped ? (
+                    <div className="space-y-3">
+                      {RARITY_TIER_ORDER.map((r) => {
+                        const group = sortTemplatesByPower(
+                          filteredBench.filter((t) => t.rarity === r),
+                          player,
+                        );
+                        if (group.length === 0) return null;
+                        return (
+                          <div key={r}>
+                            <p className="sticky top-0 z-[1] mb-1.5 bg-card/95 py-0.5 font-mono text-[9px] tracking-[0.12em] text-muted-foreground">
+                              {RARITY_LABELS[r]} · {group.length}
+                            </p>
+                            <div className={BENCH_GRID_CLASS}>
+                              {group.map((t) => (
+                                <PartnerChip
+                                  key={t.id}
+                                  player={player}
+                                  template={t}
+                                  selected={selectedId === t.id}
+                                  onField={false}
+                                  dense
+                                  onClick={() => selectFromBench(t.id)}
+                                  onShowIntro={() => showIntro(t.id)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className={BENCH_GRID_CLASS}>
+                      {filteredBench.map((t) => (
+                        <PartnerChip
+                          key={t.id}
+                          player={player}
+                          template={t}
+                          selected={selectedId === t.id}
+                          onField={false}
+                          dense
+                          onClick={() => selectFromBench(t.id)}
+                          onShowIntro={() => showIntro(t.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground">
+              席下 · {benchPartners.length} 人（按品级）
+            </p>
+            {RARITY_TIER_ORDER.map((r) => {
+              const group = sortTemplatesByPower(
+                benchPartners.filter((t) => t.rarity === r),
+                player,
+              );
+              if (group.length === 0) return null;
+              return (
+                <div key={r}>
+                  <p className="mb-1 font-mono text-[9px] text-muted-foreground/90">
+                    {RARITY_LABELS[r]} · {group.length}
+                  </p>
+                  <div className={BENCH_GRID_CLASS}>
+                    {group.map((t) => (
+                      <PartnerChip
+                        key={t.id}
+                        player={player}
+                        template={t}
+                        selected={selectedId === t.id}
+                        onField={false}
+                        dense
+                        onClick={() => selectPartner(t.id)}
+                        onShowIntro={() => showIntro(t.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    ) : null;
+
   return (
-    <div className={cn('space-y-2', compact ? 'text-sm' : 'space-y-3')}>
+    <div
+      className={cn(
+        parentScroll
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+          : cn('space-y-2', compact ? 'text-sm' : 'space-y-3'),
+      )}
+    >
+      <div className={cn(parentScroll && 'shrink-0 space-y-2')}>
       {!compact ? (
         <p className="font-mono text-[10px] text-muted-foreground">
           出战 {formationCount}/{MAX_PARTY_SIZE} · 点格子或席下伙伴调整
@@ -391,7 +607,7 @@ export function FormationEditor({
                           </div>
                         ) : (
                           <div className="font-mono text-[9px] text-muted-foreground">
-                            Lv{prog?.level ?? 1}
+                            Lv{prog?.level ?? 1} · ★{prog?.star ?? 0}
                           </div>
                         )}
                       </>
@@ -414,166 +630,15 @@ export function FormationEditor({
           </div>
         ))}
       </div>
+      </div>
 
-      {benchPartners.length > 0 ? (
-        <div className="space-y-2">
-          {!compact ? (
-            <div>
-              <p className="mb-1 font-mono text-[9px] tracking-[0.14em] text-muted-foreground">
-                阵上 · {onFieldPartners.length} 人
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {onFieldPartners.map((t) => (
-                  <PartnerChip
-                    key={t.id}
-                    template={t}
-                    selected={selectedId === t.id}
-                    onField
-                    onClick={() => selectPartner(t.id)}
-                    onShowIntro={() => showIntro(t.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {useBenchPanel ? (
-            <div className="rounded-lg border border-border/80 bg-card/50">
-              <button
-                type="button"
-                onClick={() => setBenchPanelOpen((v) => !v)}
-                className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left"
-              >
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  席下 <span className="text-foreground">{benchPartners.length}</span> 人 ·
-                  按品级换入
-                </span>
-                <span className="font-mono text-[10px] text-primary">
-                  {benchPanelOpen ? '收起' : '展开'}
-                </span>
-              </button>
-              {benchPanelOpen ? (
-                <div className="space-y-2 border-t border-border/60 px-2.5 pb-2.5 pt-2">
-                  <div className="flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setBenchRarityFilter('all')}
-                      className={cn(
-                        'shrink-0 rounded-md border px-2 py-1 font-mono text-[10px] transition',
-                        benchRarityFilter === 'all'
-                          ? 'border-primary/60 bg-primary/15 text-primary'
-                          : 'border-border bg-muted/40 text-muted-foreground',
-                      )}
-                    >
-                      全部 {benchPartners.length}
-                    </button>
-                    {RARITY_TIER_ORDER.map((r) =>
-                      benchCountByRarity[r] > 0 ? (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setBenchRarityFilter(r)}
-                          className={cn(
-                            'shrink-0 rounded-md border px-2 py-1 font-mono text-[10px] transition',
-                            benchRarityFilter === r
-                              ? 'border-primary/60 bg-primary/15 text-primary'
-                              : cn('border-border bg-muted/40 text-muted-foreground', rarityFrame(r)),
-                          )}
-                        >
-                          {RARITY_LABELS[r]} {benchCountByRarity[r]}
-                        </button>
-                      ) : null,
-                    )}
-                  </div>
-                  <p className="font-mono text-[9px] text-muted-foreground">
-                    {benchRarityFilter === 'all'
-                      ? '按品级分组 · 点选后点空格 · 长按看介绍'
-                      : `${RARITY_LABELS[benchRarityFilter]} · ${filteredBench.length} 人 · 长按看介绍`}
-                  </p>
-                  <div className={cn(parentScroll ? undefined : 'max-h-[min(40dvh,320px)] overflow-y-auto overscroll-contain')}>
-                    {filteredBench.length === 0 ? (
-                      <p className="py-4 text-center text-xs text-muted-foreground">
-                        该品级下没有伙伴
-                      </p>
-                    ) : benchShowGrouped ? (
-                      <div className="space-y-3">
-                        {RARITY_TIER_ORDER.map((r) => {
-                          const group = filteredBench.filter((t) => t.rarity === r);
-                          if (group.length === 0) return null;
-                          return (
-                            <div key={r}>
-                              <p className="sticky top-0 z-[1] mb-1.5 bg-card/95 py-0.5 font-mono text-[9px] tracking-[0.12em] text-muted-foreground">
-                                {RARITY_LABELS[r]} · {group.length}
-                              </p>
-                              <div className={BENCH_GRID_CLASS}>
-                                {group.map((t) => (
-                                  <PartnerChip
-                                    key={t.id}
-                                    template={t}
-                                    selected={selectedId === t.id}
-                                    onField={false}
-                                    dense
-                                    onClick={() => selectFromBench(t.id)}
-                                    onShowIntro={() => showIntro(t.id)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className={BENCH_GRID_CLASS}>
-                        {filteredBench.map((t) => (
-                          <PartnerChip
-                            key={t.id}
-                            template={t}
-                            selected={selectedId === t.id}
-                            onField={false}
-                            dense
-                            onClick={() => selectFromBench(t.id)}
-                            onShowIntro={() => showIntro(t.id)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground">
-                席下 · {benchPartners.length} 人（按品级）
-              </p>
-              {RARITY_TIER_ORDER.map((r) => {
-                const group = benchPartners.filter((t) => t.rarity === r);
-                if (group.length === 0) return null;
-                return (
-                  <div key={r}>
-                    <p className="mb-1 font-mono text-[9px] text-muted-foreground/90">
-                      {RARITY_LABELS[r]} · {group.length}
-                    </p>
-                    <div className={BENCH_GRID_CLASS}>
-                      {group.map((t) => (
-                        <PartnerChip
-                          key={t.id}
-                          template={t}
-                          selected={selectedId === t.id}
-                          onField={false}
-                          dense
-                          onClick={() => selectPartner(t.id)}
-                          onShowIntro={() => showIntro(t.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : null}
+      {parentScroll ? (
+        benchSection ? (
+          <div className="formation-scroll min-h-0 flex-1 pt-1">{benchSection}</div>
+        ) : null
+      ) : (
+        benchSection
+      )}
 
       {intro ? (
         <div

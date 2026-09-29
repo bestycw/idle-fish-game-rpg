@@ -68,24 +68,35 @@
     scrollbar-color: rgba(232, 228, 220, 0.22) transparent;
   }
 
-  html,
-  body,
-  #root {
+  html {
     height: 100%;
-    max-height: 100dvh;
-  }
-
-  #root {
     overflow: hidden;
   }
 
-  .formation-scroll,
-  .dock-scroll {
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  /* 单一滚动口：勿再套 flex-col，否则 mobile / 滚轮常失效 */
+  .formation-scroll,
+  .dock-scroll,
+  .app-main-scroll {
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
   }
 
   *::-webkit-scrollbar {
@@ -165,6 +176,50 @@
   .log-crit-pop {
     animation: log-crit-pop 0.45s ease-out both;
   }
+
+  .battle-cell-fx-hit {
+    animation: battle-cell-shake 0.38s ease-out both;
+    box-shadow: inset 0 0 0 2px rgba(249, 115, 22, 0.55);
+  }
+
+  .battle-cell-fx-crit {
+    animation:
+      battle-cell-shake 0.42s ease-out both,
+      battle-cell-crit-flash 0.42s ease-out both;
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.85);
+  }
+
+  .battle-cell-fx-heal {
+    animation: battle-cell-heal-pulse 0.45s ease-out both;
+    box-shadow: inset 0 0 0 2px rgba(52, 211, 153, 0.55);
+  }
+
+  .battle-cell-fx-shield {
+    animation: battle-cell-heal-pulse 0.4s ease-out both;
+    box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.55);
+  }
+
+  .battle-cell-fx-block {
+    animation: battle-cell-mitigate 0.4s ease-out both;
+    box-shadow: inset 0 0 0 2px rgba(148, 163, 184, 0.65);
+  }
+
+  .battle-cell-fx-dodge {
+    animation: battle-cell-mitigate 0.38s ease-out both;
+    opacity: 0.72;
+  }
+
+  .battle-cell-fx-down {
+    animation: battle-cell-down 0.5s ease-out both;
+  }
+
+  .battle-cell-fx-cast {
+    animation: battle-cell-cast 0.32s ease-out both;
+  }
+
+  .battle-cell-float {
+    animation: battle-cell-float 0.52s ease-out both;
+  }
 }
 
 @keyframes narrative-in {
@@ -211,6 +266,98 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes battle-cell-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes battle-cell-crit-flash {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(1.45);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes battle-cell-heal-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.25);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes battle-cell-mitigate {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes battle-cell-down {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+}
+
+@keyframes battle-cell-cast {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes battle-cell-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -14px);
   }
 }
 
@@ -306,7 +453,16 @@
 @media (prefers-reduced-motion: reduce) {
   .realm-breathe,
   .realm-ring,
-  .skill-star-pulse {
+  .skill-star-pulse,
+  .battle-cell-fx-hit,
+  .battle-cell-fx-crit,
+  .battle-cell-fx-heal,
+  .battle-cell-fx-shield,
+  .battle-cell-fx-block,
+  .battle-cell-fx-dodge,
+  .battle-cell-fx-down,
+  .battle-cell-fx-cast,
+  .battle-cell-float {
     animation: none;
   }
 }

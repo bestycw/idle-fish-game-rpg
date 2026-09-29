@@ -345,8 +345,7 @@ export function HubScreen({
   );
 
   return (
-    <div className="dock-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pb-3">
-      <div className="mx-auto w-full max-w-6xl space-y-3 sm:space-y-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-5 lg:space-y-0">
+    <div className="mx-auto w-full max-w-6xl space-y-3 pb-3 sm:space-y-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-5 lg:space-y-0">
       <div className="space-y-3 lg:col-span-2">
         <HubOnboarding />
       </div>
@@ -381,7 +380,6 @@ export function HubScreen({
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }

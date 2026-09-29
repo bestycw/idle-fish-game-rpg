@@ -5,6 +5,7 @@ import {
 } from '../combat/mastery.js';
 import { getStatusDef, statusLabel } from '../combat/statusFx.js';
 import { sumEquipmentBonuses } from '../equipment/equipment.js';
+import { characterPower } from '../equipment/power.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
 import { buildPlayerParty } from '../formation/formation.js';
 import { rowLabel, rowOf } from '../formation/grid.js';
@@ -793,12 +794,13 @@ export function formationResonancePreview(state: PlayerState): string | null {
   return formationResonanceLine(buildPlayerParty(state));
 }
 
-/** 列表排序：稀有度 → 等级 → 名称 */
+/** 名录排序：已拥有优先，已拥有按战力，未拥有按品级 */
 const RARITY_RANK: Record<string, number> = {
   legendary: 0,
   epic: 1,
   rare: 2,
-  common: 3,
+  uncommon: 3,
+  common: 4,
 };
 
 export function compareRosterTemplates(
@@ -806,11 +808,23 @@ export function compareRosterTemplates(
   b: UnitTemplate,
   state: PlayerState,
 ): number {
+  const ownedA = isOwned(state, a.id);
+  const ownedB = isOwned(state, b.id);
+  if (ownedA !== ownedB) return ownedA ? -1 : 1;
+  if (ownedA && ownedB) {
+    const pa = characterPower(state, a.id);
+    const pb = characterPower(state, b.id);
+    if (pa !== pb) return pb - pa;
+    const sa = getProgress(state, a.id).star;
+    const sb = getProgress(state, b.id).star;
+    if (sa !== sb) return sb - sa;
+    const la = getProgress(state, a.id).level;
+    const lb = getProgress(state, b.id).level;
+    if (la !== lb) return lb - la;
+    return a.name.localeCompare(b.name, 'zh');
+  }
   const ra = RARITY_RANK[a.rarity] ?? 9;
   const rb = RARITY_RANK[b.rarity] ?? 9;
   if (ra !== rb) return ra - rb;
-  const la = getProgress(state, a.id).level;
-  const lb = getProgress(state, b.id).level;
-  if (la !== lb) return lb - la;
   return a.name.localeCompare(b.name, 'zh');
 }

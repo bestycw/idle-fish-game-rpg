@@ -120,7 +120,7 @@ export function BattlePrepScreen({
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(0,1fr)] gap-2 overflow-hidden pt-0.5">
-        <div className="min-h-0 max-h-[min(40dvh,340px)] shrink-0 space-y-2.5 overflow-y-auto overscroll-contain sm:max-h-none sm:overflow-visible">
+        <div className="shrink-0 space-y-2.5 overflow-hidden">
           <BattlePrepBrief
             encounterId={encounter.id}
             encounterName={encounter.name}
@@ -143,15 +143,13 @@ export function BattlePrepScreen({
           <p className="mb-1 shrink-0 font-mono text-[9px] tracking-[0.14em] text-teal-300/80">
             我方布阵 · {partyCount}/{MAX_PARTY_SIZE}
           </p>
-          <div className="formation-scroll min-h-[8rem] flex-1 pr-0.5">
-            <FormationEditor
-              player={player}
-              setPlayer={setPlayer}
-              pushNotice={pushNotice}
-              compact
-              parentScroll
-            />
-          </div>
+          <FormationEditor
+            player={player}
+            setPlayer={setPlayer}
+            pushNotice={pushNotice}
+            compact
+            parentScroll
+          />
         </section>
       </div>
 

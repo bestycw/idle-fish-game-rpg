@@ -2,11 +2,11 @@ import { cn } from '@/lib/utils';
 
 type BattleEncounterBarProps = {
   turn: number;
+  maxTurns: number;
   statusLine: string;
   encounterName: string;
   modifierLabels: string[];
   resonanceLabels: string[];
-  heroManual: boolean;
 };
 
 function Chip({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -25,20 +25,25 @@ function Chip({ children, className }: { children: React.ReactNode; className?: 
 /** 战斗中顶栏：关名 + 回合 + 词缀/共鸣 chip（无战前长文） */
 export function BattleEncounterBar({
   turn,
+  maxTurns,
   statusLine,
   encounterName,
   modifierLabels,
   resonanceLabels,
-  heroManual,
 }: BattleEncounterBarProps) {
+  const nearCap = turn >= maxTurns - 2;
+
   return (
     <header className="shrink-0 rounded-lg border border-border/70 bg-card/45 px-2 py-1.5 sm:px-2.5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-display min-w-0 truncate text-base leading-tight">
-          {encounterName}
-        </h2>
-        <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
-          T{turn} · {statusLine}
+        <h2 className="font-display min-w-0 truncate text-base leading-tight">{encounterName}</h2>
+        <span
+          className={cn(
+            'shrink-0 font-mono text-[10px] tabular-nums',
+            nearCap ? 'text-amber-300/95' : 'text-muted-foreground',
+          )}
+        >
+          {turn}/{maxTurns} · {statusLine}
         </span>
       </div>
       {modifierLabels.length > 0 || resonanceLabels.length > 0 ? (
@@ -55,9 +60,6 @@ export function BattleEncounterBar({
           ))}
         </div>
       ) : null}
-      <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/80">
-        主角 · {heroManual ? '手动' : '自动'}
-      </p>
     </header>
   );
 }

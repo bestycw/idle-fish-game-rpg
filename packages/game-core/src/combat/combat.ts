@@ -7,7 +7,11 @@ import {
   resolveEncounterModifiers,
   rollEncounterModifiers,
 } from '../dungeon/encounterModifiers.js';
-import { ENCOUNTERS, type EnemySpec } from '../dungeon/encounters.js';
+import {
+  DEFAULT_BATTLE_MAX_TURNS,
+  ENCOUNTERS,
+  type EnemySpec,
+} from '../dungeon/encounters.js';
 import { rowOf, rowRank } from '../formation/grid.js';
 import {
   applyFormationResonanceEffects,
@@ -1332,6 +1336,7 @@ export function createBattle(
     awaitingHeroAction: false,
     pendingHeroUid: null,
     encounterId: encounter.id,
+    maxTurns: encounter.maxTurns ?? DEFAULT_BATTLE_MAX_TURNS,
     defeatHint: null,
     encounterModifierIds:
       opts.encounterModifierIds ??
@@ -1393,6 +1398,15 @@ export function stepBattle(state: BattleState, seed: number, options: StepOption
 
   const actorRef = nextActor(next);
   if (!actorRef) {
+    if (next.turn >= next.maxTurns) {
+      next.status = 'lost';
+      next.defeatHint =
+        '战败提示：超过回合上限，输出不足或敌方过肉。换破甲/穿透阵容或提战力再试。';
+      emit(next, 'battle_end', { result: 'lost', reason: 'timeout' });
+      next.log.push(`—— 第 ${next.maxTurns} 回合已尽，战局超时。——`);
+      next.log.push(next.defeatHint);
+      return next;
+    }
     next.turn += 1;
     next.actedUids = [];
     next.log.push(`—— 第 ${next.turn} 回合 ——`);
@@ -1452,7 +1466,7 @@ export function runAutoBattle(state: BattleState, seed: number, maxSteps = 200):
     cur = {
       ...cur,
       status: 'lost',
-      defeatHint: '战败提示：战局过久。',
+      defeatHint: '战败提示：步数上限，战局异常拖长。',
       log: [...cur.log, '战局过久，强制收场。'],
     };
   }

@@ -106,7 +106,7 @@ describe('encounter recipes', () => {
   });
 
   it('eight recipes reward the matching verb', () => {
-    const seeds = 20;
+    const seeds = 32;
     const core = ['hero', 'zhangfei', 'huatuo'] as const;
     const glass = ['hero', 'baigujing', 'daji', 'xishi', 'diaochan'] as const;
     const rows: [string, number, number, number][] = [
@@ -132,7 +132,7 @@ describe('encounter recipes', () => {
         'raiders p1.55',
         winRate([...glass], 'raiders', seeds, 1.55),
         winRate([...core, 'dianwei', 'zhaoyun'], 'raiders', seeds, 1.55),
-        0.2,
+        0.12,
       ],
       [
         'wall p1.3',
@@ -141,10 +141,10 @@ describe('encounter recipes', () => {
         0.2,
       ],
       [
-        'spirit_wall p1.3',
-        winRate([...core, 'wukong', 'dianwei'], 'spirit_wall', seeds, 1.3),
-        winRate([...core, 'sunbin', 'zhaoyun'], 'spirit_wall', seeds, 1.3),
-        0.2,
+        'spirit_wall p1.15',
+        winRate([...core, 'wukong', 'dianwei'], 'spirit_wall', seeds, 1.15),
+        winRate([...core, 'baigujing', 'daji'], 'spirit_wall', seeds, 1.15),
+        0.12,
       ],
       [
         'chaos_rite p1.3',

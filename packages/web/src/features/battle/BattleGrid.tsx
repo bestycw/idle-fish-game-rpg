@@ -1,6 +1,6 @@
 import {
   ALLY_BATTLE_ROWS,
-  DISPLAY_ROWS,
+  ENEMY_BATTLE_ROWS,
   isLiving,
   rowLabel,
   rowOf,
@@ -11,6 +11,11 @@ import {
 } from '@moyu/game-core';
 import { statusToneKey, unitAt } from '../shared/unitViews';
 import { cn } from '@/lib/utils';
+import {
+  battleCellKey,
+  type BattleCellFloat,
+  type BattleCellFx,
+} from './battleGridFx';
 import { specTone } from '@/lib/tones';
 
 const COL_LABELS = ['左列', '中列', '右列'];
@@ -33,23 +38,38 @@ function HpBar({ unit }: { unit: UnitRuntime }) {
   );
 }
 
+const FX_CLASS: Record<BattleCellFx['kind'], string> = {
+  hit: 'battle-cell-fx-hit',
+  crit: 'battle-cell-fx-crit',
+  heal: 'battle-cell-fx-heal',
+  block: 'battle-cell-fx-block',
+  dodge: 'battle-cell-fx-dodge',
+  down: 'battle-cell-fx-down',
+  cast: 'battle-cell-fx-cast',
+  shield: 'battle-cell-fx-shield',
+};
+
 function GridCell({
   slot,
   unit,
   side,
   compact,
+  cellFx,
+  cellFloats,
 }: {
   slot: GridSlot;
   unit: UnitRuntime | undefined;
   side: 'enemy' | 'ally';
   compact?: boolean;
+  cellFx?: BattleCellFx;
+  cellFloats?: BattleCellFloat[];
 }) {
   if (!unit) {
     return (
       <div
         className={cn(
           'flex flex-col items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/15',
-          compact ? 'min-h-[2.75rem]' : 'min-h-[4.25rem]',
+          compact ? 'min-h-[2.35rem]' : 'min-h-[4.25rem]',
           side === 'enemy' ? 'border-rose-500/15' : 'border-teal-500/15',
         )}
       >
@@ -65,14 +85,30 @@ function GridCell({
   return (
     <div
       className={cn(
-        'flex flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition',
-        compact ? 'min-h-[2.75rem]' : 'min-h-[4.25rem] gap-1 px-2 py-1.5',
+        'relative flex flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition',
+        compact ? 'min-h-[2.35rem]' : 'min-h-[4.25rem] gap-1 px-2 py-1.5',
         side === 'enemy' ? 'border-rose-500/25 bg-rose-950/20' : 'border-teal-500/25 bg-teal-950/15',
         down && 'opacity-40 grayscale',
         unit.isHero && side === 'ally' && 'ring-1 ring-primary/45',
+        cellFx && FX_CLASS[cellFx.kind],
       )}
       title={`格 ${slot} · ${rowLabel(rowOf(unit.slot))}`}
     >
+      {cellFloats?.map((f) => (
+        <span
+          key={f.id}
+          className={cn(
+            'battle-cell-float pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 font-mono text-[11px] font-bold tabular-nums',
+            f.kind === 'heal' && 'text-emerald-300',
+            f.kind === 'damage' && 'text-orange-200',
+            f.kind === 'crit' && 'text-amber-100 drop-shadow-[0_0_6px_rgba(251,191,36,0.85)]',
+            f.kind === 'miss' && 'text-slate-200',
+            f.kind === 'block' && 'text-sky-200',
+          )}
+        >
+          {f.text}
+        </span>
+      ))}
       <div className="flex items-start justify-between gap-1">
         <span
           className={cn(
@@ -122,12 +158,16 @@ function SideGrid({
   units,
   side,
   compact,
+  fx,
+  floats,
 }: {
   label: string;
-  rows: typeof DISPLAY_ROWS;
+  rows: typeof ALLY_BATTLE_ROWS;
   units: UnitRuntime[];
   side: 'enemy' | 'ally';
   compact?: boolean;
+  fx?: Record<string, BattleCellFx>;
+  floats?: BattleCellFloat[];
 }) {
   return (
     <div>
@@ -162,6 +202,8 @@ function SideGrid({
                   unit={unitAt(units, slot)}
                   side={side}
                   compact={compact}
+                  cellFx={fx?.[battleCellKey(side, slot)]}
+                  cellFloats={floats?.filter((f) => f.side === side && f.slot === slot)}
                 />
               ))}
             </div>
@@ -189,7 +231,7 @@ export function BattleGridEnemyOnly({
     >
       <SideGrid
         label="敌方预览"
-        rows={DISPLAY_ROWS}
+        rows={ENEMY_BATTLE_ROWS}
         units={battle.enemy.units}
         side="enemy"
         compact={compact}
@@ -205,30 +247,38 @@ export function BattleGrid({
   battle,
   compact,
   layout = 'classic',
+  fx,
+  floats,
 }: {
   battle: BattleState;
   compact?: boolean;
   layout?: BattleGridLayout;
+  fx?: Record<string, BattleCellFx>;
+  floats?: BattleCellFloat[];
 }) {
   if (layout === 'focus') {
     return (
-      <div className="overflow-hidden rounded-xl border border-border/80 bg-gradient-to-b from-card/60 to-card/30">
-        <div className="shrink-0 border-b border-teal-500/25 bg-teal-950/20 p-2">
+      <div className="shrink-0 overflow-hidden rounded-xl border border-border/80 bg-gradient-to-b from-card/60 to-card/30">
+        <div className="border-b border-rose-500/20 bg-rose-950/12 p-1.5 sm:p-2">
+          <SideGrid
+            label="敌方"
+            rows={ENEMY_BATTLE_ROWS}
+            units={battle.enemy.units}
+            side="enemy"
+            compact={compact}
+            fx={fx}
+            floats={floats}
+          />
+        </div>
+        <div className="border-t border-teal-500/25 bg-teal-950/18 p-1.5 sm:p-2">
           <SideGrid
             label="我方"
             rows={ALLY_BATTLE_ROWS}
             units={battle.player.units}
             side="ally"
             compact={compact}
-          />
-        </div>
-        <div className="max-h-[min(22dvh,190px)] overflow-y-auto overscroll-contain border-t border-rose-500/15 bg-rose-950/10 p-2">
-          <SideGrid
-            label="敌方"
-            rows={DISPLAY_ROWS}
-            units={battle.enemy.units}
-            side="enemy"
-            compact={compact}
+            fx={fx}
+            floats={floats}
           />
         </div>
       </div>
@@ -244,10 +294,12 @@ export function BattleGrid({
     >
       <SideGrid
         label="敌方"
-        rows={DISPLAY_ROWS}
+        rows={ENEMY_BATTLE_ROWS}
         units={battle.enemy.units}
         side="enemy"
         compact={compact}
+        fx={fx}
+        floats={floats}
       />
       <div className={cn('flex items-center gap-2', compact ? 'my-1' : 'my-2')}>
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -260,6 +312,8 @@ export function BattleGrid({
         units={battle.player.units}
         side="ally"
         compact={compact}
+        fx={fx}
+        floats={floats}
       />
       {!compact ? (
         <p className="mt-2 text-center font-mono text-[9px] text-muted-foreground/60">

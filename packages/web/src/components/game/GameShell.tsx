@@ -13,6 +13,8 @@ type GameShellProps = {
   layout?: 'home' | 'focus';
   /** 角色详情等：隐藏大标题，省出一屏高度 */
   hideBrand?: boolean;
+  /** 主内容区整页滚动（Hub/召唤等）；战斗/战前由页内分区滚 */
+  scrollMain?: boolean;
 };
 
 /**
@@ -31,9 +33,10 @@ export function GameShell({
   className,
   layout = 'home',
   hideBrand = false,
+  scrollMain = false,
 }: GameShellProps) {
   return (
-    <div className="relative flex h-dvh max-h-dvh flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div
         className={cn(
           'mx-auto flex w-full min-h-0 flex-1 flex-col px-3 sm:px-5',
@@ -75,7 +78,16 @@ export function GameShell({
           </div>
         ) : null}
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
+        <main
+          className={cn(
+            'min-h-0 flex-1',
+            scrollMain
+              ? 'app-main-scroll overflow-y-auto'
+              : 'flex flex-col overflow-hidden',
+          )}
+        >
+          {children}
+        </main>
       </div>
 
       {dock ? (

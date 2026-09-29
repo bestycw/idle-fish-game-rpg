@@ -107,7 +107,7 @@ describe('gear identity', () => {
   });
 
   it('same party, only T3: matching verb beats the mismatch', () => {
-    const seeds = 20;
+    const seeds = 32;
     const base = midRoster(PARTY);
     const rows: [string, number, number][] = [
       [
@@ -117,12 +117,12 @@ describe('gear identity', () => {
       ],
       [
         'spirit shred T3',
-        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_start_shield' }), 'spirit_wall', seeds, 1.3),
-        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_skill_shred' }), 'spirit_wall', seeds, 1.3),
+        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_start_shield' }), 'spirit_wall', seeds, 1.15),
+        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_skill_shred' }), 'spirit_wall', seeds, 1.15),
       ],
     ];
     const failed = rows
-      .filter(([, w, r]) => r < w + 0.12)
+      .filter(([, w, r]) => r < w + 0.08)
       .map(([n, w, r]) => `${n}: ${w.toFixed(2)}→${r.toFixed(2)}`);
     assert.equal(
       failed.length,

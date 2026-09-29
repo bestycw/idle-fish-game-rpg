@@ -28,17 +28,23 @@ export function defaultFormation(): Partial<Record<string, GridSlot>> {
 export function normalizeFormation(
   formation: Partial<Record<string, GridSlot>>,
 ): Partial<Record<string, GridSlot>> {
+  const draft = { ...formation };
+  const heroTemplate = UNIT_TEMPLATES.find((t) => t.isHero);
+  if (heroTemplate && draft[heroTemplate.id] == null) {
+    draft[heroTemplate.id] = heroTemplate.preferredSlot;
+  }
+
   const used = new Set<GridSlot>();
   const result: Partial<Record<string, GridSlot>> = {};
   // 主角优先保留，其余按模板表顺序；超出 MAX_PARTY_SIZE 的下阵
   const ordered = [
-    ...UNIT_TEMPLATES.filter((t) => t.isHero && formation[t.id] != null),
-    ...UNIT_TEMPLATES.filter((t) => !t.isHero && formation[t.id] != null),
+    ...UNIT_TEMPLATES.filter((t) => t.isHero && draft[t.id] != null),
+    ...UNIT_TEMPLATES.filter((t) => !t.isHero && draft[t.id] != null),
   ];
 
   for (const t of ordered) {
     if (Object.keys(result).length >= MAX_PARTY_SIZE) break;
-    let slot = formation[t.id]!;
+    let slot = draft[t.id]!;
     if (used.has(slot)) {
       const free = ([1, 2, 3, 4, 5, 6, 7, 8, 9] as GridSlot[]).find((s) => !used.has(s));
       if (!free) continue;
@@ -105,6 +111,8 @@ export function placeUnit(
   }
 
   if (occupant && occupant !== templateId) {
+    const occ = getTemplate(occupant);
+    if (occ?.isHero) return state;
     if (prev != null) formation[occupant] = prev;
     else delete formation[occupant];
   }

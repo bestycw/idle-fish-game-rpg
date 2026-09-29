@@ -1312,15 +1312,33 @@ export function CharacterList({
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
   const [rarityFilter, setRarityFilter] = useState<Rarity | 'all'>('all');
 
-  const roster = useMemo(() => {
-    let list = [...UNIT_TEMPLATES];
-    if (ownFilter === 'owned') list = list.filter((t) => isOwned(player, t.id));
-    if (ownFilter === 'missing') list = list.filter((t) => !isOwned(player, t.id));
-    if (roleFilter !== 'all') list = list.filter((t) => t.role === roleFilter);
-    if (rarityFilter !== 'all') list = list.filter((t) => t.rarity === rarityFilter);
-    list.sort((a, b) => compareRosterTemplates(a, b, player));
-    return list;
-  }, [player, ownFilter, roleFilter, rarityFilter]);
+  const filterTemplates = (list: typeof UNIT_TEMPLATES) => {
+    let out = [...list];
+    if (ownFilter === 'owned') out = out.filter((t) => isOwned(player, t.id));
+    if (ownFilter === 'missing') out = out.filter((t) => !isOwned(player, t.id));
+    if (roleFilter !== 'all') out = out.filter((t) => t.role === roleFilter);
+    if (rarityFilter !== 'all') out = out.filter((t) => t.rarity === rarityFilter);
+    out.sort((a, b) => compareRosterTemplates(a, b, player));
+    return out;
+  };
+
+  const roster = useMemo(() => filterTemplates(UNIT_TEMPLATES), [player, ownFilter, roleFilter, rarityFilter]);
+
+  const rosterOwned = useMemo(
+    () =>
+      ownFilter === 'all'
+        ? filterTemplates(UNIT_TEMPLATES.filter((t) => isOwned(player, t.id)))
+        : [],
+    [player, ownFilter, roleFilter, rarityFilter],
+  );
+
+  const rosterMissing = useMemo(
+    () =>
+      ownFilter === 'all'
+        ? filterTemplates(UNIT_TEMPLATES.filter((t) => !isOwned(player, t.id)))
+        : [],
+    [player, ownFilter, roleFilter, rarityFilter],
+  );
 
   const ownedCount = UNIT_TEMPLATES.filter((t) => isOwned(player, t.id)).length;
   const formationCount = Object.keys(player.formation).length;
@@ -1372,7 +1390,7 @@ export function CharacterList({
         ))}
         <span className="mx-0.5 w-px shrink-0 self-stretch bg-border/60" />
         <FilterChip active={roleFilter === 'all'} onClick={() => setRoleFilter('all')}>
-          职能
+          全职能
         </FilterChip>
         {rolesInPool.map((role) => (
           <FilterChip
@@ -1398,48 +1416,100 @@ export function CharacterList({
         ))}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,5.6rem)] justify-start gap-1">
-        {roster.map((t) => {
-          const owned = isOwned(player, t.id);
-          const progress = getProgress(player, t.id);
-          const onField = player.formation[t.id] != null;
-          const realm = owned ? breakthroughLabel(progress.breakthroughTier) : RARITY_LABELS[t.rarity];
-          const title = owned
-            ? `${t.name} · ${realm} · Lv${progress.level} · ★${progress.star}${onField ? ' · 出战' : ''}`
-            : `${t.name} · ${RARITY_LABELS[t.rarity]} · ${roleLabel(t.role)} · 预览`;
+      <p className="font-mono text-[9px] text-muted-foreground/90">
+        {ownFilter === 'missing'
+          ? '未获得 · 按品级'
+          : ownFilter === 'owned'
+            ? '已有 · 战力高在前'
+            : '已有在上 · 战力序 · 未获按品级'}
+      </p>
+
+      {(() => {
+        const renderGrid = (list: typeof roster, keyPrefix: string) => (
+          <div
+            key={keyPrefix}
+            className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6"
+          >
+            {list.map((t) => {
+              const owned = isOwned(player, t.id);
+              const progress = getProgress(player, t.id);
+              const onField = player.formation[t.id] != null;
+              const power = owned ? characterPower(player, t.id) : 0;
+              const realm = owned ? breakthroughLabel(progress.breakthroughTier) : RARITY_LABELS[t.rarity];
+              const title = owned
+                ? `${t.name} · ${realm} · Lv${progress.level} · ★${progress.star} · 战力 ${power}${onField ? ' · 出战' : ''}`
+                : `${t.name} · ${RARITY_LABELS[t.rarity]} · ${roleLabel(t.role)} · 预览`;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  title={title}
+                  onClick={() => onOpen(t.id)}
+                  className={cn(
+                    'relative flex min-h-[3.55rem] w-full flex-col items-stretch justify-center rounded-md border px-1 py-1 transition',
+                    rarityFrame(t.rarity),
+                    !owned && rarityFrameLocked(t.rarity),
+                    onField && 'ring-1 ring-primary/70',
+                    'hover:brightness-110',
+                  )}
+                >
+                  {onField ? (
+                    <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(226,160,74,0.7)]" />
+                  ) : null}
+                  <span
+                    className={cn(
+                      'w-full truncate text-center font-display text-[11px] leading-tight sm:text-[12px]',
+                      owned ? rarityNameTone(t.rarity) : 'text-muted-foreground',
+                    )}
+                  >
+                    {t.isHero ? '★' : ''}
+                    {t.name}
+                  </span>
+                  <span className="mt-0.5 truncate text-center font-mono text-[8px] leading-snug text-muted-foreground sm:text-[9px]">
+                    {owned ? (
+                      <>
+                        Lv{progress.level} · ★{progress.star}
+                        <span className="text-foreground/75"> · {power}</span>
+                      </>
+                    ) : (
+                      <>
+                        {realm}
+                        <span className="opacity-80"> · {roleLabel(t.role)}</span>
+                      </>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+
+        if (ownFilter === 'all') {
           return (
-            <button
-              key={t.id}
-              type="button"
-              title={title}
-              onClick={() => onOpen(t.id)}
-              className={cn(
-                'relative flex h-[3.15rem] w-full flex-col items-center justify-center rounded-md border px-0.5 py-1 transition',
-                rarityFrame(t.rarity),
-                !owned && rarityFrameLocked(t.rarity),
-                onField && 'ring-1 ring-primary/70',
-                'hover:brightness-110',
-              )}
-            >
-              {onField ? (
-                <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(226,160,74,0.7)]" />
+            <div className="space-y-3">
+              {rosterOwned.length > 0 ? (
+                <section>
+                  <p className="mb-1.5 font-mono text-[9px] tracking-[0.12em] text-teal-200/75">
+                    已有 · {rosterOwned.length}
+                  </p>
+                  {renderGrid(rosterOwned, 'owned')}
+                </section>
               ) : null}
-              <span
-                className={cn(
-                  'w-full truncate text-center font-display text-[12px] leading-tight',
-                  owned ? rarityNameTone(t.rarity) : 'text-muted-foreground',
-                )}
-              >
-                {t.isHero ? '★' : ''}
-                {t.name}
-              </span>
-              <span className="mt-0.5 font-mono text-[9px] leading-none text-muted-foreground">
-                {owned ? `${realm}★${progress.star}` : realm}
-              </span>
-            </button>
+              {rosterMissing.length > 0 ? (
+                <section>
+                  <p className="mb-1.5 font-mono text-[9px] tracking-[0.12em] text-muted-foreground">
+                    未获得 · {rosterMissing.length}
+                  </p>
+                  {renderGrid(rosterMissing, 'missing')}
+                </section>
+              ) : null}
+            </div>
           );
-        })}
-      </div>
+        }
+
+        return renderGrid(roster, 'single');
+      })()}
+
       {roster.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground">没有符合筛选的伙伴</p>
       ) : null}

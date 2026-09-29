@@ -26,11 +26,16 @@ export interface EnemySpec {
   rank?: UnitRank;
 }
 
+/** 单场战斗回合上限（整轮数）；未写则用 DEFAULT_BATTLE_MAX_TURNS */
+export const DEFAULT_BATTLE_MAX_TURNS = 25;
+
 export interface EncounterDef {
   id: string;
   name: string;
   /** 战前一句：堆装/站位方向（不锁进门） */
   prepHint?: string;
+  /** 本场回合上限；速战类可更短 */
+  maxTurns?: number;
   enemies: EnemySpec[];
 }
 
@@ -91,6 +96,7 @@ export const ENCOUNTERS: EncounterDef[] = [
     id: 'archers',
     name: '后排伏击',
     prepHint: '先撕前排否则后排点杀：穿透/切后 · 猎装量、镜渊对症 T3',
+    maxTurns: 20,
     enemies: [
       {
         name: '挡箭杂兵',

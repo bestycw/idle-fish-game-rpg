@@ -1,8 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BattleEvent, BattleState } from '@moyu/game-core';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { logTone } from '@/lib/tones';
+import {
+  aggregatedForScroll,
+  buildAggregatedLines,
+  type AggregatedLogLine,
+} from './battleLogAggregate';
+
+/** 紧凑战报刷新间隔（与战斗 tick 解耦，避免连闪） */
+const COMPACT_LOG_THROTTLE_MS = 720;
 
 const MOMENT_CODES = new Set<BattleEvent['code']>([
   'crit',
@@ -94,7 +101,9 @@ function EventLineBody({ ev, text }: { ev: BattleEvent; text: string }) {
   if (ev.code === 'crit') {
     return (
       <span className="inline-flex flex-wrap items-baseline gap-1">
-        <span>{String(p.actor)}→{String(p.target)}</span>
+        <span>
+          {String(p.actor)}→{String(p.target)}
+        </span>
         <span className="log-crit-pop rounded bg-amber-500/25 px-1.5 py-0.5 text-xs font-bold tracking-wide text-amber-100">
           暴击
         </span>
@@ -160,17 +169,94 @@ function buildLines(battle: BattleState, verbose: boolean): LogLine[] {
     .reverse()
     .filter((line) => filterLogLine(line, verbose))
     .map((line, i) => ({
-    key: `${line}-${i}`,
-    text: line,
-    tone: /【暴击】|暴击/.test(line)
-      ? 'log-crit'
-      : /获得|沉默|眩晕|混乱|禁疗|流血|破甲|迟缓/.test(line)
-        ? 'log-special'
-        : /伤害 \d+/.test(line)
-          ? 'log-hit'
-          : '',
-    moment: /【暴击】|倒下|连击|闪避|格挡/.test(line),
-  }));
+      key: `${line}-${i}`,
+      text: line,
+      tone: /【暴击】|暴击/.test(line)
+        ? 'log-crit'
+        : /获得|沉默|眩晕|混乱|禁疗|流血|破甲|迟缓/.test(line)
+          ? 'log-special'
+          : /伤害 \d+/.test(line)
+            ? 'log-hit'
+            : '',
+      moment: /【暴击】|倒下|连击|闪避|格挡/.test(line),
+    }));
+}
+
+/** 进行中战斗：降低战报 UI 刷新频率 */
+function useThrottledBattleForLog(
+  battle: BattleState,
+  enabled: boolean,
+): BattleState {
+  const [snap, setSnap] = useState(battle);
+  const latestRef = useRef(battle);
+  latestRef.current = battle;
+
+  useEffect(() => {
+    if (!enabled) {
+      setSnap(battle);
+      return;
+    }
+    if (battle.status !== 'ongoing') {
+      setSnap(battle);
+      return;
+    }
+    const id = window.setInterval(() => {
+      const b = latestRef.current;
+      setSnap({ ...b, events: [...b.events], log: [...b.log] });
+    }, COMPACT_LOG_THROTTLE_MS);
+    return () => window.clearInterval(id);
+  }, [enabled, battle.status]);
+
+  useEffect(() => {
+    setSnap(battle);
+  }, [battle.encounterId]);
+
+  useEffect(() => {
+    if (battle.status !== 'ongoing') setSnap(battle);
+  }, [battle, battle.status, battle.events.length]);
+
+  if (!enabled || battle.status !== 'ongoing') return battle;
+  return snap;
+}
+
+function AggregatedScrollRow({ line }: { line: AggregatedLogLine }) {
+  if (line.kind === 'turn') {
+    return (
+      <p className="py-1 text-center font-mono text-[9px] tracking-wide text-muted-foreground/75">
+        {line.headline}
+      </p>
+    );
+  }
+  if (line.kind === 'setup') {
+    return (
+      <p className="text-[10px] leading-snug text-muted-foreground/90">{line.headline}</p>
+    );
+  }
+  if (line.kind === 'end' || line.kind === 'note') {
+    return (
+      <p className={cn('py-0.5 text-[12px] font-medium', logTone(line.tone ?? 'log-down'))}>
+        {line.headline}
+      </p>
+    );
+  }
+  const detailLine =
+    line.details && line.details.length > 0 ? line.details.join(' · ') : undefined;
+  return (
+    <p
+      className={cn(
+        'py-0.5 text-[11px] leading-snug sm:text-[12px]',
+        logTone(line.tone ?? ''),
+      )}
+    >
+      {line.headline}
+      {detailLine ? (
+        <span className="text-muted-foreground">
+          {' '}
+          · {detailLine}
+        </span>
+      ) : null}
+    </p>
+  );
 }
 
 export function BattleLog({
@@ -180,29 +266,40 @@ export function BattleLog({
 }: {
   battle: BattleState;
   tall?: boolean;
-  /** 窄屏主栏：压低高度、弱化高光区 */
   compact?: boolean;
 }) {
   const [verbose, setVerbose] = useState(false);
-  const lines = useMemo(() => buildLines(battle, verbose), [battle.events, battle.log, verbose]);
-  const moments = useMemo(() => lines.filter((l) => l.moment).slice(0, 3), [lines]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickBottomRef = useRef(true);
+
+  const throttled = useThrottledBattleForLog(battle, Boolean(compact && !verbose));
+  const source = compact && !verbose ? throttled : battle;
+
+  const lines = useMemo(() => buildLines(source, verbose), [source, verbose]);
+  const scrollRows = useMemo(() => {
+    if (verbose) return null;
+    const aggregated = buildAggregatedLines(source, false);
+    if (aggregated.length === 0) return null;
+    return aggregatedForScroll(aggregated);
+  }, [source, verbose]);
+
+  const useAggregatedScroll = compact && !verbose && scrollRows && scrollRows.length > 0;
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !stickBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [scrollRows?.length, source.events.length, verbose]);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 28;
+  };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col space-y-1.5">
-      {moments.length > 0 && !compact ? (
-        <div className="shrink-0 rounded-lg border border-amber-500/25 bg-amber-950/25 px-2.5 py-2">
-          <p className="mb-1 font-mono text-[9px] tracking-[0.12em] text-amber-200/70">高光</p>
-          <ul className="space-y-1 text-[12px] leading-snug">
-            {moments.map((m) => (
-              <li key={`m-${m.key}`} className={cn(logTone(m.tone))}>
-                {m.ev ? <EventLineBody ev={m.ev} text={m.text} /> : m.text}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="flex items-center justify-between gap-2 px-0.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-0.5 pb-1">
         <p className="font-mono text-[10px] tracking-[0.12em] text-muted-foreground">战报</p>
         <button
           type="button"
@@ -213,26 +310,31 @@ export function BattleLog({
         </button>
       </div>
 
-      <ScrollArea
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
         className={cn(
-          'min-h-0 flex-1 rounded-md border border-border/80 bg-card/50 font-mono',
-          tall && 'h-[min(48vh,420px)]',
-          compact && 'h-auto min-h-[4.5rem] max-h-[min(22vh,168px)]',
-          !tall && !compact && 'h-[min(32vh,240px)]',
+          'formation-scroll min-h-0 flex-1 rounded-md border border-border/80 bg-card/50 font-mono',
+          tall && !compact && 'max-h-[min(48vh,420px)]',
+          !tall && !compact && 'max-h-[min(32vh,240px)]',
+          compact && 'min-h-[5rem] max-h-[12rem]',
         )}
       >
-        <div className="space-y-1 p-3 text-[12px] leading-relaxed sm:text-[13px]">
-          {lines.length === 0 ? (
-            <p className="text-muted-foreground">等待首回合…</p>
+        <div className="space-y-0.5 p-2.5 sm:p-3">
+          {useAggregatedScroll ? (
+            scrollRows!.map((row) => <AggregatedScrollRow key={row.key} line={row} />)
+          ) : lines.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground">等待首回合…</p>
           ) : (
             lines.map((line, idx) => (
               <p
                 key={line.key}
-                style={{ animationDelay: `${Math.min(idx, 8) * 20}ms` }}
+                style={compact ? undefined : { animationDelay: `${Math.min(idx, 8) * 20}ms` }}
                 className={cn(
-                  'log-line-enter',
+                  'text-[12px] leading-relaxed sm:text-[13px]',
+                  !compact && 'log-line-enter',
                   logTone(line.tone),
-                  line.ev?.code === 'crit' && 'log-crit-pop',
+                  line.ev?.code === 'crit' && !compact && 'log-crit-pop',
                 )}
               >
                 <span className="mr-1.5 text-muted-foreground/45">›</span>
@@ -241,7 +343,7 @@ export function BattleLog({
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

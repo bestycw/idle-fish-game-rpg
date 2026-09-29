@@ -397,6 +397,8 @@ export interface BattleState {
   awaitingHeroAction: boolean;
   pendingHeroUid: string | null;
   encounterId: string;
+  /** 本场允许的最大回合数（整轮） */
+  maxTurns: number;
   defeatHint: string | null;
   /** E1 遭遇词缀 id（本场规则修饰） */
   encounterModifierIds?: string[];

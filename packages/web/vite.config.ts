@@ -15,6 +15,8 @@ export default defineConfig({
     },
   },
   server: {
+    /** 单进程监听，localhost 与 127.0.0.1 同一套代码 */
+    host: true,
     port: 5173,
     strictPort: true,
     open: false,

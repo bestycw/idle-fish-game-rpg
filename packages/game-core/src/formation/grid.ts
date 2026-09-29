@@ -41,19 +41,18 @@ export function rowLabel(row: Row): string {
   return '后排';
 }
 
-/** UI 展示顺序（布阵）：后排一行 → 中排 → 前排 */
-export const DISPLAY_ROWS: { row: Row; slots: GridSlot[] }[] = [
-  { row: 'back', slots: [7, 8, 9] },
-  { row: 'mid', slots: [4, 5, 6] },
-  { row: 'front', slots: [1, 2, 3] },
-];
-
-/** 战斗敌方：后→中→前（前排贴交战线） */
-export const ENEMY_BATTLE_ROWS = DISPLAY_ROWS;
-
-/** 战斗我方：前→中→后（前排贴交战线，面对面） */
+/** 我方 UI / 布阵：前→中→后（前排朝交战方向，与战斗我方一致） */
 export const ALLY_BATTLE_ROWS: { row: Row; slots: GridSlot[] }[] = [
   { row: 'front', slots: [1, 2, 3] },
   { row: 'mid', slots: [4, 5, 6] },
   { row: 'back', slots: [7, 8, 9] },
+];
+
+export const DISPLAY_ROWS = ALLY_BATTLE_ROWS;
+
+/** 战斗敌方：后→中→前（前排贴交战线，与我方面对面） */
+export const ENEMY_BATTLE_ROWS: { row: Row; slots: GridSlot[] }[] = [
+  { row: 'back', slots: [7, 8, 9] },
+  { row: 'mid', slots: [4, 5, 6] },
+  { row: 'front', slots: [1, 2, 3] },
 ];
