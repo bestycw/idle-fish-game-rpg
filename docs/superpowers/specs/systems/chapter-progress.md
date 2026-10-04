@@ -2,7 +2,7 @@
 
 > 系统骨架 #6。  
 > 配置权威：内容/解锁 `packages/game-core/src/chapter/defs.ts`；强度档 `packages/game-core/src/chapter/bands.ts`。  
-> **实现状态（2026-08-25）：** B4 框架 + 六章强度档 + Hub **关卡条**（场地列表，不是地图）。文案占位。
+> **实现状态：** B4 框架 + **卷一 10 章**强度档 + Hub **关卡条**（Skin 地名；非自由地图）。主线 story 节点对话演出见 narrative-skin §Hub。
 
 ## 边界
 
@@ -23,6 +23,7 @@
 |---------|------|
 | `START_UNLOCKS` | 开局即有的 `dungeon` / `gacha_unit` / `encounter` |
 | `CHAPTERS` | 章顺序、节点（`title` / `place` / story|battle）、通关后 `unlocksOnClear` |
+| （规划）`battleWaves` | **引擎默认**：同一 battle 节点内多波遭遇（小兵→小 Boss→Boss）；**不由 Story Gen Skill 生成** |
 | `CHAPTER_BANDS` | 正在打的章的敌人倍率与建议战力（`chapter/bands.ts`） |
 
 解锁 kind：
@@ -45,6 +46,12 @@ Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此�
 开战：`createBattle(..., { pressure: battlePressure(chapterCleared, dungeonPressure) })`。  
 `chapterCleared === 0` 打第一章。塔不进战斗、不乘章档。
 
+### 战斗节点 · 多波（引擎 · 默认表）
+
+- **目标：** 一个 Hub **battle 小节**内连打多波（前期如 2 小兵 + Boss；后期加重），**全部胜利**才 `completeChapterBattle` 进下一 stop。  
+- **真源：** `chapter/defs.ts` + `dungeon/encounters.ts`（或 `battleWaves[]`），策划/程序维护；**官方默认即可**，玩家定参与 Skill **不改波次表**。  
+- **Skin：** battle 节点 `blurb` 可写「第几波感」作 flavor，但**不得**在 overlay 里捏造 encounter id 或波数（与表不一致时以表为准）。
+
 存档：`chapterCleared` + `chapterNodeIndex`（存档总版本见 [save.md](./save.md)，现网 **v15**；中土卡池迁完 **v16**）。
 
 ## 强度档（已落地）
@@ -61,7 +68,7 @@ Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此�
 
 ## V1 骨架（已写入 defs）
 
-- 主线 **6 章**占位；节点为 story / battle 混排。  
+- 主线 **10 章**（卷一）；节点为 story / battle 混排。  
 - 示例门锁：开局有猎装/塔/**星尘秘境**/开局圈（蜀汉·取经凡良 + 关羽/典韦/后羿）；其后按圈解锁，见 [中土故事圈 §6](../2026-08-26-zhongtu-roster-circles-design.md)。迁完前代码仍走旧 `expandIdsByUnlock`。  
 - 文案可整包替换；**结构与解锁表必须真实。**
 
@@ -100,5 +107,6 @@ Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此�
 | 阶段 | 内容 |
 |------|------|
 | V1 | 内容配置化 + `skinId` 预留；仅官方/占位默认线 ← **框架已落地** |
-| V1.5 | 开局一句世界观 → 生成并缓存本局皮肤（可选） |
-| V2 | 章内有限走向 + 「交给 AI」；注意成本缓存与审核 |
+| V1.5 | 开局定调 + **默认仙侠 pack** + `NarrativeOverlay` 读表（见 [2026-09-29-player-story-spine-design](../2026-09-29-player-story-spine-design.md)） |
+| V1.5+ | **章后平行原世界简报**（现代工位线 · 三档 · 绑战力/名册；Spine 不变）→ [parallel-sync-realworld-line](../2026-09-29-parallel-sync-realworld-line.md) |
+| V2 | 章内有限走向 + AI 生成 overlay；注意成本缓存与审核 |

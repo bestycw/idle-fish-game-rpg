@@ -17,8 +17,7 @@ export interface ChapterBand {
 }
 
 /**
- * 六章。系数只抬数字；解法窗口在 floor～crush 之间。
- * 建议战力按开局五人裸体量级校准，后续可调表。
+ * 十章 · 卷一。系数只抬数字；解法窗口在 floor～crush 之间。
  */
 export const CHAPTER_BANDS: ChapterBand[] = [
   { index: 0, label: '第一章', enemyMult: 1, floorPower: 2200, recommendedPower: 3200, crushPower: 3800 },
@@ -27,6 +26,10 @@ export const CHAPTER_BANDS: ChapterBand[] = [
   { index: 3, label: '第四章', enemyMult: 1.9, floorPower: 7400, recommendedPower: 10600, crushPower: 12700 },
   { index: 4, label: '第五章', enemyMult: 2.3, floorPower: 10500, recommendedPower: 15000, crushPower: 18000 },
   { index: 5, label: '第六章', enemyMult: 2.8, floorPower: 14700, recommendedPower: 21000, crushPower: 25200 },
+  { index: 6, label: '第七章', enemyMult: 3.35, floorPower: 20000, recommendedPower: 28500, crushPower: 34200 },
+  { index: 7, label: '第八章', enemyMult: 4, floorPower: 27000, recommendedPower: 38500, crushPower: 46200 },
+  { index: 8, label: '第九章', enemyMult: 4.75, floorPower: 36000, recommendedPower: 51500, crushPower: 61800 },
+  { index: 9, label: '第十章', enemyMult: 5.6, floorPower: 48000, recommendedPower: 68500, crushPower: 82200 },
 ];
 
 export function chapterBandIndex(chapterCleared: number): number {

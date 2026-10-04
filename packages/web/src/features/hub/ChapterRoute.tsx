@@ -8,9 +8,11 @@ type ChapterRouteProps = {
   stops: ChapterRouteStop[];
   finished: boolean;
   onSelect: (stop: ChapterRouteStop) => void;
+  /** 节点 Skin 地名/标题（与 resolveNodeCopy 一致） */
+  labelForStop?: (stop: ChapterRouteStop) => { place: string; title: string };
 };
 
-export function ChapterRoute({ ticks, stops, finished, onSelect }: ChapterRouteProps) {
+export function ChapterRoute({ ticks, stops, finished, onSelect, labelForStop }: ChapterRouteProps) {
   return (
     <div className="flex flex-col gap-2 sm:w-[9.5rem] sm:shrink-0 sm:border-r sm:border-primary/20 sm:pr-3">
       <ol className="flex gap-1 sm:flex-wrap" aria-label="章节路程">
@@ -34,7 +36,9 @@ export function ChapterRoute({ ticks, stops, finished, onSelect }: ChapterRouteP
         {stops.map((stop, i) => {
           const current = stop.status === 'current';
           const cleared = stop.status === 'cleared';
-          const place = nodePlace(stop.node);
+          const labels = labelForStop?.(stop);
+          const place = labels?.place ?? nodePlace(stop.node);
+          const nodeTitle = labels?.title ?? stop.node.title;
           return (
             <li key={stop.node.id} className="relative min-w-[7.5rem] sm:min-w-0">
               {i < stops.length - 1 ? (
@@ -75,7 +79,7 @@ export function ChapterRoute({ ticks, stops, finished, onSelect }: ChapterRouteP
                     {place}
                   </span>
                   <span className="block truncate font-mono text-[10px] text-muted-foreground">
-                    {stop.node.title}
+                    {nodeTitle}
                     {finished && cleared ? '' : current ? ' · 此地' : ''}
                   </span>
                 </span>

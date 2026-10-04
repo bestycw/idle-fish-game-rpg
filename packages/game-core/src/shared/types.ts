@@ -445,6 +445,8 @@ export interface PlayerState {
   staminaUpdatedAt: number;
   chapterCleared: number;
   chapterNodeIndex: number;
+  /** 当前 battle 节点内波次（0-based）；败场或换节点时归零 */
+  chapterBattleWaveIndex?: number;
   lastDailyClaimDay?: string;
   stardustExchangeDay?: string;
   stardustExchangesToday?: number;
@@ -477,6 +479,277 @@ export interface PlayerState {
     wearTier: number;
     sourceRarity: Rarity;
   };
+  /** 序章 / 世界选择 / 主线叙事进度 */
+  narrative?: PlayerNarrativeState;
+}
+
+export type WorldPreset = 'wuxia' | 'xianxia' | 'cyberpunk';
+
+export type NarrativePhase = 'prologue' | 'mainline';
+
+/** @deprecated 旧序章三选一；新档用 NarrativeDrive */
+export type StoryThrust = 'thrust_sync' | 'thrust_break' | 'thrust_roster';
+
+/** @deprecated 用 NovelFrameId + NarrativeControlPoints */
+export type NarrativeDrive = 'drive_close' | 'drive_stand' | 'drive_square';
+
+/** @deprecated 用 NarrativeHeroEdge */
+export type NarrativeVoice = 'voice_banter' | 'voice_stoic' | 'voice_warm';
+
+/** 内置小说类型 id · 见 novelFrames.zh */
+export type NovelFrameId =
+  | 'wuxia_escort'
+  | 'wuxia_wanderer'
+  | 'wuxia_sect_case'
+  | 'wuxia_board_game'
+  | 'wuxia_river_shed'
+  | 'wuxia_forged_case'
+  | 'wuxia_snow_letter'
+  | 'wuxia_medicine_oath'
+  | 'xianxia_trialheart'
+  | 'xianxia_guardtown'
+  | 'xianxia_swordhall'
+  | 'xianxia_seat_fight'
+  | 'xianxia_alchemy_oath'
+  | 'xianxia_beast_register'
+  | 'xianxia_cloud_convoy'
+  | 'xianxia_mirror_trial'
+  | 'cyber_runner'
+  | 'cyber_team_contract'
+  | 'cyber_dead_protocol'
+  | 'cyber_pit_fame'
+  | 'cyber_memory_pawn'
+  | 'cyber_rail_commune'
+  | 'cyber_synthetic_faces'
+  | 'cyber_neon_sermon';
+
+export type NarrativeBondLine = 'bond_solo' | 'bond_slow' | 'bond_warm';
+export type NarrativeFortuneArc = 'fortune_uphill' | 'fortune_even' | 'fortune_roller';
+export type NarrativeHeroEdge = 'edge_banter' | 'edge_stoic' | 'edge_warm';
+/** 叙事镜头：句子更贴哪类画面（战斗/人情/谜团仍都会出现） */
+export type NarrativeLens = 'lens_blade' | 'lens_bond' | 'lens_riddle';
+/** 局内压力质感：这一局「赌的是什么」 */
+export type NarrativePressureTone = 'pressure_life' | 'pressure_honor' | 'pressure_hush';
+
+export interface NarrativeControlPoints {
+  bondLine: NarrativeBondLine;
+  fortuneArc: NarrativeFortuneArc;
+  heroEdge: NarrativeHeroEdge;
+  narrativeLens: NarrativeLens;
+  pressureTone: NarrativePressureTone;
+}
+
+/** 主线章 id（平行评定用，与 Spine ch1–ch10 对齐） */
+export type ParallelChapterId =
+  | 'ch1'
+  | 'ch2'
+  | 'ch3'
+  | 'ch4'
+  | 'ch5'
+  | 'ch6'
+  | 'ch7'
+  | 'ch8'
+  | 'ch9'
+  | 'ch10';
+
+/** 章后原世界评定档（1 最低 · 3 最高） */
+export type ParallelTier = 1 | 2 | 3;
+
+/** 每 2 章一弧（十章 → arc1…arc5） */
+export type ParallelArcId = 'arc1' | 'arc2' | 'arc3' | 'arc4' | 'arc5';
+
+/** 平行原世界四轴（0–100，弧末更新；显示名见 parallelAxisLabels.zh） */
+export interface ParallelWorldAxes {
+  /** 硬气：敢拒、敢关屏、边界 */
+  grit: number;
+  /** 班味：职场压制（越低越好） */
+  officeGrind: number;
+  /** 后援：名册/投影带来的底气 */
+  backup: number;
+  /** 同频：与异世界进度耦合 */
+  resonance: number;
+}
+
+/** 平行人生阶段（单调前进，Skill 润色具体情节） */
+export type ParallelCareerBeat =
+  | 'endure'
+  | 'micro_rebel'
+  | 'boundary'
+  | 'side_hustle'
+  | 'quit_or_boss';
+
+/** 弧末推演快照（Skill 可替换四块正文，不得改轴与 tier 规则） */
+export interface ParallelArcReportSnapshot {
+  arcId: ParallelArcId;
+  tier: ParallelTier;
+  axes: ParallelWorldAxes;
+  careerBeat: ParallelCareerBeat;
+  skinStatus: SkinGenerationStatus;
+  generatedAt: number;
+  workstation: string;
+  pressure: string;
+  syncNote: string;
+  nextHint: string;
+}
+
+export interface PlayerNarrativeState {
+  phase: NarrativePhase;
+  worldPreset?: WorldPreset;
+  /** 平行原世界同步分 0–100（章末更新，展示用） */
+  parallelSyncScore?: number;
+  /** 四轴当前值 */
+  parallelWorldAxes?: ParallelWorldAxes;
+  /** 平行人生阶段 */
+  parallelCareerBeat?: ParallelCareerBeat;
+  /** 各弧末评定档 */
+  parallelTierByArc?: Partial<Record<ParallelArcId, ParallelTier>>;
+  /** 弧末推演文案（stub 或 Skill 缓存） */
+  parallelArcReports?: Partial<Record<ParallelArcId, ParallelArcReportSnapshot>>;
+  /** @deprecated 改 parallelTierByArc */
+  parallelTierByChapter?: Partial<Record<ParallelChapterId, ParallelTier>>;
+  /** 已展示推演的最大弧序 0–5 */
+  parallelReportSeenUpToArc?: number;
+  /** 主线战败后一行原世界反噬（结算/Hub 展示后清除） */
+  parallelMainlineDefeatRipple?: string;
+  /** 奇数章通关后 Hub 一行轻提示（下一段偶数章结算前保持） */
+  parallelOddChapterRipple?: string;
+  /** @deprecated */
+  parallelReportSeenUpTo?: number;
+  /** Hub 展示称号（flavor） */
+  parallelFlavorTitle?: string;
+  /** 玩家输入的主角称呼（Skin 用；战斗 id 仍为 hero） */
+  heroName?: string;
+  /** 序章末偏好问卷 */
+  preferences?: NarrativePreferences;
+  /** @deprecated 无自由输入定锚；Skill 读 novelFrame + control */
+  playerPitch?: string;
+  /** @deprecated 用 preferences */
+  storyThrust?: StoryThrust;
+  /** 十章槽位 + 生成状态（Skill 填充 overlay） */
+  mainPlot?: MainPlotOutline;
+  skinGenerationStatus?: SkinGenerationStatus;
+  /** 节点 Skin · key = nodeId（如 ch1_n2） */
+  overlay?: NarrativeOverlay;
+  /** Phase A · bible 指纹 */
+  bibleId?: string;
+  /** Phase A · Skill 或 official 加载 */
+  novelBible?: NovelBible;
+  /** 批量 Skin 已写入 overlay 的最大章序（1–10） */
+  skinChapterReady?: number;
+  /** 续卷用滚动摘要 */
+  manuscriptSummary?: string;
+  /** 当前卷 id */
+  volumeId?: 'vol1' | 'vol2';
+}
+
+export type SkinGenerationStatus = 'pending_skill' | 'stub' | 'ready';
+
+export type WorldTextureId =
+  | 'tex_wuxia_jianghu'
+  | 'tex_wuxia_sect'
+  | 'tex_wuxia_court'
+  | 'tex_xianxia_mortal'
+  | 'tex_xianxia_sect'
+  | 'tex_xianxia_tribulation'
+  | 'tex_cyber_street'
+  | 'tex_cyber_corp'
+  | 'tex_cyber_deadnet';
+
+export type StoryMotifId = 'motif_escort' | 'motif_vindicate' | 'motif_rise' | 'motif_mystery';
+
+export interface NarrativeVector {
+  worldTexture: WorldTextureId;
+  storyMotifs: StoryMotifId[];
+}
+
+export interface NarrativePreferences {
+  /** 定参向量（主入口；不选则用 defaultNarrativePreferences） */
+  vector: NarrativeVector;
+  /** Skill official 包 / 风格 preset（可选；默认按 preset 首项） */
+  novelFrameId?: NovelFrameId;
+  /** 曲线控制点：感情 / 运势 / 口吻 */
+  control: NarrativeControlPoints;
+  tone: 'witty' | 'earnest';
+  pace: 'slow_burn' | 'fast';
+}
+
+export interface MainPlotChapterOutline {
+  order: number;
+  title: string;
+  blurb: string;
+  fillStatus?: 'placeholder' | 'filled';
+}
+
+export interface MainPlotOutline {
+  worldPreset: WorldPreset;
+  heroName: string;
+  preferences: NarrativePreferences;
+  playerPitch?: string;
+  skinStatus: SkinGenerationStatus;
+  logline: string;
+  chapters: MainPlotChapterOutline[];
+  generatedAt: number;
+}
+
+/** 主线 story 节点对话行（speaker 为显示名；主角可用 {{heroName}}） */
+export interface NarrativeDialogueLine {
+  speaker: string;
+  text: string;
+}
+
+/** 玩家选项（不改 Spine；选后插入主角 reply 再继续） */
+export interface NarrativeDialogueChoiceOption {
+  label: string;
+  reply: string;
+}
+
+/** 有序对话 beat：台词或分支选项 */
+export type NarrativeDialogueBeat =
+  | { kind: 'line'; speaker: string; text: string }
+  | {
+      kind: 'choice';
+      /** 选项前情境句（speaker 空则用上一条 NPC 名） */
+      prompt: string;
+      speaker?: string;
+      options: NarrativeDialogueChoiceOption[];
+    };
+
+/** 单节点 display copy（overlay 片段） */
+export interface NarrativeNodeSkinCopy {
+  title?: string;
+  place?: string;
+  blurb?: string;
+  /** 兼容旧包；与 dialogueBeats 二选一优先 beats */
+  dialogue?: NarrativeDialogueLine[];
+  /** 含 choice 时 Hub 展示选项（2–3 个） */
+  dialogueBeats?: NarrativeDialogueBeat[];
+}
+
+/** 城镇 / 事发地点 / 剧情 NPC 显示名（Spine id 不变） */
+export interface WorldSkinNames {
+  towns?: Partial<Record<string, string>>;
+  locations?: Partial<Record<string, string>>;
+  npcs?: Partial<Record<string, string>>;
+  /** 身份称谓 · 副标题；对话 speaker 用人名 `npcs` */
+  npcEpithets?: Partial<Record<string, string>>;
+}
+
+export interface NarrativeOverlay {
+  nodes: Record<string, NarrativeNodeSkinCopy>;
+  worldSkinNames?: WorldSkinNames;
+}
+
+/** 书级 Skin 真源（Phase A） */
+export interface NovelBible {
+  id: string;
+  preset: WorldPreset;
+  heroRole: string;
+  worldDisplayName: string;
+  lexicon: string[];
+  forbidden: string[];
+  rosterRule: string;
+  chapterThesis: string[];
+  worldSkinNames?: WorldSkinNames;
 }
 
 export interface SaveAdapter {

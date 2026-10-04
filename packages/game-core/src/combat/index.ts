@@ -9,3 +9,4 @@ export * from './tickRegistry.js';
 export * from './abilityRuntime.js';
 export * from './conditionRuntime.js';
 export * from './softModeRuntime.js';
+export * from './devBattle.js';

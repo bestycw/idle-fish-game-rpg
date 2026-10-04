@@ -1,4 +1,6 @@
 export * from './encounters.js';
+export * from './resolveEncounterDisplay.js';
+export * from '../narrative/officialEnemyNames.zh.js';
 export * from './encounterModifiers.js';
 export * from './tower.js';
 export * from './stardustRealm.js';

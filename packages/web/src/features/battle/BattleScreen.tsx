@@ -16,9 +16,17 @@ type BattleScreenProps = {
   speed: BattleSpeed;
   onSpeed: (speed: BattleSpeed) => void;
   onSkip: () => void;
+  onDevInstantWin?: () => void;
 };
 
-export function BattleScreen({ battle, playing, speed, onSpeed, onSkip }: BattleScreenProps) {
+export function BattleScreen({
+  battle,
+  playing,
+  speed,
+  onSpeed,
+  onSkip,
+  onDevInstantWin,
+}: BattleScreenProps) {
   const encounter = ENCOUNTERS.find((e) => e.id === battle.encounterId);
   const encounterName = encounter?.name ?? battle.encounterId;
   const modifierLabels = (battle.encounterModifierIds ?? [])
@@ -48,6 +56,7 @@ export function BattleScreen({ battle, playing, speed, onSpeed, onSkip }: Battle
         speed={speed}
         onSpeed={onSpeed}
         onSkip={onSkip}
+        onDevInstantWin={onDevInstantWin}
         disabled={battle.status !== 'ongoing'}
       />
 

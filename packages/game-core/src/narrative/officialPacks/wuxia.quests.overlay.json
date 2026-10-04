@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "preset": "wuxia",
+  "volumeId": "vol1",
+  "worldSkinNamesRef": "wuxia.overlay.json",
+  "questIdRegistry": [],
+  "quests": {}
+}

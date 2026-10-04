@@ -11,9 +11,15 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp -r src/narrative/officialPacks dist/narrative/",
+    "generate-official-overlay": "npm run build && node scripts/generate-official-overlay.mjs",
+    "story-gen-quality": "npm run build && node scripts/story-gen-quality.mjs",
+    "story-gen-quest-quality": "node scripts/story-gen-quest-quality.mjs",
+    "story-gen-parallel-quality": "node scripts/story-gen-parallel-quality.mjs",
+    "sync-xianxia-outline": "npm run build && node scripts/sync-xianxia-outline-to-overlay.mjs",
+    "sync-overlay-stubs": "npm run build && node scripts/sync-overlay-node-stubs.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/combat/combat.test.js dist/combat/combatFlowSmoke.test.js dist/combat/skillRules.test.js dist/combat/conditionRuntime.test.js dist/character/growth.test.js dist/character/skillCompose.test.js dist/character/abilityAtoms.test.js dist/character/termLexicon.test.js dist/character/roster/roster.test.js dist/equipment/equipment.test.js dist/equipment/affixDisplay.test.js dist/equipment/gearIdentity.test.js dist/dungeon/tower.test.js dist/dungeon/dungeon.test.js dist/dungeon/encounterRecipes.test.js dist/dungeon/encounterModifiers.test.js dist/dungeon/hubExtras.test.js dist/gacha/gacha.test.js dist/stamina/stamina.test.js dist/chapter/chapter.test.js dist/chapter/unlockLabels.test.js dist/formation/resonance.test.js dist/formation/formation.test.js",
+    "test": "tsc -p tsconfig.json && node --test dist/combat/combat.test.js dist/combat/combatFlowSmoke.test.js dist/combat/skillRules.test.js dist/combat/conditionRuntime.test.js dist/character/growth.test.js dist/character/skillCompose.test.js dist/character/abilityAtoms.test.js dist/character/termLexicon.test.js dist/character/roster/roster.test.js dist/equipment/equipment.test.js dist/equipment/affixDisplay.test.js dist/equipment/gearIdentity.test.js dist/dungeon/tower.test.js dist/dungeon/dungeon.test.js dist/dungeon/encounterRecipes.test.js dist/dungeon/encounterModifiers.test.js dist/dungeon/hubExtras.test.js dist/gacha/gacha.test.js dist/stamina/stamina.test.js dist/chapter/chapter.test.js dist/chapter/unlockLabels.test.js dist/formation/resonance.test.js dist/formation/formation.test.js dist/narrative/parallel-sync.test.js dist/narrative/parallelWorldState.test.js dist/narrative/parallelArcNarrative.test.js dist/narrative/parallelBriefLife.test.js dist/narrative/townHub.test.js dist/narrative/resolveNodeCopy.test.js dist/narrative/onboardingSkinBatch.test.js dist/narrative/mainlineDialogue.test.js dist/narrative/officialEnemyNames.test.js",
     "test:combat-flow": "tsc -p tsconfig.json && node --test dist/combat/combatFlowSmoke.test.js",
     "feel": "tsc -p tsconfig.json && node dist/tools/combatFeel.js"
   },

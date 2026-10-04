@@ -15,10 +15,15 @@ type ResultScreenProps = {
   battle: BattleState;
   lastLoot: Equipment | null;
   dungeonName: string;
+  /** 主线 vs 猎装本，决定再战按钮文案 */
+  battleSource?: 'dungeon' | 'chapter';
+  /** 主线：下一场战斗的波次提示，如「第 2/2 场 · 盾墙」 */
+  chapterNextBattleHint?: string | null;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   onRestartBattle: () => void;
   onBackToHub: () => void;
   pushNotice: (msg: string) => void;
+  parallelDefeatRipple?: string | null;
 };
 
 /** 结算页：手游式胜负横幅 + 掉落卡 + 底部双按钮 */
@@ -26,13 +31,23 @@ export function ResultScreen({
   battle,
   lastLoot,
   dungeonName,
+  battleSource = 'dungeon',
+  chapterNextBattleHint,
   setPlayer,
   onRestartBattle,
   onBackToHub,
   pushNotice,
+  parallelDefeatRipple,
 }: ResultScreenProps) {
   const won = battle.status === 'won';
   const prepHint = ENCOUNTERS.find((e) => e.id === battle.encounterId)?.prepHint;
+  const chapterHasNextBattle =
+    battleSource === 'chapter' && won && Boolean(chapterNextBattleHint);
+  const restartLabel = chapterHasNextBattle
+    ? '下一场战斗'
+    : won
+      ? '再刷一把'
+      : '重整再战';
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-4">
@@ -53,13 +68,27 @@ export function ResultScreen({
         {!won && battle.defeatHint ? (
           <p className="mx-auto mt-3 max-w-md text-sm text-foreground/85">{battle.defeatHint}</p>
         ) : null}
+        {!won && parallelDefeatRipple ? (
+          <p className="mx-auto mt-3 max-w-md rounded-lg border border-rose-500/25 bg-rose-500/8 px-3 py-2 text-xs leading-relaxed text-rose-100/90">
+            原世界 · {parallelDefeatRipple}
+          </p>
+        ) : null}
         {!won && prepHint ? (
           <p className="mx-auto mt-2 max-w-md font-mono text-[11px] leading-relaxed text-muted-foreground">
             战前对策：{prepHint}
           </p>
         ) : null}
         {won && !lastLoot ? (
-          <p className="mt-3 text-sm text-muted-foreground">进度已记下（本场无猎装掉落）</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {chapterHasNextBattle
+              ? '本节尚未打完，请继续下一场。'
+              : battleSource === 'chapter'
+                ? '主线进度已记下（本场无猎装掉落）'
+                : '进度已记下（本场无猎装掉落）'}
+          </p>
+        ) : null}
+        {chapterHasNextBattle && chapterNextBattleHint ? (
+          <p className="mt-2 font-mono text-[11px] text-primary/90">{chapterNextBattleHint}</p>
         ) : null}
       </div>
 
@@ -103,20 +132,25 @@ export function ResultScreen({
         </div>
       </details>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={onRestartBattle}
-          className="rounded-xl border border-primary/40 bg-primary/15 py-3.5 font-medium text-primary"
-        >
-          {won ? '再刷一把' : '重整再战'}
-        </button>
+      <div className={cn('grid gap-3', chapterHasNextBattle || !won ? 'grid-cols-2' : 'grid-cols-1')}>
+        {(chapterHasNextBattle || !won || battleSource === 'dungeon') && (
+          <button
+            type="button"
+            onClick={onRestartBattle}
+            className="rounded-xl border border-primary/40 bg-primary/15 py-3.5 font-medium text-primary"
+          >
+            {restartLabel}
+          </button>
+        )}
         <button
           type="button"
           onClick={onBackToHub}
-          className="rounded-xl border border-border/80 bg-card/70 py-3.5 font-medium"
+          className={cn(
+            'rounded-xl border border-border/80 bg-card/70 py-3.5 font-medium',
+            chapterHasNextBattle || !won ? '' : 'border-primary/40 bg-primary/15 text-primary',
+          )}
         >
-          返回冒险
+          {chapterHasNextBattle ? '稍后继续' : '返回冒险'}
         </button>
       </div>
     </div>

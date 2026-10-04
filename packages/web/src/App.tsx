@@ -1,8 +1,11 @@
 import {
   buildPlayerParty,
   chapterProgressLabel,
-  completeChapterBattle,
+  chapterBattleAfterDefeat,
   currentChapterEncounterIndex,
+  formatChapterBattleWaveProgress,
+  pendingChapterBattleWaves,
+  resolveChapterBattleAfterWin,
   getDungeon,
   grantDungeonReward,
   grantSampleEquipment,
@@ -14,7 +17,17 @@ import {
   stepBattle,
   syncStamina,
   trySpendStamina,
+  needsPrologue,
+  devClearCurrentChapter,
+  devClearMainlineChapters,
+  devForceBattleWin,
+  clearParallelMainlineDefeatRipple,
+  latestParallelArcReportId,
+  markParallelArcReportSeen,
+  previousParallelArcId,
+  unseenParallelArcReport,
   STAMINA_MAX,
+  type ParallelArcId,
   UNIT_TEMPLATES,
   type BattleState,
   type DungeonId,
@@ -35,11 +48,14 @@ import {
 import { CharacterList, CharacterSheet } from './features/character/CharacterScreens';
 import { FormationScreen } from './features/character/FormationScreen';
 import { HubScreen } from './features/hub/HubScreen';
+import { ParallelArcScreen } from './features/hub/ParallelArcScreen';
+import { PrologueScreen } from './features/hub/PrologueScreen';
 import { GachaScreen } from './features/gacha/GachaScreen';
 import { InventoryPanel } from './features/inventory/InventoryPanel';
 import { ResultScreen } from './features/result/ResultScreen';
 
 type Screen =
+  | 'prologue'
   | 'hub'
   | 'battle_prep'
   | 'battle'
@@ -61,9 +77,17 @@ function screenToTab(screen: Screen): NavTab {
 const DEFAULT_BATTLE_DUNGEON: DungeonId = 'gear_trial';
 const BATTLE_BASE_TICK_MS = 380;
 
+function bootstrapSession() {
+  const player = loadOrCreatePlayer(localSaveAdapter);
+  const screen: Screen = needsPrologue(player) ? 'prologue' : 'hub';
+  return { player, screen };
+}
+
+const sessionBoot = bootstrapSession();
+
 export default function App() {
-  const [player, setPlayer] = useState<PlayerState>(() => loadOrCreatePlayer(localSaveAdapter));
-  const [screen, setScreen] = useState<Screen>('hub');
+  const [player, setPlayer] = useState<PlayerState>(sessionBoot.player);
+  const [screen, setScreen] = useState<Screen>(sessionBoot.screen);
   const [selectedId, setSelectedId] = useState<string | null>('hero');
   const [battle, setBattle] = useState<BattleState | null>(null);
   const [lastLoot, setLastLoot] = useState<Equipment | null>(null);
@@ -78,6 +102,8 @@ export default function App() {
   const [battlePrep, setBattlePrep] = useState<BattlePrepConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [battleSpeed, setBattleSpeed] = useState<BattleSpeed>(1);
+  const [pendingParallelArc, setPendingParallelArc] = useState<ParallelArcId | null>(null);
+  const [parallelArcBrowse, setParallelArcBrowse] = useState<ParallelArcId | null>(null);
 
   const timerRef = useRef<number | null>(null);
   const battleSpeedRef = useRef<BattleSpeed>(1);
@@ -122,6 +148,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const arc = unseenParallelArcReport(playerRef.current);
+    if (arc) setPendingParallelArc(arc);
+  }, []);
+
+  useEffect(() => {
     setPlayer((p) => syncStamina(p));
     const id = window.setInterval(() => {
       setPlayer((p) => syncStamina(p));
@@ -150,10 +181,14 @@ export default function App() {
     setBattle(finalState);
     if (finalState.status === 'won') {
       if (battleSourceRef.current === 'chapter') {
-        const done = completeChapterBattle(basePlayer);
+        const done = resolveChapterBattleAfterWin(basePlayer);
         if (done.ok) {
           setPlayer(done.state);
           pushNotice(done.message);
+          if (done.clearedChapter) {
+            const arc = unseenParallelArcReport(done.state);
+            if (arc) setPendingParallelArc(arc);
+          }
         }
         setLastLoot(null);
       } else {
@@ -164,6 +199,10 @@ export default function App() {
       }
     } else {
       setLastLoot(null);
+      if (battleSourceRef.current === 'chapter') {
+        const afterDefeat = chapterBattleAfterDefeat(basePlayer);
+        setPlayer(afterDefeat);
+      }
       if (finalState.defeatHint) pushNotice(finalState.defeatHint);
     }
     setScreen('result');
@@ -282,7 +321,7 @@ export default function App() {
     setBattle(null);
     setLastLoot(null);
     setActiveDungeonId(DEFAULT_BATTLE_DUNGEON);
-    setScreen('hub');
+    setScreen(needsPrologue(fresh) ? 'prologue' : 'hub');
     pushNotice('存档已清空，故事从头开始。');
   };
 
@@ -329,9 +368,56 @@ export default function App() {
     pushNotice('🔧 DEV：全资源拉满（含样装/强化石/宝石/形态石）');
   };
 
+  const applyDevPlayer = (next: PlayerState, message: string) => {
+    setPlayer(next);
+    pushNotice(message);
+    const arc = unseenParallelArcReport(next);
+    if (arc) setPendingParallelArc(arc);
+  };
+
+  const devClearOneChapter = () => {
+    const r = devClearCurrentChapter(player);
+    applyDevPlayer(r.state, r.message);
+  };
+
+  const devClearVolume = () => {
+    const r = devClearMainlineChapters(player, 10);
+    applyDevPlayer(r.state, r.message);
+  };
+
+  const devInstantWinBattle = () => {
+    const cur = battleRef.current;
+    if (!cur || cur.status !== 'ongoing') return;
+    stopPlayback();
+    finishBattle(devForceBattleWin(cur), playerRef.current);
+  };
+
   const handleBackToHub = () => {
     stopPlayback();
+    setPlayer((p) => clearParallelMainlineDefeatRipple(p));
     setScreen('hub');
+  };
+
+  const activeParallelArcId = pendingParallelArc ?? parallelArcBrowse;
+
+  const closeParallelArc = (markSeen: boolean) => {
+    const arc = activeParallelArcId;
+    if (markSeen && arc) {
+      setPlayer((p) => markParallelArcReportSeen(p, arc));
+    }
+    setPendingParallelArc(null);
+    setParallelArcBrowse(null);
+  };
+
+  const openParallelRealWorldFromHub = () => {
+    const unread = unseenParallelArcReport(player);
+    const latest = latestParallelArcReportId(player);
+    const target = unread ?? latest;
+    if (!target) {
+      pushNotice('通完第 1–2 章主线后，这里会同步你的原世界结算。');
+      return;
+    }
+    setParallelArcBrowse(target);
   };
 
   const openCharacter = (
@@ -348,25 +434,41 @@ export default function App() {
     setScreen('formation');
   };
 
+  const chapterPendingWaves =
+    battleSourceRef.current === 'chapter' ? pendingChapterBattleWaves(player) : null;
   const dungeonName =
-    battleSourceRef.current === 'chapter' ? '主线节点' : getDungeon(activeDungeonId).name;
+    battleSourceRef.current === 'chapter'
+      ? chapterPendingWaves
+        ? `主线 · ${formatChapterBattleWaveProgress(chapterPendingWaves)}`
+        : '主线节点'
+      : getDungeon(activeDungeonId).name;
+  const chapterNextBattleHint =
+    battle?.status === 'won' && chapterPendingWaves
+      ? formatChapterBattleWaveProgress(chapterPendingWaves)
+      : null;
 
   const subtitle =
-    screen === 'battle'
-      ? '战报翻页中'
-      : screen === 'battle_prep'
-        ? '战前整备'
-      : screen === 'result'
-        ? '尘埃落定'
-        : screen === 'formation'
-          ? '九宫站位'
-          : screen === 'bag'
-            ? '行囊'
-            : '布阵刷装 · 摸鱼深构筑';
+    screen === 'prologue'
+      ? '跨维入职（Beta）'
+      : screen === 'battle'
+        ? '战报翻页中'
+        : screen === 'battle_prep'
+          ? '战前整备'
+          : screen === 'result'
+            ? '尘埃落定'
+            : screen === 'formation'
+              ? '九宫站位'
+              : screen === 'bag'
+                ? '行囊'
+                : '布阵刷装 · 摸鱼深构筑';
 
   const combatFocus =
     screen === 'battle_prep' || screen === 'battle' || screen === 'result';
-  const showDock = screen !== 'battle' && screen !== 'battle_prep' && screen !== 'result';
+  const showDock =
+    screen !== 'prologue' &&
+    screen !== 'battle' &&
+    screen !== 'battle_prep' &&
+    screen !== 'result';
   const scrollMain =
     screen === 'hub' ||
     screen === 'gacha' ||
@@ -390,6 +492,7 @@ export default function App() {
         screen === 'gacha' || screen === 'characters' ? 'home' : 'focus'
       }
       hideBrand={
+        screen === 'prologue' ||
         screen === 'battle' ||
         screen === 'battle_prep' ||
         screen === 'result' ||
@@ -406,6 +509,7 @@ export default function App() {
       }
       className={combatFocus ? 'pt-2 sm:pt-2' : undefined}
       status={
+        screen === 'prologue' ? null : (
         <div className="space-y-1.5">
           <StatusBar
             player={player}
@@ -429,7 +533,7 @@ export default function App() {
             }
           />
           {screen === 'hub' ? (
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
               <button
                 type="button"
                 onClick={devGrantAll}
@@ -437,6 +541,24 @@ export default function App() {
               >
                 🔧 资源拉满
               </button>
+              {import.meta.env.DEV ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={devClearOneChapter}
+                    className="font-mono text-[10px] tracking-wide text-amber-400 underline-offset-2 hover:text-amber-300 hover:underline"
+                  >
+                    ⚡ 通本章
+                  </button>
+                  <button
+                    type="button"
+                    onClick={devClearVolume}
+                    className="font-mono text-[10px] tracking-wide text-amber-400 underline-offset-2 hover:text-amber-300 hover:underline"
+                  >
+                    ⚡ 卷一通
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 onClick={resetSave}
@@ -447,8 +569,19 @@ export default function App() {
             </div>
           ) : null}
         </div>
+        )
       }
     >
+      {screen === 'prologue' && (
+        <PrologueScreen
+          setPlayer={setPlayer}
+          onComplete={() => {
+            setScreen('hub');
+            pushNotice('欢迎来到异世界整备区——星尘、猎装都在菜单里，慢慢摸就行。');
+          }}
+        />
+      )}
+
       {screen === 'hub' && (
         <HubScreen
           player={player}
@@ -458,6 +591,7 @@ export default function App() {
           onStartChapterBattle={openChapterPrep}
           onOpenFormation={() => openFormation('hub')}
           pushNotice={pushNotice}
+          onOpenParallelRealWorld={openParallelRealWorldFromHub}
         />
       )}
 
@@ -482,6 +616,7 @@ export default function App() {
           speed={battleSpeed}
           onSpeed={setBattlePlaybackSpeed}
           onSkip={skipBattleToResult}
+          onDevInstantWin={import.meta.env.DEV ? devInstantWinBattle : undefined}
         />
       )}
 
@@ -490,10 +625,17 @@ export default function App() {
           battle={battle}
           lastLoot={lastLoot}
           dungeonName={dungeonName}
+          battleSource={battleSourceRef.current}
+          chapterNextBattleHint={chapterNextBattleHint}
           setPlayer={setPlayer}
           onRestartBattle={restartBattlePrep}
           onBackToHub={handleBackToHub}
           pushNotice={pushNotice}
+          parallelDefeatRipple={
+            battleSourceRef.current === 'chapter'
+              ? player.narrative?.parallelMainlineDefeatRipple
+              : null
+          }
         />
       )}
 
@@ -552,6 +694,22 @@ export default function App() {
           onGoGacha={() => setScreen('gacha')}
         />
       )}
+
+      {activeParallelArcId && player.narrative?.parallelArcReports?.[activeParallelArcId] ? (
+        <ParallelArcScreen
+          report={player.narrative.parallelArcReports[activeParallelArcId]!}
+          previousReport={
+            previousParallelArcId(activeParallelArcId)
+              ? player.narrative?.parallelArcReports?.[previousParallelArcId(activeParallelArcId)!] ??
+                null
+              : null
+          }
+          player={player}
+          heroName={player.narrative?.heroName}
+          onContinue={() => closeParallelArc(true)}
+          onLater={() => closeParallelArc(false)}
+        />
+      ) : null}
     </GameShell>
   );
 }

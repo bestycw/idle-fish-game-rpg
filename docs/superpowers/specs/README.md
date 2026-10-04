@@ -84,6 +84,12 @@
 | 人物面板布局 | [2026-07-20-character-panel-wow-layout.md](./2026-07-20-character-panel-wow-layout.md) | 现网：四页签 + 装备上6/中属性/下6 |
 | 战斗 UI | [2026-07-20-battle-ui-design.md](./2026-07-20-battle-ui-design.md) | 已拍板 |
 | Web UI 地基 | [2026-07-21-web-ui-foundation.md](./2026-07-21-web-ui-foundation.md) | 迁移完成；格局仍认 |
+| 序章 + 选世界 | [2026-09-29-opening-saga-modern-isekai.md](./2026-09-29-opening-saga-modern-isekai.md) | 现代牛马 → 三世界；web 序章已落地 |
+| Spine/Skin 叙事 | [2026-09-29-player-story-spine-design.md](./2026-09-29-player-story-spine-design.md) | 玩家定调 + overlay |
+| 平行原世界同步 | [2026-09-29-parallel-sync-realworld-line.md](./2026-09-29-parallel-sync-realworld-line.md) | 五弧简报 · 三档 · P1 UI 待做 |
+| **剧情 Skin 生成方案** | [narrative-skin-generation-scheme.md](./narrative-skin-generation-scheme.md) | **玩法核心 · 定参/槽位/校验/续章 · 真源** |
+| Story Gen Skill 契约 | [story-gen-skill-contract.md](./story-gen-skill-contract.md) | Agent 输入输出 · 从属于上表 |
+| 十章 · 小结 · 定调 | [2026-09-29-story-spine-10ch-sections-design.md](./2026-09-29-story-spine-10ch-sections-design.md) | 章→小结 · choice · Spine 拉长 |
 
 ## 归档（实现史 · 默认不信）
 

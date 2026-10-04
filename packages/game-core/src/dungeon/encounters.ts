@@ -57,6 +57,40 @@ export interface EncounterDef {
  */
 export const ENCOUNTERS: EncounterDef[] = [
   {
+    id: 'gate_skirmish',
+    name: '关前前锋',
+    prepHint: '两名关丁练手：熟悉破阵与换位，下一波才是盾墙',
+    maxTurns: 18,
+    enemies: [
+      {
+        name: '关丁甲',
+        role: 'tank',
+        job: 'vanguard',
+        slot: 1,
+        atk: 11,
+        def: 14,
+        res: 8,
+        maxHp: 95,
+        spd: 8,
+        fortuneRating: 8,
+        skillId: 'mob_smash',
+      },
+      {
+        name: '关丁乙',
+        role: 'tank',
+        job: 'vanguard',
+        slot: 3,
+        atk: 10,
+        def: 13,
+        res: 8,
+        maxHp: 90,
+        spd: 8,
+        fortuneRating: 8,
+        skillId: 'mob_smash',
+      },
+    ],
+  },
+  {
     id: 'wall',
     name: '盾墙巡逻',
     prepHint: '前排极肉：破甲/群攻磨盾，术士可禁疗 · 猎装刷装',

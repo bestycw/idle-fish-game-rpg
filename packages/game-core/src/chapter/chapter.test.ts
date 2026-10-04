@@ -8,7 +8,7 @@ import {
   getChapterBand,
   powerGate,
 } from './bands.js';
-import { CHAPTERS, nodePlace } from './defs.js';
+import { CHAPTERS, listChapters, nodePlace } from './defs.js';
 import {
   advanceStoryNode,
   completeChapterBattle,
@@ -16,9 +16,20 @@ import {
   getChapterView,
   isContentUnlocked,
   listUnlockedIds,
+  resolveChapterBattleAfterWin,
 } from './progress.js';
+import { encounterIndexFromId } from './battleWaves.js';
 
 describe('chapter', () => {
+  it('each chapter has at least five nodes', () => {
+    for (const ch of listChapters()) {
+      assert.ok(
+        ch.nodes.length >= 5,
+        `${ch.id} has ${ch.nodes.length} nodes (min 5)`,
+      );
+    }
+  });
+
   it('starts with START_UNLOCKS only', () => {
     const p = createInitialPlayer(1);
     assert.equal(p.chapterCleared, 0);
@@ -42,33 +53,59 @@ describe('chapter', () => {
     assert.equal(bad.ok, false);
   });
 
+  it('chapter battle advances waves before clearing node', () => {
+    let p = createInitialPlayer(1);
+    const s1 = advanceStoryNode(p);
+    assert.ok(s1.ok);
+    p = s1.state;
+    assert.equal(getChapterView(p).node?.id, 'ch1_n2');
+    assert.equal(p.chapterBattleWaveIndex ?? 0, 0);
+    const w1 = resolveChapterBattleAfterWin(p);
+    assert.ok(w1.ok);
+    assert.equal(w1.hasNextWave, true);
+    p = w1.state;
+    assert.equal(p.chapterBattleWaveIndex, 1);
+    assert.equal(getChapterView(p).node?.kind, 'battle');
+    assert.ok(encounterIndexFromId('wall') >= 0);
+    const w2 = resolveChapterBattleAfterWin(p);
+    assert.ok(w2.ok);
+    assert.equal(w2.hasNextWave, false);
+    p = w2.state;
+    assert.equal(p.chapterBattleWaveIndex ?? 0, 0);
+    assert.equal(getChapterView(p).node?.kind, 'story');
+  });
+
   it('clearing ch1 unlocks raiders', () => {
     let p = createInitialPlayer(1);
     const s1 = advanceStoryNode(p);
     assert.ok(s1.ok);
     p = s1.state;
     assert.equal(getChapterView(p).node?.kind, 'battle');
-    const b1 = completeChapterBattle(p);
-    assert.ok(b1.ok);
-    p = b1.state;
-    assert.equal(getChapterView(p).node?.kind, 'story');
-    const s2 = advanceStoryNode(p);
-    assert.ok(s2.ok);
-    p = s2.state;
+    for (let i = 0; i < 4; i++) {
+      const view = getChapterView(p);
+      if (view.node?.kind === 'battle') {
+        const b = completeChapterBattle(p);
+        assert.ok(b.ok);
+        p = b.state;
+      } else if (view.node?.kind === 'story') {
+        const s = advanceStoryNode(p);
+        assert.ok(s.ok);
+        p = s.state;
+      } else break;
+    }
     assert.equal(p.chapterCleared, 1);
     assert.ok(isContentUnlocked(p, 'encounter', 'raiders'));
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'baigujing'), true);
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'nuwa'), false);
     assert.ok(listUnlockedIds(p, 'encounter').includes('raiders'));
-    assert.match(s2.message, /八题·速攻来袭|解锁：/);
-    assert.doesNotMatch(s2.message, /encounter:raiders/);
+    assert.ok(isContentUnlocked(p, 'encounter', 'raiders'));
   });
 
   it('exposes a place-named route for the current chapter', () => {
     const p = createInitialPlayer(1);
     const route = getChapterRoute(p);
     assert.equal(route.finished, false);
-    assert.equal(route.stops.length, 3);
+    assert.equal(route.stops.length, 5);
     assert.equal(route.stops[0]?.status, 'current');
     assert.equal(route.stops[1]?.status, 'ahead');
     assert.equal(nodePlace(route.stops[0]!.node), '城门驿道');

@@ -5,7 +5,10 @@ import {
   STAMINA_COST_STARDUST,
   STAMINA_COST_TOWER,
   advanceStoryNode,
+  battleWavesForNode,
   canClaimDaily,
+  currentChapterBattleContext,
+  formatChapterBattleWaveProgress,
   canMine,
   climbTower,
   doMine,
@@ -20,6 +23,9 @@ import {
   MINE_DEFS,
   MINE_STAMINA_COST,
   nodePlace,
+  resolveCurrentMainlineDialogueBeats,
+  resolveCurrentNodeCopy,
+  resolveNodeCopy,
   formationResonancePreview,
   partyPower,
   pressureForDungeon,
@@ -29,10 +35,13 @@ import {
   xiuweiForFloor,
   type PlayerState,
 } from '@moyu/game-core';
+import type { NarrativeDialogueBeat } from '@moyu/game-core';
 import { useState } from 'react';
 import { EntryCard } from '@/components/game/EntryCard';
-import { ChapterRoute } from './ChapterRoute';
+import { MainlineJourneyCard } from './MainlineJourneyCard';
+import { ParallelRealWorldCard } from './ParallelRealWorldCard';
 import { HubOnboarding } from './HubOnboarding';
+import { MainlineStoryDialogue } from './MainlineStoryDialogue';
 
 type HubScreenProps = {
   player: PlayerState;
@@ -42,6 +51,7 @@ type HubScreenProps = {
   onStartChapterBattle: () => void;
   onOpenFormation: () => void;
   pushNotice: (msg: string) => void;
+  onOpenParallelRealWorld?: () => void;
 };
 
 const LOCKED_ENTRIES = [
@@ -63,8 +73,14 @@ export function HubScreen({
   onStartChapterBattle,
   onOpenFormation,
   pushNotice,
+  onOpenParallelRealWorld,
 }: HubScreenProps) {
   const [showMinePicker, setShowMinePicker] = useState(false);
+  const [storyDialogue, setStoryDialogue] = useState<{
+    beats: NarrativeDialogueBeat[];
+    place: string;
+    title: string;
+  } | null>(null);
   const chapter = getChapterView(player);
   const route = getChapterRoute(player);
   const band = getChapterBand(player.chapterCleared ?? 0);
@@ -101,29 +117,73 @@ export function HubScreen({
   };
 
   const chapterTitle = playing?.name ?? route.chapter?.name ?? '旅途';
-  const here = node ? nodePlace(node) : null;
-  const battlePrep =
-    node?.kind === 'battle' && node.encounterId
-      ? ENCOUNTERS.find((e) => e.id === node.encounterId)?.prepHint
-      : undefined;
-  const blurb = chapter.finished
-    ? '主线骨架已走完。猎装刷量、镜渊对症 T3、八题轮换 —— 按战前提示改阵即可。'
+  const resolvedNode = node ? resolveCurrentNodeCopy(player) : null;
+  const here = resolvedNode
+    ? resolvedNode.place || resolvedNode.title
     : node
-      ? [playing?.blurb ?? '', node.blurb, battlePrep ? `战前：${battlePrep}` : '']
-          .filter(Boolean)
-          .join(' ')
+      ? nodePlace(node)
+      : null;
+  const chapterBattleWave =
+    node?.kind === 'battle' ? currentChapterBattleContext(player) : null;
+  const battlePrep =
+    node?.kind === 'battle' && chapterBattleWave
+      ? ENCOUNTERS.find((e) => e.id === chapterBattleWave.encounterId)?.prepHint
+      : node?.kind === 'battle' && node.encounterId
+        ? ENCOUNTERS.find((e) => e.id === node.encounterId)?.prepHint
+        : undefined;
+  const heroName = player.narrative?.heroName;
+  const storyDialogueBeats =
+    node?.kind === 'story' ? resolveCurrentMainlineDialogueBeats(player) : null;
+  const skinStub = player.narrative?.skinGenerationStatus === 'stub';
+
+  const routeStopLabel = (stop: (typeof route.stops)[number]) => {
+    const copy = resolveNodeCopy(player, stop.node.id);
+    const waveCount =
+      stop.node.kind === 'battle' ? battleWavesForNode(stop.node).length : 0;
+    const baseTitle = copy?.title ?? stop.node.title;
+    return {
+      place: copy?.place ?? nodePlace(stop.node),
+      title: waveCount > 1 ? `${baseTitle} · ${waveCount} 场` : baseTitle,
+    };
+  };
+
+  const blurb = chapter.finished
+    ? '卷一十章已通。猎装刷量、镜渊对症 T3、八题轮换 —— 按战前提示改阵；卷二将另开。'
+    : node
+      ? node.kind === 'story' && storyDialogueBeats && storyDialogueBeats.length > 0
+        ? '与在场人物对话后再继续路程。'
+        : [resolvedNode?.blurb ?? node.blurb, battlePrep ? `战前：${battlePrep}` : '']
+            .filter(Boolean)
+            .join(' ')
       : '夜色里，试炼的门还亮着。';
+
+  const completeStoryNode = () => {
+    setStoryDialogue(null);
+    setPlayer((p) => {
+      const r = advanceStoryNode(p);
+      if (!r.ok) {
+        pushNotice(r.message);
+        return p;
+      }
+      pushNotice(r.message);
+      return r.state;
+    });
+  };
 
   const enterCurrent = () => {
     if (chapter.finished || !node) return;
     if (node.kind === 'story') {
-      const r = advanceStoryNode(player);
-      if (!r.ok) {
-        pushNotice(r.message);
+      const beats = resolveCurrentMainlineDialogueBeats(player);
+      const copy = resolvedNode;
+      if (beats && beats.length > 0) {
+        setStoryDialogue({
+          beats,
+          place: copy?.place ?? here ?? nodePlace(node),
+          title: copy?.title ?? node.title,
+        });
         return;
       }
-      setPlayer(r.state);
-      pushNotice(r.message);
+      completeStoryNode();
       return;
     }
     onStartChapterBattle();
@@ -134,7 +194,7 @@ export function HubScreen({
       enterCurrent();
       return;
     }
-    const place = nodePlace(stop.node);
+    const place = routeStopLabel(stop).place;
     if (stop.status === 'ahead') {
       pushNotice(`尚未抵达「${place}」。`);
       return;
@@ -178,44 +238,42 @@ export function HubScreen({
     pushNotice(`通关第 ${result.clearedFloor} 层，修为 +${result.gainedXiuwei}${dustBit}`);
   };
 
+  const ctaLabel = chapter.finished
+    ? ''
+    : !node
+      ? ''
+      : node.kind === 'battle' && chapterBattleWave && chapterBattleWave.waveTotal > 1
+        ? `开战 · ${chapterBattleWave.waveIndex + 1}/${chapterBattleWave.waveTotal} 场`
+        : node.kind === 'battle'
+          ? '开战'
+          : `进入 · ${here ?? '当前'}`;
+
   const storyPanel = (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/20 via-card/90 to-[#0e141c] p-4 sm:p-5">
-      <p className="font-mono text-[11px] tracking-[0.18em] text-primary/90">主线路程</p>
-      <h2 className="font-display mt-1 text-2xl tracking-wide sm:text-3xl">{chapterTitle}</h2>
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-stretch">
-        <ChapterRoute
-          ticks={route.ticks}
-          stops={route.stops}
-          finished={route.finished}
-          onSelect={onSelectStop}
-        />
-        <div className="flex min-w-0 flex-1 flex-col justify-between">
-          {here ? (
-            <p className="text-sm text-primary/90">此地 · {here}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">路程已尽</p>
-          )}
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-foreground/85">{blurb}</p>
-          {!chapter.finished && node?.kind === 'battle' ? (
-            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-              建议战力 {band.recommendedPower}
-              {deployedPower > 0 ? ` · 出战 ${deployedPower}` : ''}
-            </p>
-          ) : null}
-          {!chapter.finished && node ? (
-            <button
-              type="button"
-              onClick={enterCurrent}
-              className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-center font-medium text-primary-foreground shadow-lg shadow-primary/20 transition hover:brightness-110 sm:w-auto sm:min-w-[12rem]"
-            >
-              进入 · {here}
-            </button>
-          ) : (
-            <p className="mt-4 font-mono text-xs text-muted-foreground">主线已通关</p>
-          )}
-        </div>
-      </div>
-    </div>
+    <MainlineJourneyCard
+      player={player}
+      chapterTitle={chapterTitle}
+      chapterFinished={chapter.finished}
+      sectionTotal={playing?.nodes.length ?? route.stops.length}
+      sectionCurrent={chapter.nodeIndex + 1}
+      here={here}
+      blurb={blurb}
+      skinStub={skinStub}
+      battleWaveLine={
+        node?.kind === 'battle' && chapterBattleWave
+          ? formatChapterBattleWaveProgress(chapterBattleWave)
+          : null
+      }
+      recommendedPower={band.recommendedPower}
+      deployedPower={deployedPower}
+      showBattleMeta={!chapter.finished && node?.kind === 'battle'}
+      ctaLabel={ctaLabel}
+      onEnter={enterCurrent}
+      ticks={route.ticks}
+      stops={route.stops}
+      onSelectStop={onSelectStop}
+      labelForStop={routeStopLabel}
+      onMapNotice={pushNotice}
+    />
   );
 
   const playPanel = (
@@ -345,11 +403,13 @@ export function HubScreen({
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-3 pb-3 sm:space-y-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-5 lg:space-y-0">
-      <div className="space-y-3 lg:col-span-2">
-        <HubOnboarding />
-      </div>
+    <>
+    <div className="mx-auto w-full max-w-6xl space-y-3 pb-3 sm:space-y-3">
+      <HubOnboarding />
       {storyPanel}
+      {onOpenParallelRealWorld ? (
+        <ParallelRealWorldCard player={player} onOpen={onOpenParallelRealWorld} />
+      ) : null}
       {playPanel}
       {showMinePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -381,5 +441,15 @@ export function HubScreen({
         </div>
       )}
     </div>
+    {storyDialogue ? (
+      <MainlineStoryDialogue
+        place={storyDialogue.place}
+        title={storyDialogue.title}
+        heroName={heroName ?? '旅人'}
+        beats={storyDialogue.beats}
+        onComplete={completeStoryNode}
+      />
+    ) : null}
+    </>
   );
 }

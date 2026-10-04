@@ -2,6 +2,11 @@ import { equipItem } from '../equipment/equipment.js';
 import { migrateSeenItemIds } from '../equipment/unseen.js';
 import { canWearEquipment } from '../equipment/wear.js';
 import { defaultFormation, normalizeFormation } from '../formation/formation.js';
+import {
+  defaultNewNarrativeState,
+  migratedMainlineNarrative,
+} from '../narrative/onboarding.js';
+import { normalizePlayerNarrative } from '../narrative/narrativePreferences.js';
 import type { Equipment, EquipSlot, PlayerState, SaveAdapter } from '../shared/types.js';
 import {
   defaultCurrencies,
@@ -14,7 +19,13 @@ import { migrateZhongtuV16, REMOVED_FOREIGN_IDS } from './zhongtuMigrate.js';
 
 type LegacySave = Omit<Partial<PlayerState>, 'version'> & { version?: number };
 
-const SAVE_VERSION = 16 as const;
+const SAVE_VERSION = 18 as const;
+
+function normalizePlayerNarrativeOnLoad(
+  narrative: PlayerState['narrative'],
+): PlayerState['narrative'] {
+  return normalizePlayerNarrative(narrative) ?? narrative;
+}
 
 /** 旧占位卡 + 已下架国外 id；迁移时从 roster/formation 剔除 */
 const REMOVED_TEMPLATE_IDS = new Set([
@@ -32,6 +43,7 @@ function withStaminaDefaults(state: PlayerState, now = Date.now()): PlayerState 
     ...state,
     chapterCleared: state.chapterCleared ?? 0,
     chapterNodeIndex: state.chapterNodeIndex ?? 0,
+    chapterBattleWaveIndex: state.chapterBattleWaveIndex ?? 0,
     lastDailyClaimDay: state.lastDailyClaimDay,
     version: SAVE_VERSION,
   };
@@ -74,7 +86,9 @@ export function createInitialPlayer(seed = Date.now() % 1_000_000): PlayerState 
     staminaUpdatedAt: now,
     chapterCleared: 0,
     chapterNodeIndex: 0,
+    chapterBattleWaveIndex: 0,
     characterEquip: {},
+    narrative: defaultNewNarrativeState(),
   };
   return ensureRoster(base);
 }
@@ -186,6 +200,7 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       staminaUpdatedAt: loaded.staminaUpdatedAt ?? now,
       chapterCleared: Math.max(0, loaded.chapterCleared ?? 0),
       chapterNodeIndex: Math.max(0, loaded.chapterNodeIndex ?? 0),
+      chapterBattleWaveIndex: Math.max(0, loaded.chapterBattleWaveIndex ?? 0),
       lastDailyClaimDay:
         typeof loaded.lastDailyClaimDay === 'string' ? loaded.lastDailyClaimDay : undefined,
       characterEquip: (loaded as any).characterEquip ?? {},
@@ -197,6 +212,7 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       mineDay: (loaded as any).mineDay,
       mineExtraLimit: (loaded as any).mineExtraLimit,
       seenItemIds: migrateSeenItemIds(loaded as any),
+      narrative: normalizePlayerNarrativeOnLoad((loaded as PlayerState).narrative),
     };
     if (loadedVersion === 2) {
       migrated.currencies.xiuwei = Math.max(migrated.currencies.xiuwei ?? 0, 80);
@@ -245,6 +261,9 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
     }
     if ((loadedVersion ?? 0) < 16) {
       Object.assign(migrated, migrateZhongtuV16(migrated));
+    }
+    if ((loadedVersion ?? 0) < 17) {
+      migrated.narrative = migrated.narrative ?? migratedMainlineNarrative();
     }
     migrated.roster = pruneRoster(migrated.roster);
     // 迁移后若阵容被剔空，回默认

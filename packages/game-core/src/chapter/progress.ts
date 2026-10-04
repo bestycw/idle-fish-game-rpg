@@ -1,4 +1,9 @@
 import { getDungeon, type DungeonId } from '../dungeon/defs.js';
+import {
+  battleWavesForNode,
+  currentChapterBattleContext,
+  resetChapterBattleWave,
+} from './battleWaves.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import type { PlayerState } from '../shared/types.js';
 import {
@@ -13,6 +18,8 @@ import {
   type UnlockKind,
 } from './defs.js';
 import { formatUnlockSummary } from './unlockLabels.js';
+import { applyParallelReportAfterChapterClear } from '../narrative/applyParallelReport.js';
+import { applyParallelWorldAfterMainlineDefeat } from '../narrative/parallelWorldState.js';
 
 export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
 
@@ -152,19 +159,21 @@ function finishNode(state: PlayerState): {
   const nextIndex = view.nodeIndex + 1;
   if (nextIndex < ch.nodes.length) {
     return {
-      state: { ...state, chapterNodeIndex: nextIndex },
+      state: resetChapterBattleWave({ ...state, chapterNodeIndex: nextIndex }),
       clearedChapter: null,
       message: `完成「${view.node.title}」。`,
     };
   }
   const cleared = ch.order;
   const suffix = formatUnlockSummary(ch.unlocksOnClear);
+  let nextState: PlayerState = resetChapterBattleWave({
+    ...state,
+    chapterCleared: cleared,
+    chapterNodeIndex: 0,
+  });
+  nextState = applyParallelReportAfterChapterClear(nextState, cleared);
   return {
-    state: {
-      ...state,
-      chapterCleared: cleared,
-      chapterNodeIndex: 0,
-    },
+    state: nextState,
     clearedChapter: ch,
     message: [ `通关${ch.name}。`, suffix ].filter(Boolean).join(' ').trim(),
   };
@@ -187,7 +196,7 @@ export type CompleteBattleResult =
   | { ok: true; state: PlayerState; clearedChapter: ChapterDef | null; message: string }
   | { ok: false; message: string };
 
-/** 章节战斗胜利后调用（不发猎装掉落） */
+/** 章节战斗胜利后调用（不发猎装掉落）；跳过中间波次，直接完成节点 */
 export function completeChapterBattle(state: PlayerState): CompleteBattleResult {
   const view = getChapterView(state);
   if (view.finished || !view.node) {
@@ -196,17 +205,68 @@ export function completeChapterBattle(state: PlayerState): CompleteBattleResult 
   if (view.node.kind !== 'battle') {
     return { ok: false, message: '当前不是战斗节点。' };
   }
-  const done = finishNode(state);
+  const done = finishNode(resetChapterBattleWave(state));
   return { ok: true, ...done };
+}
+
+export type ResolveChapterBattleWinResult =
+  | {
+      ok: true;
+      state: PlayerState;
+      clearedChapter: ChapterDef | null;
+      message: string;
+      hasNextWave: boolean;
+    }
+  | { ok: false; message: string };
+
+/** 主线战斗单场胜利：有下一波则推进波次，否则完成 battle 节点 */
+export function resolveChapterBattleAfterWin(
+  state: PlayerState,
+): ResolveChapterBattleWinResult {
+  const view = getChapterView(state);
+  if (view.finished || !view.node) {
+    return { ok: false, message: '主线已全部通关。' };
+  }
+  if (view.node.kind !== 'battle') {
+    return { ok: false, message: '当前不是战斗节点。' };
+  }
+  const ctx = currentChapterBattleContext(state);
+  if (!ctx) {
+    return { ok: false, message: '无法解析当前遭遇。' };
+  }
+  const waves = battleWavesForNode(view.node);
+  const nextWave = ctx.waveIndex + 1;
+  if (nextWave < ctx.waveTotal) {
+    const nextDef = waves[nextWave];
+    const label = nextDef?.label?.trim();
+    return {
+      ok: true,
+      state: { ...state, chapterBattleWaveIndex: nextWave },
+      clearedChapter: null,
+      hasNextWave: true,
+      message: label
+        ? `前锋已破。下一阵：${label}。`
+        : `第 ${nextWave + 1}/${ctx.waveTotal} 波敌军压上。`,
+    };
+  }
+  const done = finishNode(resetChapterBattleWave(state));
+  return { ok: true, ...done, hasNextWave: false };
+}
+
+/** 主线战斗败北：波次从头再来 + 平行原世界小幅反噬 */
+export function chapterBattleAfterDefeat(state: PlayerState): PlayerState {
+  const ctx = currentChapterBattleContext(state);
+  const reset = resetChapterBattleWave(state);
+  return applyParallelWorldAfterMainlineDefeat(reset, ctx);
 }
 
 /** 当前章节战斗对应 ENCOUNTERS 下标；非战斗节点返回 null */
 export function currentChapterEncounterIndex(state: PlayerState): number | null {
-  const view = getChapterView(state);
-  if (!view.node || view.node.kind !== 'battle' || !view.node.encounterId) return null;
-  const idx = ENCOUNTERS.findIndex((e) => e.id === view.node!.encounterId);
-  return idx >= 0 ? idx : null;
+  const ctx = currentChapterBattleContext(state);
+  return ctx?.encounterIndex ?? null;
 }
+
+export { currentChapterBattleContext } from './battleWaves.js';
 
 /** 猎装本遭遇池：只保留已解锁 encounter */
 export function filterEncounterPool(state: PlayerState, pool: string[]): string[] {

@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 1,
+  "preset": "xianxia",
+  "volumeId": "vol1",
+  "worldSkinNames": {
+    "towns": {
+      "town_outer": "云栈渡",
+      "town_midland": "灵墟坊",
+      "town_marches": "天阙城",
+      "town_fortress": "劫域关"
+    },
+    "locations": {
+      "loc_gate": "界域关隘",
+      "loc_forest": "迷瘴林",
+      "loc_highland": "试剑台",
+      "loc_camp": "灵石营",
+      "loc_wastes": "劫灰原",
+      "loc_rest": "望劫亭",
+      "loc_pass": "二重天阙",
+      "loc_inner": "内府秘径",
+      "loc_hall": "传功殿",
+      "loc_boss_gate": "劫域门"
+    },
+    "npcs": {
+      "npc_handler": "谢鸣桡",
+      "npc_rival": "韩承夜",
+      "npc_elder": "柳望虚",
+      "npc_merchant": "苏衔青",
+      "npc_turncoat": "莫隐舟"
+    },
+    "npcEpithets": {
+      "npc_handler": "引路执事",
+      "npc_rival": "同门真传",
+      "npc_elder": "传功长老",
+      "npc_merchant": "游方丹师",
+      "npc_turncoat": "蒙面弟子"
+    }
+  },
+  "logline": "散修{{heroName}}自云栈渡记名入局，十关试炼里与同门争席、与劫域照面——破阵是术，守心才是卷一之核。",
+  "toneNotes": "短句见锋，少玄虚大段；speaker 用人名；战斗多波=引擎 defs 默认，Skill 不写波次；battle blurb 仅扣 prepHint；choice 仅 ch1/ch6/ch8 三处。",
+  "recurringMotifs": ["记名符/行迹", "传功席次", "守心", "盾墙→切后→换阵"],
+  "npcRelationships": [
+    { "slot": "npc_handler", "stance": "谢鸣桡：规矩与复盘，不替你看门后" },
+    { "slot": "npc_rival", "stance": "韩承夜：席次与剑意，压迫但不脸谱恶" },
+    { "slot": "npc_elder", "stance": "柳望虚：阶段目标，半程按住追问" },
+    { "slot": "npc_merchant", "stance": "苏衔青：资源与换阵，市侩但有分寸" },
+    { "slot": "npc_turncoat", "stance": "莫隐舟：暗线递诀，来路不明" }
+  ],
+  "chapters": [
+    {
+      "chapterId": "ch1",
+      "beatTitle": "入局",
+      "primaryTownId": "town_outer",
+      "primaryLocationId": "loc_gate",
+      "npcSlotIds": ["npc_handler"],
+      "callbackBeatTitle": null,
+      "hookForNext": "threat",
+      "dramaticGoal": "立规矩：盾墙=守序第一课；埋韩承夜争席。",
+      "emotion": "压境、谨慎、一点不服",
+      "mustMention": ["云栈渡", "界域关隘", "谢鸣桡", "盾墙", "记名符"],
+      "nodes": {
+        "ch1_n1": {
+          "kind": "story",
+          "brief": "谢鸣桡交符立规；点出韩承夜已在册；主角接盾墙第一课"
+        },
+        "ch1_n2": {
+          "kind": "battle",
+          "brief": "wall：破甲磨盾，谢鸣桡旁观不计分",
+          "encounterId": "wall"
+        },
+        "ch1_n3": {
+          "kind": "story",
+          "brief": "初战歇；指迷瘴林；明日韩承夜争席；守心二字落地"
+        }
+      }
+    },
+    {
+      "chapterId": "ch2",
+      "beatTitle": "初规",
+      "primaryTownId": "town_outer",
+      "primaryLocationId": "loc_forest",
+      "npcSlotIds": ["npc_rival", "npc_handler"],
+      "callbackBeatTitle": "入局",
+      "hookForNext": "threat",
+      "dramaticGoal": "rival 施压+分兵诱；呼应入局规矩。",
+      "emotion": "被看轻、克制",
+      "mustMention": ["入局", "云栈渡", "迷瘴林", "韩承夜", "谢鸣桡", "分兵"],
+      "nodes": {
+        "ch2_n1": {
+          "kind": "story",
+          "brief": "韩承夜侧翼挑衅；谢鸣桡敲分兵戒；记名符仍温"
+        },
+        "ch2_n2": {
+          "kind": "battle",
+          "brief": "raiders：速攻控场，考阵脚",
+          "encounterId": "raiders"
+        }
+      }
+    },
+    {
+      "chapterId": "ch3",
+      "beatTitle": "远锋",
+      "primaryTownId": "town_midland",
+      "primaryLocationId": "loc_highland",
+      "npcSlotIds": ["npc_elder"],
+      "callbackBeatTitle": "初规",
+      "hookForNext": "cost",
+      "dramaticGoal": "远锋=后排箭雨；证破阵不只近身。",
+      "emotion": "被点名、争一口气",
+      "mustMention": ["初规", "灵墟坊", "试剑台", "柳望虚", "箭雨"],
+      "nodes": {
+        "ch3_n1": {
+          "kind": "story",
+          "brief": "柳望虚立远锋约；玩家选近身/切后态度；韩承夜观台"
+        },
+        "ch3_n2": {
+          "kind": "battle",
+          "brief": "archers：先撕前排否则后排点杀",
+          "encounterId": "archers"
+        }
+      }
+    },
+    {
+      "chapterId": "ch4",
+      "beatTitle": "整备",
+      "primaryTownId": "town_midland",
+      "primaryLocationId": "loc_camp",
+      "npcSlotIds": ["npc_elder", "npc_merchant"],
+      "callbackBeatTitle": "远锋",
+      "hookForNext": "clue",
+      "dramaticGoal": "名册投影；阶段目标；换阵与资源。",
+      "emotion": "疲惫、务实",
+      "mustMention": ["远锋", "灵墟坊", "灵石营", "柳望虚", "苏衔青", "换阵"],
+      "nodes": {
+        "ch4_n1": {
+          "kind": "story",
+          "brief": "柳望虚开名册；苏衔青兜售回气换阵；主角问信誉"
+        },
+        "ch4_n2": {
+          "kind": "battle",
+          "brief": "wall：验构筑，同一法门三番",
+          "encounterId": "wall"
+        }
+      }
+    },
+    {
+      "chapterId": "ch5",
+      "beatTitle": "高压",
+      "primaryTownId": "town_marches",
+      "primaryLocationId": "loc_wastes",
+      "npcSlotIds": ["npc_rival"],
+      "callbackBeatTitle": "整备",
+      "hookForNext": "cost",
+      "dramaticGoal": "轮换加压；道心信誉受损感。",
+      "emotion": "焦灼",
+      "mustMention": ["整备", "天阙城", "劫灰原", "韩承夜", "信誉"],
+      "nodes": {
+        "ch5_n1": {
+          "kind": "story",
+          "brief": "劫灰原前韩承夜施压；玩家选硬扛/换阵/暂避（Flavor）"
+        },
+        "ch5_n2": {
+          "kind": "battle",
+          "brief": "raiders：轮换加压，道心信誉",
+          "encounterId": "raiders"
+        }
+      }
+    },
+    {
+      "chapterId": "ch6",
+      "beatTitle": "半程",
+      "primaryTownId": "town_marches",
+      "primaryLocationId": "loc_rest",
+      "npcSlotIds": ["npc_handler", "npc_elder"],
+      "callbackBeatTitle": "高压",
+      "hookForNext": "arrival",
+      "dramaticGoal": "复盘前半；不许揭劫域底。",
+      "emotion": "惘然、被按住",
+      "mustMention": ["高压", "天阙城", "望劫亭", "谢鸣桡", "柳望虚", "卷途尚半"],
+      "nodes": {
+        "ch6_n1": {
+          "kind": "story",
+          "brief": "谢鸣桡复盘行迹；主角问劫域门后；柳望虚：卷途尚半"
+        },
+        "ch6_n2": {
+          "kind": "battle",
+          "brief": "shield_stack：余波非卷终，二重天阙将开",
+          "encounterId": "shield_stack"
+        }
+      }
+    },
+    {
+      "chapterId": "ch7",
+      "beatTitle": "开门",
+      "primaryTownId": "town_marches",
+      "primaryLocationId": "loc_pass",
+      "npcSlotIds": ["npc_handler", "npc_merchant"],
+      "callbackBeatTitle": "半程",
+      "hookForNext": "clue",
+      "dramaticGoal": "新关规；旧法不够。",
+      "emotion": "换新、险",
+      "mustMention": ["半程", "天阙城", "二重天阙", "谢鸣桡", "苏衔青"],
+      "nodes": {
+        "ch7_n1": {
+          "kind": "story",
+          "brief": "谢鸣桡述新关规；苏衔青最后一炉丹；旧法不够"
+        },
+        "ch7_n2": {
+          "kind": "battle",
+          "brief": "spirit_wall：门线守阵，物防极高",
+          "encounterId": "spirit_wall"
+        }
+      }
+    },
+    {
+      "chapterId": "ch8",
+      "beatTitle": "暗线",
+      "primaryTownId": "town_fortress",
+      "primaryLocationId": "loc_inner",
+      "npcSlotIds": ["npc_turncoat", "npc_rival"],
+      "callbackBeatTitle": "开门",
+      "hookForNext": "threat",
+      "dramaticGoal": "莫隐舟递诀；韩承夜试心镜。",
+      "emotion": "疑、忍",
+      "mustMention": ["开门", "劫域关", "内府秘径", "莫隐舟", "韩承夜", "暗线"],
+      "nodes": {
+        "ch8_n1": {
+          "kind": "story",
+          "brief": "半页心诀来路不明；韩承夜：先揭底者出局"
+        },
+        "ch8_n2": {
+          "kind": "battle",
+          "brief": "chaos_rite：试心镜，为暗线不为席次",
+          "encounterId": "chaos_rite"
+        }
+      }
+    },
+    {
+      "chapterId": "ch9",
+      "beatTitle": "集结",
+      "primaryTownId": "town_fortress",
+      "primaryLocationId": "loc_hall",
+      "npcSlotIds": ["npc_elder", "npc_handler"],
+      "callbackBeatTitle": "暗线",
+      "hookForNext": "threat",
+      "dramaticGoal": "齐名册；破门令；不齐不出殿。",
+      "emotion": "紧、同袍感",
+      "mustMention": ["暗线", "劫域关", "传功殿", "柳望虚", "谢鸣桡", "劫域门"],
+      "nodes": {
+        "ch9_n1": {
+          "kind": "story",
+          "brief": "柳望虚破门令；谢鸣桡核记名；韩承夜收剑意"
+        },
+        "ch9_n2": {
+          "kind": "battle",
+          "brief": "oil_cask：殿前前哨，禁疗/斩杀提示",
+          "encounterId": "oil_cask"
+        }
+      }
+    },
+    {
+      "chapterId": "ch10",
+      "beatTitle": "卷终",
+      "primaryTownId": "town_fortress",
+      "primaryLocationId": "loc_boss_gate",
+      "npcSlotIds": ["npc_elder", "npc_rival"],
+      "callbackBeatTitle": "集结",
+      "hookForNext": "none",
+      "dramaticGoal": "劫域门前一破；问心 hook 下一卷。",
+      "emotion": "燃、暂歇",
+      "mustMention": ["集结", "劫域关", "劫域门", "柳望虚", "韩承夜"],
+      "nodes": {
+        "ch10_n1": {
+          "kind": "story",
+          "brief": "柳望虚与韩承夜同场；主角为记名符之光而战"
+        },
+        "ch10_n2": {
+          "kind": "battle",
+          "brief": "boss_warden：卷内主劫一破，暂歇 hook",
+          "encounterId": "boss_warden"
+        }
+      }
+    }
+  ]
+}

@@ -14,6 +14,12 @@ export interface ContentUnlock {
 
 export type ChapterNodeKind = 'story' | 'battle';
 
+/** 同一 battle 节点内连战；全胜才推进 node */
+export interface BattleWaveDef {
+  encounterId: string;
+  label?: string;
+}
+
 export interface ChapterNodeDef {
   id: string;
   kind: ChapterNodeKind;
@@ -22,8 +28,10 @@ export interface ChapterNodeDef {
   place: string;
   /** 占位文案；故事皮可后换 */
   blurb: string;
-  /** battle：EncounterDef.id */
+  /** battle 单波（与 battleWaves 二选一，waves 优先） */
   encounterId?: string;
+  /** battle 多波（引擎默认表 · 非 Skill） */
+  battleWaves?: BattleWaveDef[];
 }
 
 export function nodePlace(node: Pick<ChapterNodeDef, 'place' | 'title'>): string {
@@ -60,7 +68,7 @@ export const START_UNLOCKS: ContentUnlock[] = [
 ];
 
 /**
- * 主线章表。V1：6 章占位；文案可换，结构与解锁要真实。
+ * 主线章表。卷一：10 章；文案可换，结构与解锁要真实。
  * 示例：第 1 章清完开 `raiders`；第 2 章开 `baigujing`。改解锁只改本表。
  */
 export const CHAPTERS: ChapterDef[] = [
@@ -83,14 +91,32 @@ export const CHAPTERS: ChapterDef[] = [
         title: '初战盾墙',
         place: '盾墙关隘',
         blurb: '盾阵压上，先破前排再谈速攻。',
-        encounterId: 'wall',
+        battleWaves: [
+          { encounterId: 'gate_skirmish', label: '前锋' },
+          { encounterId: 'wall', label: '盾墙' },
+        ],
       },
       {
         id: 'ch1_n3',
         kind: 'story',
         title: '落脚',
         place: '关外营地',
-        blurb: '营火渐起。初战落定后，更乱的阵脚还在林道那头等着。',
+        blurb: '营火渐起。盾墙既破，关丁让出箭道，有人提醒你别在关前久留。',
+      },
+      {
+        id: 'ch1_n4',
+        kind: 'battle',
+        title: '箭道试锋',
+        place: '关外箭道',
+        blurb: '关隘侧翼弓手试射，练切后排与护阵。',
+        encounterId: 'archers',
+      },
+      {
+        id: 'ch1_n5',
+        kind: 'story',
+        title: '记名落定',
+        place: '关外营地',
+        blurb: '记名符亮了一线。接引者点明：下一程是林道，同辈不会等你。',
       },
     ],
     unlocksOnClear: [
@@ -119,6 +145,36 @@ export const CHAPTERS: ChapterDef[] = [
         blurb: '高机动切入，备好治疗与坦克换位。',
         encounterId: 'raiders',
       },
+      {
+        id: 'ch2_n3',
+        kind: 'story',
+        title: '分兵疑云',
+        place: '林道岔口',
+        blurb: '伏兵退去，留下乱阵脚印。同辈在远处冷笑：你跟不跟得上节奏？',
+      },
+      {
+        id: 'ch2_n4',
+        kind: 'battle',
+        title: '祭纹余波',
+        place: '林中空场',
+        blurb: '乱心祭纹未散，控场与净化要跟上。',
+        encounterId: 'chaos_rite',
+      },
+      {
+        id: 'ch2_n5',
+        kind: 'story',
+        title: '林尽见台',
+        place: '林道出口',
+        blurb: '林尽处高台在望。远矢之约，从下一章开始算数。',
+      },
+      {
+        id: 'ch2_n6',
+        kind: 'battle',
+        title: '出口戒严',
+        place: '林道出口',
+        blurb: '出口戒严，最后一阵速攻试探。',
+        encounterId: 'raiders',
+      },
     ],
     unlocksOnClear: [
       { kind: 'dungeon', id: 'abyss_mirror' },
@@ -137,11 +193,40 @@ export const CHAPTERS: ChapterDef[] = [
     nodes: [
       {
         id: 'ch3_n1',
+        kind: 'story',
+        title: '远锋立约',
+        place: '试剑台',
+        blurb: '高台风硬，长老立约：破远锋，才谈传功序。',
+      },
+      {
+        id: 'ch3_n2',
         kind: 'battle',
         title: '弓阵',
-        place: '远矢高台',
-        blurb: '占位：切开后排。',
+        place: '试剑台',
+        blurb: '箭雨压阵，切后排或护阵二选一。',
         encounterId: 'archers',
+      },
+      {
+        id: 'ch3_n3',
+        kind: 'story',
+        title: '弦歇一刻',
+        place: '试剑台侧',
+        blurb: '弓阵既破，有人递话：营地那头需要整备，别在高台耗干力气。',
+      },
+      {
+        id: 'ch3_n4',
+        kind: 'battle',
+        title: '盾墙回测',
+        place: '台下山道',
+        blurb: '盾墙再阵，检验近身破阵是否稳固。',
+        encounterId: 'wall',
+      },
+      {
+        id: 'ch3_n5',
+        kind: 'story',
+        title: '远锋记名',
+        place: '试剑台',
+        blurb: '约成。名册上多了你一笔，也多了对手一笔。',
       },
     ],
     unlocksOnClear: [
@@ -160,15 +245,37 @@ export const CHAPTERS: ChapterDef[] = [
         kind: 'story',
         title: '整备',
         place: '中途营地',
-        blurb: '卡关时：看八题战前提示 → 猎装刷量 / 镜渊对症 T3，再改阵挑战。',
+        blurb: '营火边整备：看战前提示 → 猎装/镜渊补缺口，再改阵。',
       },
       {
         id: 'ch4_n2',
         kind: 'battle',
         title: '再战盾墙',
         place: '盾墙回廊',
-        blurb: '占位：检验构筑。',
+        blurb: '构筑检验战，前排压力复现。',
         encounterId: 'wall',
+      },
+      {
+        id: 'ch4_n3',
+        kind: 'story',
+        title: '名册投影',
+        place: '灵石营',
+        blurb: '长老提及名册投影：能打的兄弟，要在阵上才算数。',
+      },
+      {
+        id: 'ch4_n4',
+        kind: 'battle',
+        title: '叠盾演武',
+        place: '营外校场',
+        blurb: '叠盾阵脚专打破甲节奏。',
+        encounterId: 'shield_stack',
+      },
+      {
+        id: 'ch4_n5',
+        kind: 'story',
+        title: '阶段目标',
+        place: '中途营地',
+        blurb: '阶段目标落下：再往前，劫灰原不会跟你讲情面。',
       },
     ],
     unlocksOnClear: [
@@ -183,11 +290,40 @@ export const CHAPTERS: ChapterDef[] = [
     nodes: [
       {
         id: 'ch5_n1',
+        kind: 'story',
+        title: '灰原前夜',
+        place: '劫灰原',
+        blurb: '劫灰原上风如刀，同辈放话：席次之争，从这里算硬场。',
+      },
+      {
+        id: 'ch5_n2',
         kind: 'battle',
         title: '乱战',
-        place: '高压乱原',
-        blurb: '占位：速攻再临。',
+        place: '劫灰原',
+        blurb: '速攻再临，阵脚一乱就满盘皆输。',
         encounterId: 'raiders',
+      },
+      {
+        id: 'ch5_n3',
+        kind: 'story',
+        title: '灰中喘息',
+        place: '劫灰原',
+        blurb: '乱战方歇，远处灵障光晕起伏，像有人在门后调阵。',
+      },
+      {
+        id: 'ch5_n4',
+        kind: 'battle',
+        title: '灵障试压',
+        place: '原边灵障',
+        blurb: '灵障盾阵抬高承伤，考验持续输出。',
+        encounterId: 'spirit_wall',
+      },
+      {
+        id: 'ch5_n5',
+        kind: 'story',
+        title: '高压记取',
+        place: '劫灰原',
+        blurb: '你撑过高压一段，但卷中点尚远——半程歇点在前。',
       },
     ],
     unlocksOnClear: [
@@ -197,28 +333,260 @@ export const CHAPTERS: ChapterDef[] = [
   {
     id: 'ch6',
     order: 6,
-    name: '第六章 · 暂歇',
-    blurb: '占位：本线告一段落。',
+    name: '第六章 · 半程',
+    blurb: '卷中回望，前半威胁未除。',
     nodes: [
       {
         id: 'ch6_n1',
         kind: 'story',
         title: '回望',
-        place: '暂歇台',
-        blurb: '占位：主线骨架走完；后续章可继续往本表加。',
+        place: '半程歇点',
+        blurb: '半程歇点，前半得失落定；真正的门还在后面。',
       },
       {
         id: 'ch6_n2',
         kind: 'battle',
-        title: '终阵',
-        place: '镇守深门',
-        blurb: '占位：最后一场。',
-        encounterId: 'boss_warden',
+        title: '余波',
+        place: '歇点外缘',
+        blurb: '卷中战，叠盾余波，非卷终。',
+        encounterId: 'shield_stack',
+      },
+      {
+        id: 'ch6_n3',
+        kind: 'story',
+        title: '半程抉择',
+        place: '望劫亭',
+        blurb: '关键 story：你选先稳平行线，还是先破眼前阵？（只改语气）',
+      },
+      {
+        id: 'ch6_n4',
+        kind: 'battle',
+        title: '丹炉油阵',
+        place: '亭外油道',
+        blurb: '油阵灼场，走位与净化要跟上。',
+        encounterId: 'oil_cask',
+      },
+      {
+        id: 'ch6_n5',
+        kind: 'story',
+        title: '再启行程',
+        place: '半程歇点',
+        blurb: '歇足再发，第二关隘在望，规则将与关外不同。',
+      },
+      {
+        id: 'ch6_n6',
+        kind: 'battle',
+        title: '亭前试刃',
+        place: '望劫亭前',
+        blurb: '卷中最后一练，叠盾与破甲节奏再验。',
+        encounterId: 'shield_stack',
+      },
+      {
+        id: 'ch6_n7',
+        kind: 'story',
+        title: '半程落定',
+        place: '望劫亭',
+        blurb: '半程落定。门线在前，暗线在后。',
       },
     ],
     unlocksOnClear: [
       ...gachaUnlocks(...expandIdsByUnlock('ch6')),
     ],
+  },
+  {
+    id: 'ch7',
+    order: 7,
+    name: '第七章 · 开门',
+    blurb: '第二关隘打开，路线更深。',
+    nodes: [
+      {
+        id: 'ch7_n1',
+        kind: 'story',
+        title: '过关',
+        place: '第二关隘',
+        blurb: '第二关隘开启，新区域规则不同，旧经验不够用了。',
+      },
+      {
+        id: 'ch7_n2',
+        kind: 'battle',
+        title: '门线',
+        place: '关隘线',
+        blurb: '灵障守门，先破盾再谈深入。',
+        encounterId: 'spirit_wall',
+      },
+      {
+        id: 'ch7_n3',
+        kind: 'story',
+        title: '关内换律',
+        place: '二重天阙',
+        blurb: '入关后第一条律：内层回廊不认关外的侥幸。',
+      },
+      {
+        id: 'ch7_n4',
+        kind: 'battle',
+        title: '弓线再压',
+        place: '关内箭楼',
+        blurb: '远矢再压，后排威胁回归。',
+        encounterId: 'archers',
+      },
+      {
+        id: 'ch7_n5',
+        kind: 'story',
+        title: '深线已开',
+        place: '第二关隘',
+        blurb: '门线既过，暗线将在内层露头。',
+      },
+    ],
+    unlocksOnClear: [],
+  },
+  {
+    id: 'ch8',
+    order: 8,
+    name: '第八章 · 暗线',
+    blurb: '内层有第二套说法。',
+    nodes: [
+      {
+        id: 'ch8_n1',
+        kind: 'story',
+        title: '疑线',
+        place: '内层回廊',
+        blurb: '蒙面弟子一闪而过，线索露头，不揭底。',
+      },
+      {
+        id: 'ch8_n2',
+        kind: 'battle',
+        title: '暗涌',
+        place: '内层狭场',
+        blurb: '乱心祭坛余波，控场与爆发要取舍。',
+        encounterId: 'chaos_rite',
+      },
+      {
+        id: 'ch8_n3',
+        kind: 'story',
+        title: '暗线抉择',
+        place: '内府秘径',
+        blurb: '关键 story：信接引，还是信自己的判断？（只改语气）',
+      },
+      {
+        id: 'ch8_n4',
+        kind: 'battle',
+        title: '侧翼再切',
+        place: '秘径狭口',
+        blurb: '速攻侧切，保护后排。',
+        encounterId: 'raiders',
+      },
+      {
+        id: 'ch8_n5',
+        kind: 'story',
+        title: '线头暂存',
+        place: '内层回廊',
+        blurb: '疑线暂存心底，传功殿的集结令已在路上。',
+      },
+    ],
+    unlocksOnClear: [],
+  },
+  {
+    id: 'ch9',
+    order: 9,
+    name: '第九章 · 集结',
+    blurb: '卷末前夜，目标锁在门上。',
+    nodes: [
+      {
+        id: 'ch9_n1',
+        kind: 'story',
+        title: '集结',
+        place: '集结厅',
+        blurb: '传功殿内集结，名册齐整，总攻布置落下。',
+      },
+      {
+        id: 'ch9_n2',
+        kind: 'battle',
+        title: '前哨',
+        place: '门前哨',
+        blurb: '卷终前哨战，油阵与走位。',
+        encounterId: 'oil_cask',
+      },
+      {
+        id: 'ch9_n3',
+        kind: 'story',
+        title: '门前夜话',
+        place: '传功殿',
+        blurb: '最后一夜，长老只问一句：阵可稳否？',
+      },
+      {
+        id: 'ch9_n4',
+        kind: 'battle',
+        title: '盾墙终练',
+        place: '殿前校场',
+        blurb: '盾墙终练，为守门战热阵。',
+        encounterId: 'wall',
+      },
+      {
+        id: 'ch9_n5',
+        kind: 'story',
+        title: '劫域在望',
+        place: '集结厅',
+        blurb: '劫域门在望，守门战明日即开。',
+      },
+      {
+        id: 'ch9_n6',
+        kind: 'battle',
+        title: '门前演练',
+        place: '劫域门外',
+        blurb: '门前最后一练，灵障与油阵轮换。',
+        encounterId: 'spirit_wall',
+      },
+    ],
+    unlocksOnClear: [],
+  },
+  {
+    id: 'ch10',
+    order: 10,
+    name: '第十章 · 卷终',
+    blurb: '卷一守门决战。',
+    nodes: [
+      {
+        id: 'ch10_n1',
+        kind: 'story',
+        title: '门前',
+        place: '卷末门',
+        blurb: '劫域门前，卷内主威胁在此一决；下一卷另开。',
+      },
+      {
+        id: 'ch10_n2',
+        kind: 'battle',
+        title: '门线清扫',
+        place: '劫域门外',
+        blurb: '守门战前清扫，灵障与前锋连战。',
+        battleWaves: [
+          { encounterId: 'gate_skirmish', label: '前锋' },
+          { encounterId: 'spirit_wall', label: '灵障' },
+        ],
+      },
+      {
+        id: 'ch10_n3',
+        kind: 'story',
+        title: '破门一刻',
+        place: '劫域门',
+        blurb: '门缝里泄出的劫息，像在称量你的阵。',
+      },
+      {
+        id: 'ch10_n4',
+        kind: 'battle',
+        title: '卷终',
+        place: '镇守门内',
+        blurb: '卷 BOSS 守门战，集火与禁疗要算清楚。',
+        encounterId: 'boss_warden',
+      },
+      {
+        id: 'ch10_n5',
+        kind: 'story',
+        title: '卷一收束',
+        place: '劫域门',
+        blurb: '卷一在此收束。猎装、塔与八题仍可精进；卷二将另开。',
+      },
+    ],
+    unlocksOnClear: [],
   },
 ];
 

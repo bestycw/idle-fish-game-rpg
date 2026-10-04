@@ -3,6 +3,8 @@ import {
   battlePressure,
   buildPlayerParty,
   createBattle,
+  createBattleDisplayOpts,
+  currentChapterBattleContext,
   getDungeon,
   getEncounterModifier,
   getFormationResonance,
@@ -61,6 +63,7 @@ function buildPreview(
   return createBattle(party, battleSeed(player, config.kind), encounterIndex, {
     pressure: battlePressureFor(player, config.kind, config.dungeonId),
     rollEncounterModifiers: true,
+    ...createBattleDisplayOpts(player, encounterIndex),
   });
 }
 
@@ -74,6 +77,12 @@ export function BattlePrepScreen({
 }: BattlePrepScreenProps) {
   const encounter = ENCOUNTERS[config.encounterIndex];
   const partyCount = Object.keys(player.formation).length;
+  const chapterWave =
+    config.kind === 'chapter' ? currentChapterBattleContext(player) : null;
+  const encounterDisplayName = encounter
+    ? createBattleDisplayOpts(player, config.encounterIndex).encounterDisplayName ??
+      encounter.name
+    : '';
 
   const preview = useMemo(
     () => (encounter ? buildPreview(player, config, config.encounterIndex) : null),
@@ -94,6 +103,12 @@ export function BattlePrepScreen({
     config.kind === 'dungeon' ? staminaCostForDungeon(config.dungeonId) : 0;
   const dungeonLabel =
     config.kind === 'chapter' ? '主线战斗' : getDungeon(config.dungeonId).name;
+  const waveBadge =
+    chapterWave && chapterWave.waveTotal > 1
+      ? ` · 第 ${chapterWave.waveIndex + 1}/${chapterWave.waveTotal} 波${
+          chapterWave.waveLabel ? `「${chapterWave.waveLabel}」` : ''
+        }`
+      : '';
 
   const canStart = Boolean(preview && partyCount > 0);
 
@@ -116,14 +131,17 @@ export function BattlePrepScreen({
         >
           ← 返回
         </button>
-        <span className="font-mono text-[10px] text-muted-foreground">{dungeonLabel}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {dungeonLabel}
+          {waveBadge}
+        </span>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(0,1fr)] gap-2 overflow-hidden pt-0.5">
         <div className="shrink-0 space-y-2.5 overflow-hidden">
           <BattlePrepBrief
             encounterId={encounter.id}
-            encounterName={encounter.name}
+            encounterName={encounterDisplayName}
             modifierLabels={modifierNames}
             resonanceLabels={resonanceNames}
             prepHint={encounter.prepHint}

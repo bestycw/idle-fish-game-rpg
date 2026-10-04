@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "preset": "cyberpunk",
+  "volumeId": "vol1",
+  "worldSkinNamesRef": "cyberpunk.overlay.json",
+  "questIdRegistry": [],
+  "quests": {}
+}

@@ -1297,6 +1297,10 @@ export type CreateBattleOpts = {
   encounterModifierIds?: string[];
   /** 未传 ids 时用 seed 掷词缀（约 65% 无、35% 有 1 条） */
   rollEncounterModifiers?: boolean;
+  /** 世界观换皮：战前/日志遭遇标题 */
+  encounterDisplayName?: string;
+  /** 世界观换皮：按敌人下标覆盖显示名 */
+  enemyDisplayNames?: string[];
 };
 
 export function createBattle(
@@ -1307,7 +1311,13 @@ export function createBattle(
 ): BattleState {
   const pressure = opts.pressure ?? 1;
   const encounter = ENCOUNTERS[encounterIndex % ENCOUNTERS.length]!;
-  const enemies = encounter.enemies.map((spec, i) => enemyFromSpec(spec, i, pressure));
+  const enemies = encounter.enemies.map((spec, i) => {
+    const unit = enemyFromSpec(spec, i, pressure);
+    const skin = opts.enemyDisplayNames?.[i];
+    if (skin) unit.name = skin;
+    return unit;
+  });
+  const encounterLabel = opts.encounterDisplayName ?? encounter.name;
 
   const state: BattleState = {
     turn: 1,
@@ -1342,7 +1352,7 @@ export function createBattle(
       opts.encounterModifierIds ??
       (opts.rollEncounterModifiers ? rollEncounterModifiers(_seed) : []),
   };
-  state.log.push(`遭遇【${encounter.name}】，开战。`);
+  state.log.push(`遭遇【${encounterLabel}】，开战。`);
   for (const line of modifierLogLines(resolveEncounterModifiers(state.encounterModifierIds ?? []))) {
     state.log.push(line);
   }

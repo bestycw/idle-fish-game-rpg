@@ -5,6 +5,7 @@ import { getSkill } from '../character/skills.js';
 import { createUnitFromTemplate, getTemplate } from '../character/index.js';
 import { buildPlayerParty } from '../formation/formation.js';
 import { createInitialPlayer } from '../save/player.js';
+import { ENCOUNTERS } from '../dungeon/encounters.js';
 import { ratingToPct } from './ratings.js';
 import { createRng } from '../shared/rng.js';
 import {
@@ -430,7 +431,9 @@ describe('combat enrichment', () => {
     assert.equal(party.length, 5);
     assert.ok(party.some((u) => u.templateId === 'wukong'));
     assert.equal(party.some((u) => u.templateId === 'baigujing'), false);
-    let battle = createBattle(party, 42, 0);
+    const wallIdx = ENCOUNTERS.findIndex((e) => e.id === 'wall');
+    assert.ok(wallIdx >= 0);
+    let battle = createBattle(party, 42, wallIdx);
     assert.equal(battle.encounterId, 'wall');
     battle = runAutoBattle(battle, 42);
     assert.notEqual(battle.status, 'ongoing');
