@@ -90,7 +90,7 @@ export function GameShell({
           aria-live="polite"
           aria-label="关闭提示"
           onClick={() => onDismissNotice?.()}
-          className="fixed inset-0 z-[60] flex cursor-default items-center justify-center bg-black/45 px-5 backdrop-blur-[2px] sm:px-8"
+          className="fixed inset-0 z-[55] flex cursor-default items-center justify-center bg-black/45 px-5 backdrop-blur-[2px] sm:px-8"
         >
           <div
             role="status"

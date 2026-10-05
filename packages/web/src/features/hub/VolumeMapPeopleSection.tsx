@@ -138,24 +138,23 @@ export function VolumeMapPeopleSection({
           ) : null}
         </p>
 
-        <div
-          className="max-h-[5.5rem] overflow-y-auto overflow-x-hidden pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]"
-          role="list"
+        <ul
+          className="flex max-h-[5.5rem] list-none flex-wrap gap-1 overflow-y-auto overflow-x-hidden p-0 pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]"
           aria-label={`${people.length} 位可交谈人物`}
         >
-          <div className="flex flex-wrap gap-1">
-            {people.map((person) => {
-              const kind = personKind(person);
-              const hub = personHub(person);
-              const name = personName(person);
-              const epithet = personEpithet(person);
-              const locked = hub?.kind === 'merchant' && hub.merchantShell?.locked;
+          {people.map((person) => {
+            const kind = personKind(person);
+            const hub = personHub(person);
+            const name = personName(person);
+            const epithet = personEpithet(person);
+            const locked = hub?.kind === 'merchant' && hub.merchantShell?.locked;
+            const aria = epithet ? `与${name}交谈，${epithet}` : `与${name}交谈`;
 
-              return (
+            return (
+              <li key={person.key} className="max-w-full">
                 <button
-                  key={person.key}
                   type="button"
-                  role="listitem"
+                  aria-label={aria}
                   title={epithet ? `${name} · ${epithet}` : name}
                   onClick={() => openPerson(person)}
                   className={cn(
@@ -173,10 +172,10 @@ export function VolumeMapPeopleSection({
                     <span className="shrink-0 font-mono text-[7px] opacity-80">锁</span>
                   ) : null}
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       {picker ? (

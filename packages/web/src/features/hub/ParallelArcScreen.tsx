@@ -131,7 +131,7 @@ export function ParallelArcScreen({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6"
       role="dialog"
       aria-modal
       aria-labelledby="parallel-arc-title"

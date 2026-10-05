@@ -18,7 +18,7 @@ export function NpcFlavorDialogue({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 p-3 sm:items-center"
+      className="fixed inset-0 z-[65] flex items-end justify-center bg-black/55 p-3 sm:items-center"
       role="dialog"
       aria-modal
       aria-label={`与${npcName}对话`}

@@ -184,10 +184,16 @@ export default function App() {
         const done = resolveChapterBattleAfterWin(basePlayer);
         if (done.ok) {
           setPlayer(done.state);
-          pushNotice(done.message);
           if (done.clearedChapter) {
             const arc = unseenParallelArcReport(done.state);
-            if (arc) setPendingParallelArc(arc);
+            if (arc) {
+              dismissNotice();
+              setPendingParallelArc(arc);
+            } else {
+              pushNotice(done.message);
+            }
+          } else {
+            pushNotice(done.message);
           }
         }
         setLastLoot(null);
@@ -370,9 +376,13 @@ export default function App() {
 
   const applyDevPlayer = (next: PlayerState, message: string) => {
     setPlayer(next);
-    pushNotice(message);
     const arc = unseenParallelArcReport(next);
-    if (arc) setPendingParallelArc(arc);
+    if (arc) {
+      dismissNotice();
+      setPendingParallelArc(arc);
+    } else {
+      pushNotice(message);
+    }
   };
 
   const devClearOneChapter = () => {

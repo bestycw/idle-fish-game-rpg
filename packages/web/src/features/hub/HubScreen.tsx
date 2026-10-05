@@ -147,11 +147,12 @@ export function HubScreen({
     };
   };
 
+  const storyPlace = here ?? '当前';
   const blurb = chapter.finished
     ? '卷一十章已通。猎装刷量、镜渊对症 T3、八题轮换 —— 按战前提示改阵；卷二将另开。'
     : node
       ? node.kind === 'story' && storyDialogueBeats && storyDialogueBeats.length > 0
-        ? '与在场人物对话后再继续路程。'
+        ? `点下方「进入 · ${storyPlace}」推进剧情；想闲聊可开地图找人物。`
         : [resolvedNode?.blurb ?? node.blurb, battlePrep ? `战前：${battlePrep}` : '']
             .filter(Boolean)
             .join(' ')
