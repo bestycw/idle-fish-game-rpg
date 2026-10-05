@@ -445,6 +445,8 @@ export interface PlayerState {
   staminaUpdatedAt: number;
   chapterCleared: number;
   chapterNodeIndex: number;
+  /** 已领取首通包的章 order 列表 */
+  chapterFirstClearClaimed?: number[];
   /** 当前 battle 节点内波次（0-based）；败场或换节点时归零 */
   chapterBattleWaveIndex?: number;
   lastDailyClaimDay?: string;

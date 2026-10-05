@@ -20,6 +20,13 @@ import {
 import { formatUnlockSummary } from './unlockLabels.js';
 import { applyParallelReportAfterChapterClear } from '../narrative/applyParallelReport.js';
 import { applyParallelWorldAfterMainlineDefeat } from '../narrative/parallelWorldState.js';
+import { applyChapterFirstClear } from '../reward/chapterFirstClear.js';
+import {
+  buildBattleSettlement,
+  formatFirstClearRewardLine,
+  type BattleSettlement,
+} from '../reward/battleSettlement.js';
+import { grantMainlineBattleScrap } from '../reward/mainlineBattleScrap.js';
 
 export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
 
@@ -150,18 +157,25 @@ function finishNode(state: PlayerState): {
   state: PlayerState;
   clearedChapter: ChapterDef | null;
   message: string;
+  firstClearLine: string | null;
 } {
   const view = getChapterView(state);
   if (!view.playing || !view.node) {
-    return { state, clearedChapter: null, message: '主线已全部通关。' };
+    return { state, clearedChapter: null, message: '主线已全部通关。', firstClearLine: null };
   }
   const ch = view.playing;
+  const completedNode = view.node;
   const nextIndex = view.nodeIndex + 1;
   if (nextIndex < ch.nodes.length) {
+    let nextState = resetChapterBattleWave({ ...state, chapterNodeIndex: nextIndex });
+    if (completedNode.kind === 'battle') {
+      nextState = grantMainlineBattleScrap(nextState, ch.order * 100 + view.nodeIndex);
+    }
     return {
-      state: resetChapterBattleWave({ ...state, chapterNodeIndex: nextIndex }),
+      state: nextState,
       clearedChapter: null,
-      message: `完成「${view.node.title}」。`,
+      message: `完成「${completedNode.title}」。`,
+      firstClearLine: null,
     };
   }
   const cleared = ch.order;
@@ -171,11 +185,21 @@ function finishNode(state: PlayerState): {
     chapterCleared: cleared,
     chapterNodeIndex: 0,
   });
+  if (completedNode.kind === 'battle') {
+    nextState = grantMainlineBattleScrap(nextState, ch.order * 100 + view.nodeIndex);
+  }
   nextState = applyParallelReportAfterChapterClear(nextState, cleared);
+  const first = applyChapterFirstClear(nextState, ch);
+  nextState = first.state;
+  const firstClearLine =
+    first.applied != null
+      ? `章首通：${formatFirstClearRewardLine(first.applied)}`
+      : null;
   return {
     state: nextState,
     clearedChapter: ch,
     message: [ `通关${ch.name}。`, suffix ].filter(Boolean).join(' ').trim(),
+    firstClearLine,
   };
 }
 
@@ -216,6 +240,7 @@ export type ResolveChapterBattleWinResult =
       clearedChapter: ChapterDef | null;
       message: string;
       hasNextWave: boolean;
+      settlement: BattleSettlement;
     }
   | { ok: false; message: string };
 
@@ -230,6 +255,10 @@ export function resolveChapterBattleAfterWin(
   if (view.node.kind !== 'battle') {
     return { ok: false, message: '当前不是战斗节点。' };
   }
+  const chapter = view.playing;
+  if (!chapter) {
+    return { ok: false, message: '无法解析当前章节。' };
+  }
   const ctx = currentChapterBattleContext(state);
   if (!ctx) {
     return { ok: false, message: '无法解析当前遭遇。' };
@@ -239,18 +268,41 @@ export function resolveChapterBattleAfterWin(
   if (nextWave < ctx.waveTotal) {
     const nextDef = waves[nextWave];
     const label = nextDef?.label?.trim();
+    const msg = label
+      ? `前锋已破。下一阵：${label}。`
+      : `第 ${nextWave + 1}/${ctx.waveTotal} 波敌军压上。`;
+    const before = state;
+    const after = grantMainlineBattleScrap(
+      { ...state, chapterBattleWaveIndex: nextWave },
+      chapter.order * 1000 + view.nodeIndex * 10 + ctx.waveIndex,
+    );
     return {
       ok: true,
-      state: { ...state, chapterBattleWaveIndex: nextWave },
+      state: after,
       clearedChapter: null,
       hasNextWave: true,
-      message: label
-        ? `前锋已破。下一阵：${label}。`
-        : `第 ${nextWave + 1}/${ctx.waveTotal} 波敌军压上。`,
+      message: msg,
+      settlement: buildBattleSettlement({
+        source: 'chapter',
+        before,
+        after,
+        lines: [],
+      }),
     };
   }
+  const before = state;
   const done = finishNode(resetChapterBattleWave(state));
-  return { ok: true, ...done, hasNextWave: false };
+  const lines = [done.message, done.firstClearLine].filter(Boolean) as string[];
+  const settlement = buildBattleSettlement({
+    source: 'chapter',
+    before,
+    after: done.state,
+    lines,
+    firstClearChapter: done.clearedChapter
+      ? { order: done.clearedChapter.order, name: done.clearedChapter.name }
+      : undefined,
+  });
+  return { ok: true, ...done, hasNextWave: false, settlement };
 }
 
 /** 主线战斗败北：波次从头再来 + 平行原世界小幅反噬 */

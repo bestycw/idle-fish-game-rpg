@@ -38,6 +38,8 @@ export function GameShell({
   hideBrand = false,
   scrollMain = false,
 }: GameShellProps) {
+  const showHeader = !hideBrand || Boolean(status);
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div
@@ -49,28 +51,30 @@ export function GameShell({
           className,
         )}
       >
-        <header
-          className={cn(
-            'flex flex-wrap items-end justify-between gap-2',
-            hideBrand ? 'mb-2 sm:mb-2.5' : 'mb-3 sm:mb-4 sm:gap-3',
-          )}
-        >
-          {!hideBrand ? (
-            <div className="min-w-0">
-              <h1 className="font-display text-2xl tracking-wide text-foreground sm:text-3xl lg:text-4xl">
-                {brand}
-              </h1>
-              {subtitle ? (
-                <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
-              ) : null}
-            </div>
-          ) : null}
-          {status ? (
-            <div className={cn('min-w-0', hideBrand ? 'w-full' : 'w-full lg:w-auto lg:max-w-[65%]')}>
-              {status}
-            </div>
-          ) : null}
-        </header>
+        {showHeader ? (
+          <header
+            className={cn(
+              'flex flex-wrap items-end justify-between gap-2',
+              hideBrand ? 'mb-2 sm:mb-2.5' : 'mb-3 sm:mb-4 sm:gap-3',
+            )}
+          >
+            {!hideBrand ? (
+              <div className="min-w-0">
+                <h1 className="font-display text-2xl tracking-wide text-foreground sm:text-3xl lg:text-4xl">
+                  {brand}
+                </h1>
+                {subtitle ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {status ? (
+              <div className={cn('min-w-0', hideBrand ? 'w-full' : 'w-full lg:w-auto lg:max-w-[65%]')}>
+                {status}
+              </div>
+            ) : null}
+          </header>
+        ) : null}
 
         <main
           className={cn(

@@ -28,8 +28,10 @@ const SETUP_LOG =
   /^(遭遇【|共鸣【|词缀【|—— 第 \d+ 回合)/;
 
 function filterLogLine(text: string, verbose: boolean): boolean {
+  const t = text.trim();
+  if (/^战败提示：/.test(t)) return false;
   if (verbose) return true;
-  return !SETUP_LOG.test(text.trim());
+  return !SETUP_LOG.test(t);
 }
 
 export function eventTone(ev: BattleEvent): string {

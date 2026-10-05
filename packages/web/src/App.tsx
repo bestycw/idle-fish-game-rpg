@@ -6,8 +6,11 @@ import {
   formatChapterBattleWaveProgress,
   pendingChapterBattleWaves,
   resolveChapterBattleAfterWin,
+  buildBattleSettlement,
+  EMPTY_SETTLEMENT,
   getDungeon,
   grantDungeonReward,
+  type BattleSettlement,
   grantSampleEquipment,
   loadOrCreatePlayer,
   persistPlayer,
@@ -31,7 +34,6 @@ import {
   UNIT_TEMPLATES,
   type BattleState,
   type DungeonId,
-  type Equipment,
   type PlayerState,
 } from '@moyu/game-core';
 import { useEffect, useRef, useState } from 'react';
@@ -90,7 +92,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(sessionBoot.screen);
   const [selectedId, setSelectedId] = useState<string | null>('hero');
   const [battle, setBattle] = useState<BattleState | null>(null);
-  const [lastLoot, setLastLoot] = useState<Equipment | null>(null);
+  const [lastSettlement, setLastSettlement] = useState<BattleSettlement>(EMPTY_SETTLEMENT);
   const [activeDungeonId, setActiveDungeonId] = useState<DungeonId>(DEFAULT_BATTLE_DUNGEON);
   const [playing, setPlaying] = useState(false);
   const [characterBack, setCharacterBack] = useState<'hub' | 'characters' | 'formation'>(
@@ -112,6 +114,8 @@ export default function App() {
   const dungeonRef = useRef<DungeonId>(activeDungeonId);
   const battleSourceRef = useRef<BattleSource>('dungeon');
   const noticeTimerRef = useRef<number | null>(null);
+  /** 平行线结算：等离开战斗结算页再弹，避免盖住战利 */
+  const deferredParallelArcRef = useRef<ParallelArcId | null>(null);
 
   const dismissNotice = () => {
     if (noticeTimerRef.current != null) {
@@ -175,8 +179,21 @@ export default function App() {
     setPlaying(false);
   };
 
+  const queueParallelArcAfterResult = (state: PlayerState) => {
+    const arc = unseenParallelArcReport(state);
+    if (arc) deferredParallelArcRef.current = arc;
+  };
+
+  const flushDeferredParallelArc = () => {
+    const arc = deferredParallelArcRef.current;
+    if (!arc) return;
+    deferredParallelArcRef.current = null;
+    setPendingParallelArc(arc);
+  };
+
   const finishBattle = (finalState: BattleState, basePlayer: PlayerState) => {
     stopPlayback();
+    dismissNotice();
     battleRef.current = finalState;
     setBattle(finalState);
     if (finalState.status === 'won') {
@@ -184,32 +201,32 @@ export default function App() {
         const done = resolveChapterBattleAfterWin(basePlayer);
         if (done.ok) {
           setPlayer(done.state);
+          setLastSettlement(done.settlement);
           if (done.clearedChapter) {
-            const arc = unseenParallelArcReport(done.state);
-            if (arc) {
-              dismissNotice();
-              setPendingParallelArc(arc);
-            } else {
-              pushNotice(done.message);
-            }
-          } else {
-            pushNotice(done.message);
+            queueParallelArcAfterResult(done.state);
           }
+        } else {
+          setLastSettlement(EMPTY_SETTLEMENT);
         }
-        setLastLoot(null);
       } else {
         const { state, loot } = grantDungeonReward(basePlayer, dungeonRef.current);
         setPlayer(state);
-        setLastLoot(loot);
-        if (loot) pushNotice(`掉落 ${loot.name}`);
+        setLastSettlement(
+          buildBattleSettlement({
+            source: 'dungeon',
+            before: basePlayer,
+            after: state,
+            equipment: loot,
+            lines: loot ? [] : ['本局未出装备，再试一把。'],
+          }),
+        );
       }
     } else {
-      setLastLoot(null);
+      setLastSettlement(EMPTY_SETTLEMENT);
       if (battleSourceRef.current === 'chapter') {
         const afterDefeat = chapterBattleAfterDefeat(basePlayer);
         setPlayer(afterDefeat);
       }
-      if (finalState.defeatHint) pushNotice(finalState.defeatHint);
     }
     setScreen('result');
   };
@@ -301,7 +318,7 @@ export default function App() {
     }
     battleRef.current = initial;
     setBattle(initial);
-    setLastLoot(null);
+    setLastSettlement(EMPTY_SETTLEMENT);
     setBattlePrep(null);
     setBattleSpeed(1);
     battleSpeedRef.current = 1;
@@ -325,7 +342,7 @@ export default function App() {
     setPlayer(fresh);
     battleRef.current = null;
     setBattle(null);
-    setLastLoot(null);
+    setLastSettlement(EMPTY_SETTLEMENT);
     setActiveDungeonId(DEFAULT_BATTLE_DUNGEON);
     setScreen(needsPrologue(fresh) ? 'prologue' : 'hub');
     pushNotice('存档已清空，故事从头开始。');
@@ -406,6 +423,7 @@ export default function App() {
     stopPlayback();
     setPlayer((p) => clearParallelMainlineDefeatRipple(p));
     setScreen('hub');
+    window.requestAnimationFrame(() => flushDeferredParallelArc());
   };
 
   const activeParallelArcId = pendingParallelArc ?? parallelArcBrowse;
@@ -510,7 +528,7 @@ export default function App() {
         screen === 'formation' ||
         screen === 'bag'
       }
-      notice={notice}
+      notice={screen === 'result' || screen === 'battle' ? null : notice}
       onDismissNotice={dismissNotice}
       dock={
         showDock ? (
@@ -519,7 +537,7 @@ export default function App() {
       }
       className={combatFocus ? 'pt-2 sm:pt-2' : undefined}
       status={
-        screen === 'prologue' ? null : (
+        screen === 'prologue' || screen === 'result' ? null : (
         <div className="space-y-1.5">
           <StatusBar
             player={player}
@@ -633,7 +651,7 @@ export default function App() {
       {screen === 'result' && battle && (
         <ResultScreen
           battle={battle}
-          lastLoot={lastLoot}
+          settlement={lastSettlement}
           dungeonName={dungeonName}
           battleSource={battleSourceRef.current}
           chapterNextBattleHint={chapterNextBattleHint}
@@ -641,11 +659,6 @@ export default function App() {
           onRestartBattle={restartBattlePrep}
           onBackToHub={handleBackToHub}
           pushNotice={pushNotice}
-          parallelDefeatRipple={
-            battleSourceRef.current === 'chapter'
-              ? player.narrative?.parallelMainlineDefeatRipple
-              : null
-          }
         />
       )}
 
@@ -705,7 +718,9 @@ export default function App() {
         />
       )}
 
-      {activeParallelArcId && player.narrative?.parallelArcReports?.[activeParallelArcId] ? (
+      {activeParallelArcId &&
+      screen === 'hub' &&
+      player.narrative?.parallelArcReports?.[activeParallelArcId] ? (
         <ParallelArcScreen
           report={player.narrative.parallelArcReports[activeParallelArcId]!}
           previousReport={

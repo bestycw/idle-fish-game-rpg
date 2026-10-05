@@ -23,7 +23,6 @@ export function hubParallelTeaser(state: PlayerState): {
 } {
   const unread = unseenParallelArcReport(state) != null;
   const oddRipple = state.narrative?.parallelOddChapterRipple;
-  const defeatRipple = state.narrative?.parallelMainlineDefeatRipple;
   const axes = normalizeParallelWorldAxes(state.narrative?.parallelWorldAxes);
   if (!axes) {
     return {
@@ -43,9 +42,6 @@ export function hubParallelTeaser(state: PlayerState): {
   }
   if (unread) {
     return { title: '原世界', subtitle: '有新的现实线结算', hasUnread: true };
-  }
-  if (defeatRipple) {
-    return { title: '原世界', subtitle: defeatRipple, hasUnread: false };
   }
   if (oddRipple) {
     return { title: '原世界', subtitle: oddRipple, hasUnread: false };
