@@ -60,8 +60,9 @@ import { Popover } from 'radix-ui';
 import { skillSpecialty } from '../shared/unitViews';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { rarityFrame, rarityFrameLocked, rarityNameTone, rarityTone } from '@/lib/tones';
+import { rarityFrame, rarityFrameLocked, rarityNameTone } from '@/lib/tones';
 import { EquipTooltip } from '../inventory/EquipTooltip';
+import { EquipPopoverContent } from '../inventory/EquipPopoverContent';
 import { EquipBagCell } from '../inventory/EquipBagCell';
 import { RealmMeridian } from './RealmMeridian';
 import { SkillManual } from './SkillManual';
@@ -694,25 +695,12 @@ export function CharacterSheet({
         }}
       >
         <Popover.Anchor asChild>{slotBtn}</Popover.Anchor>
-        <Popover.Portal>
-          <Popover.Content
-            side={placement.side}
-            align={placement.align}
-            sideOffset={10}
-            collisionPadding={12}
-            onOpenAutoFocus={(e) => e.preventDefault()}
-            className={cn(
-              'z-[70] w-[min(16.5rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border bg-background/98 p-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] outline-none',
-              rarityTone(item.rarity),
-            )}
-          >
-            <div className="max-h-[min(22rem,55vh)] overflow-y-auto px-2.5 py-2">
-              <EquipTooltip
-                compact
-                item={item}
-                setPieceCount={setKey ? (setCounts.get(setKey) ?? 0) : undefined}
-              />
-            </div>
+        <EquipPopoverContent
+          rarity={item.rarity}
+          side={placement.side}
+          align={placement.align}
+          showArrow
+          footer={
             <div className="border-t border-border/50 px-2.5 py-2">
               <button
                 type="button"
@@ -726,9 +714,14 @@ export function CharacterSheet({
                 卸下
               </button>
             </div>
-            <Popover.Arrow className="fill-background" width={12} height={7} />
-          </Popover.Content>
-        </Popover.Portal>
+          }
+        >
+          <EquipTooltip
+            compact
+            item={item}
+            setPieceCount={setKey ? (setCounts.get(setKey) ?? 0) : undefined}
+          />
+        </EquipPopoverContent>
       </Popover.Root>
       </div>
     );
@@ -1162,27 +1155,11 @@ export function CharacterSheet({
                                     />
                                   </div>
                                 </Popover.Anchor>
-                                <Popover.Portal>
-                                  <Popover.Content
-                                    side="top"
-                                    align="center"
-                                    sideOffset={8}
-                                    collisionPadding={10}
-                                    onOpenAutoFocus={(e) => e.preventDefault()}
-                                    className={cn(
-                                      'z-[70] w-[min(16.5rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border bg-background/98 p-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] outline-none',
-                                      rarityTone(item.rarity),
-                                    )}
-                                  >
-                                    <div className="max-h-[min(20rem,55vh)] overflow-y-auto px-2.5 py-2">
-                                      <EquipTooltip
-                                        compact
-                                        item={item}
-                                        setPieceCount={
-                                          setKey ? (setCounts.get(setKey) ?? 0) : undefined
-                                        }
-                                      />
-                                    </div>
+                                <EquipPopoverContent
+                                  rarity={item.rarity}
+                                  side="bottom"
+                                  align="center"
+                                  footer={
                                     <div className="border-t border-border/50 px-2.5 py-2">
                                       {blocked ? (
                                         <p className="text-center font-mono text-[11px] text-rose-300/90">
@@ -1225,9 +1202,16 @@ export function CharacterSheet({
                                         </button>
                                       )}
                                     </div>
-                                    <Popover.Arrow className="fill-background" width={12} height={7} />
-                                  </Popover.Content>
-                                </Popover.Portal>
+                                  }
+                                >
+                                  <EquipTooltip
+                                    compact
+                                    item={item}
+                                    setPieceCount={
+                                      setKey ? (setCounts.get(setKey) ?? 0) : undefined
+                                    }
+                                  />
+                                </EquipPopoverContent>
                               </Popover.Root>
                             );
                           })}

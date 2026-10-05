@@ -12,7 +12,6 @@ import {
   CONDITION_EXTREME_MULT,
   DROPTABLE,
   OPEN_POOL_DEFS,
-  RARITY_LABELS_EQUIP,
   RARITY_MULTIPLIER,
   RARE_AFFIX_DEFS,
   WHITE_BASE,
@@ -21,9 +20,9 @@ import {
   listConditionsForSlot,
   listT3ForSlot,
   substatDefs,
-  SLOT_NAMES,
   SLOT_SUBSTAT_POOL,
 } from './catalog/index.js';
+import { composeEquipmentName } from './composeName.js';
 import { chanceChain, pickFrom, rollAffixValue } from './roll.js';
 
 export type GenerateEquipmentOptions = {
@@ -226,7 +225,7 @@ export function generateEquipment(
 
   return {
     id: createEquipmentId(rng),
-    name: `${RARITY_LABELS_EQUIP[rarity]}${SLOT_NAMES[chosenSlot]}`,
+    name: composeEquipmentName({ rarity, slot: chosenSlot, setId, effectAffixId, enhanceLevel: 0 }),
     slot: chosenSlot,
     rarity,
     itemLevel,

@@ -1,5 +1,9 @@
 import type { EncounterDef } from './encounters.js';
 import { ENCOUNTERS } from './encounters.js';
+import {
+  GEAR_DUNGEON_DEFS,
+  gearDungeonToDungeonDef,
+} from './gearDungeons.js';
 
 /** 副本本种 id（字符串可扩） */
 export type DungeonId = string;
@@ -27,34 +31,36 @@ export interface DungeonDef {
   staminaCost: number;
   /**
    * 本种压力（乘在章档 enemyMult 之上）。
-   * 猎装 1；镜渊 1.3。敌人跟正在打的章走，不按玩家当前战力缩放。
+   * 猎装 1；地狱档约 1.3。敌人跟正在打的章走，不按玩家当前战力缩放。
    */
   pressure?: number;
 }
 
+const GEAR_BATTLE_DUNGEONS = GEAR_DUNGEON_DEFS.map(gearDungeonToDungeonDef);
+
 export const DUNGEONS: DungeonDef[] = [
+  ...GEAR_BATTLE_DUNGEONS,
+  /** 兼容旧存档/深链；Hub 不再主推 */
   {
     id: 'gear_trial',
-    name: '猎装试炼',
+    name: '猎装试炼（旧）',
     kind: 'gear',
     runMode: 'battle',
-    // 早期本不含铁壁灵阵（力队吃瘪），避免开局软锁；灵阵进镜渊
     encounterPool: ['wall', 'archers', 'raiders', 'oil_cask', 'shield_stack'],
     lootTableId: 'loot_gear_trial',
-    blurb: '刷装备；套装碎片倾向更高',
+    blurb: '综合轮换；请从猎装副本列表选主题本',
     staminaCost: 10,
     pressure: 1,
   },
   {
     id: 'abyss_mirror',
-    name: '镜渊试炼',
+    name: '镜渊试炼（旧）',
     kind: 'material',
     runMode: 'battle',
     encounterPool: ['chaos_rite', 'spirit_wall', 'boss_warden'],
     lootTableId: 'loot_abyss_mirror',
-    blurb: '高压遭遇；经验向（修为仅塔）',
+    blurb: '已并入「镇守试炼」地狱档',
     staminaCost: 12,
-    // 养成后默认队仍应在铁壁/Boss 感到卡关；破甲辅明显抬胜率
     pressure: 1.3,
   },
   {

@@ -47,6 +47,8 @@
 | 装备 | [systems/equipment.md](./systems/equipment.md) | 槽位、词缀、强化、套装、T4；权威在此 |
 | 抽卡 | [systems/gacha.md](./systems/gacha.md) | B1 已落地 |
 | 副本/遭遇 | [systems/dungeon.md](./systems/dungeon.md) | 猎装 + 塔 + 星尘 + 镜渊 |
+| 物品主表/掉落 | [systems/item-registry.md](./systems/item-registry.md) | id 与皮分离；DropTable 引用 id |
+| 猎装副本（重构意向） | [systems/gear-dungeon-redesign.md](./systems/gear-dungeon-redesign.md) | 难度分档；套装非核心 |
 | 体力 | [systems/stamina.md](./systems/stamina.md) | B2 + 摸鱼补给 |
 | 章节进度 | [systems/chapter-progress.md](./systems/chapter-progress.md) | B4 框架 |
 | 经济/付费 | [systems/economy.md](./systems/economy.md) | |

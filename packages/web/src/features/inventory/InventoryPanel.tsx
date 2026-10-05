@@ -9,9 +9,9 @@ import {
 import { useMemo, useState } from 'react';
 import { Popover } from 'radix-ui';
 import { cn } from '@/lib/utils';
-import { rarityTone } from '@/lib/tones';
 import { EquipBagCell } from './EquipBagCell';
 import { EquipCraftPanel, SealStampBanner } from './EquipCraftPanel';
+import { EquipPopoverContent } from './EquipPopoverContent';
 import { EquipTooltip } from './EquipTooltip';
 
 const BAG_COLS = 8;
@@ -81,7 +81,7 @@ export function InventoryPanel({
       {player.sealStamp ? <SealStampBanner player={player} className="mb-1.5 shrink-0" /> : null}
       <div
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto rounded-lg border border-[#243040] p-2',
+          'min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-lg border border-[#243040] p-2',
           'bg-[#07090d] shadow-[inset_0_2px_12px_rgba(0,0,0,0.55)]',
         )}
       >
@@ -98,6 +98,7 @@ export function InventoryPanel({
                 return <EquipBagCell key={`empty-${i}`} />;
               }
               const open = item.id === openId;
+              const activeItem = selected?.id === item.id ? selected : item;
               return (
                 <Popover.Root
                   key={item.id}
@@ -120,40 +121,31 @@ export function InventoryPanel({
                       />
                     </div>
                   </Popover.Anchor>
-                  <Popover.Portal>
-                    <Popover.Content
-                      side="right"
-                      align="start"
-                      sideOffset={8}
-                      collisionPadding={12}
-                      onOpenAutoFocus={(e) => e.preventDefault()}
-                      className={cn(
-                        'z-[70] w-[min(18rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border bg-background/98 p-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] outline-none',
-                        rarityTone(item.rarity),
-                      )}
-                    >
-                      <div className="max-h-[min(24rem,70vh)] overflow-y-auto px-2.5 py-2">
-                        <EquipTooltip item={selected?.id === item.id ? selected : item} />
-                        <div className="mt-2 space-y-2 border-t border-white/5 pt-2">
-                          <EquipCraftPanel
-                            player={player}
-                            item={selected?.id === item.id ? selected : item}
-                            setPlayer={setPlayer}
-                            notice={pushNotice}
-                            onGone={() => setOpenId(null)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => onDisassemble(item.id)}
-                            className="font-mono text-[11px] text-red-300/80 transition hover:text-red-200"
-                          >
-                            分解此件
-                          </button>
-                        </div>
+                  <EquipPopoverContent
+                    rarity={item.rarity}
+                    side="bottom"
+                    align="center"
+                    footer={
+                      <div className="border-t border-white/5 px-2.5 py-2">
+                        <EquipCraftPanel
+                          player={player}
+                          item={activeItem}
+                          setPlayer={setPlayer}
+                          notice={pushNotice}
+                          onGone={() => setOpenId(null)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onDisassemble(item.id)}
+                          className="mt-2 font-mono text-[11px] text-red-300/80 transition hover:text-red-200"
+                        >
+                          分解此件
+                        </button>
                       </div>
-                      <Popover.Arrow className="fill-background" width={12} height={7} />
-                    </Popover.Content>
-                  </Popover.Portal>
+                    }
+                  >
+                    <EquipTooltip item={activeItem} />
+                  </EquipPopoverContent>
                 </Popover.Root>
               );
             })}

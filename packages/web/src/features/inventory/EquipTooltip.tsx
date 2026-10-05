@@ -95,11 +95,11 @@ export function EquipTooltip({
   const showSignature = Boolean(signature) && !item.name.includes(signature);
 
   return (
-    <div className={cn('text-left', className)}>
-      <div className="flex items-baseline justify-between gap-2">
+    <div className={cn('max-w-full overflow-hidden text-left', className)}>
+      <div className="flex min-w-0 items-baseline justify-between gap-2">
         <strong
           className={cn(
-            'font-display tracking-wide',
+            'min-w-0 break-words font-display tracking-wide',
             compact ? 'text-xs' : 'text-sm',
             rarityNameTone(item.rarity),
           )}

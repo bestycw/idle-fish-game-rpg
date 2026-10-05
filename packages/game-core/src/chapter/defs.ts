@@ -59,7 +59,8 @@ function gachaUnlocks(...ids: string[]): ContentUnlock[] {
 }
 
 export const START_UNLOCKS: ContentUnlock[] = [
-  { kind: 'dungeon', id: 'gear_trial' },
+  { kind: 'dungeon', id: 'gear_break_wall' },
+  { kind: 'dungeon', id: 'gear_arrow_lane' },
   { kind: 'dungeon', id: 'tower' },
   { kind: 'dungeon', id: 'stardust_realm' },
   { kind: 'encounter', id: 'wall' },
@@ -120,6 +121,7 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
+      { kind: 'dungeon', id: 'gear_raider_trail' },
       { kind: 'encounter', id: 'raiders' },
       ...gachaUnlocks(...expandIdsByUnlock('ch1')),
     ],
@@ -177,7 +179,12 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
-      { kind: 'dungeon', id: 'abyss_mirror' },
+      { kind: 'dungeon', id: 'gear_spirit_array' },
+      { kind: 'dungeon', id: 'gear_arrow_hard' },
+      { kind: 'dungeon', id: 'gear_raider_hard' },
+      { kind: 'dungeon', id: 'gear_chaos_shrine' },
+      { kind: 'dungeon', id: 'gear_chaos_hell' },
+      { kind: 'dungeon', id: 'gear_warden_trial' },
       { kind: 'encounter', id: 'chaos_rite' },
       { kind: 'encounter', id: 'spirit_wall' },
       { kind: 'encounter', id: 'oil_cask' },

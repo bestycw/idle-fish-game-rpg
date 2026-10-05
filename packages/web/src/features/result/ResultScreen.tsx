@@ -1,6 +1,7 @@
 import {
   EMPTY_SETTLEMENT,
   firstWearableDeployed,
+  resolveWorldPreset,
   wearLoot,
   type BattleSettlement,
   type BattleState,
@@ -16,6 +17,7 @@ import {
 } from './BattleSettlementPanel';
 
 type ResultScreenProps = {
+  player: PlayerState;
   battle: BattleState;
   settlement?: BattleSettlement;
   dungeonName: string;
@@ -28,6 +30,7 @@ type ResultScreenProps = {
 };
 
 export function ResultScreen({
+  player,
   battle,
   settlement = EMPTY_SETTLEMENT,
   dungeonName,
@@ -49,6 +52,7 @@ export function ResultScreen({
       : '重整再战';
 
   const showRewardBlock = won && settlementShowsRewardBlock(settlement);
+  const worldPreset = resolveWorldPreset(player);
 
   useEffect(() => {
     if (!logOpen) return;
@@ -133,6 +137,7 @@ export function ResultScreen({
               <BattleSettlementPanel
                 variant="stage"
                 settlement={settlement}
+                worldPreset={worldPreset}
                 onWearLoot={settlement.equipment ? wearLootItem : undefined}
               />
             </div>

@@ -6,6 +6,8 @@ export type BattleSettlementSource = 'chapter' | 'dungeon';
 export interface BattleSettlement {
   source: BattleSettlementSource;
   equipment: Equipment | null;
+  /** 猎装等：第 2 件起的追加装备 */
+  bonusEquipment: Equipment[];
   gold: number;
   stardust: number;
   xiuwei: number;
@@ -19,6 +21,7 @@ export interface BattleSettlement {
 export const EMPTY_SETTLEMENT: BattleSettlement = {
   source: 'chapter',
   equipment: null,
+  bonusEquipment: [],
   gold: 0,
   stardust: 0,
   xiuwei: 0,
@@ -42,6 +45,7 @@ export function buildBattleSettlement(opts: {
   before: PlayerState;
   after: PlayerState;
   equipment?: Equipment | null;
+  bonusEquipment?: Equipment[];
   lines: string[];
   firstClearChapter?: { order: number; name: string };
 }): BattleSettlement {
@@ -49,6 +53,7 @@ export function buildBattleSettlement(opts: {
   return {
     source: opts.source,
     equipment: opts.equipment ?? null,
+    bonusEquipment: opts.bonusEquipment ?? [],
     gold: d.gold,
     stardust: d.stardust,
     xiuwei: d.xiuwei,
@@ -62,6 +67,7 @@ export function buildBattleSettlement(opts: {
 export function settlementHasLoot(s: BattleSettlement): boolean {
   return (
     s.equipment != null ||
+    s.bonusEquipment.length > 0 ||
     s.gold > 0 ||
     s.stardust > 0 ||
     s.xiuwei > 0 ||

@@ -26,6 +26,7 @@ describe('battle settlement', () => {
       settlementHasLoot({
         source: 'chapter',
         equipment: null,
+        bonusEquipment: [],
         gold: 3,
         stardust: 0,
         xiuwei: 0,

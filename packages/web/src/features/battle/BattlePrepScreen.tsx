@@ -6,6 +6,9 @@ import {
   createBattleDisplayOpts,
   currentChapterBattleContext,
   getDungeon,
+  isGearDungeonId,
+  resolveWorldPreset,
+  tGearDungeonName,
   getEncounterModifier,
   getFormationResonance,
   MAX_PARTY_SIZE,
@@ -101,8 +104,13 @@ export function BattlePrepScreen({
 
   const staminaCost =
     config.kind === 'dungeon' ? staminaCostForDungeon(config.dungeonId) : 0;
+  const preset = resolveWorldPreset(player);
   const dungeonLabel =
-    config.kind === 'chapter' ? '主线战斗' : getDungeon(config.dungeonId).name;
+    config.kind === 'chapter'
+      ? '主线战斗'
+      : isGearDungeonId(config.dungeonId)
+        ? tGearDungeonName(config.dungeonId, preset)
+        : getDungeon(config.dungeonId).name;
   const waveBadge =
     chapterWave && chapterWave.waveTotal > 1
       ? ` · 第 ${chapterWave.waveIndex + 1}/${chapterWave.waveTotal} 波${

@@ -3,8 +3,8 @@
 > 系统骨架 #5。  
 > 配置：`packages/game-core/src/dungeon/`。  
 > **实现状态（2026-07-29）：** 猎装 + 塔 + **星尘秘境**；摸鱼补给见 stamina；体力扣点见 stamina。  
-> **套装掉落倾向、哪本开哪套** 与 [equipment.md](./equipment.md) 联动；不由战斗系统定义。  
-> **剧情推进遇敌** 归 [chapter-progress.md](./chapter-progress.md)；可复用本目录遭遇表，但**不属**副本系统。
+> **剧情推进遇敌** 归 [chapter-progress.md](./chapter-progress.md)；可复用本目录遭遇表，但**不属**副本系统。  
+> **猎装重构（难度分档、套装非核心）：** 见 [gear-dungeon-redesign.md](./gear-dungeon-redesign.md) · 现网仍为旧双入口。
 
 ## 边界（已拍板 · 2026-07-22）
 
@@ -14,25 +14,33 @@
 
 **扩展模型：** 新本 = 新 `DungeonDef` + 遭遇池（可复用）+ 奖励表；能力可以是装备、修为或其他货币，不必新开子系统。
 
-## V1 本种（B3 薄刀 · 已拍板）
+## V1 本种（现网实现 · 待按 gear-dungeon-redesign 演进）
 
-| id | 显示名 | 能力 | 运行方式 | 遭遇 | 奖励 |
-|----|--------|------|----------|------|------|
-| `gear_trial` | 猎装试炼 | 刷装 / `setId` 倾向 | **进战斗** | 八题池（按解锁过滤） | 必掉装备；`setId` 权重高于全局；偏「量」 |
-| `abyss_mirror` | 镜渊试炼 | 高压 + **解法 T3** | **进战斗** | 乱心/铁壁/Boss | 必掉装备；低 `setId`；紫/金 + 裂甲/破灵/净疗等 T3 加权 |
-| `tower` | 修炼塔 | **修为唯一产口**（小节点/破境） | **本刀：点一下薄壳**（战斗后置） | — | 修为；层数 +1；里程碑星尘 |
-| `stardust_realm` | 星尘秘境 | 刷星尘 | **instant 薄壳** | — | 星尘区间掉落 |
+| id | 显示名 | 现网能力 | 目标方向（拍板意向） |
+|----|--------|----------|----------------------|
+| `gear_trial` | 猎装试炼 | 单入口刷装，高 `setIdChance` | → **多副本实例** + 普通/困难/地狱/大秘境分档；**套装仅点缀** |
+| `abyss_mirror` | 镜渊试炼 | 第二入口，高压 + T3 权重 | → **并入高难度档**，不再与猎装并列两套心智 |
+| `tower` | 修炼塔 | 修为 instant | 不变 |
+| `stardust_realm` | 星尘秘境 | 星尘 instant | 不变 |
 
-- **本系统不做：** 每日次数上限、套装 2/4 结算、章节地图（章节 → chapter-progress）。  
-- **体力：** 已由 stamina B2 接入（猎装开战扣 10、塔扣 5、星尘秘境扣 8）；本分册不定义数值。  
-- **摸鱼补给：** 每日一次体力+券（`tryClaimDaily`）；日戳在存档 `lastDailyClaimDay`。  
-- 套装：只加深掉落 `setId`；2/4 结算见 [equipment.md](./equipment.md)。
+- **体力：** 猎装开战扣 10、镜渊 12、塔 5、秘境 8（[stamina](./stamina.md)）。  
+- **套装：** 玩法上存在 2/4 效果（[equipment.md](./equipment.md)），但**刷本目标不是凑套**；掉落 `setIdChance` 应从「营销向高」下调（见 redesign 文档）。
+
+### 目标形态摘要（未全面落地）
+
+- 章进度解锁 **不同猎装副本**（波次小怪 + Boss）。  
+- 同副本线开放 **普通 → 困难 → 地狱 → 大秘境**，敌人压力与 **lootProfile** 同步上浮。  
+- 掉落核心：**装等、品级、词缀/T3**；历练与零钱随难度略增。
 
 ## 数据钩子（勿写死在 Hub）
 
 ```
-DungeonDef { id, name, kind, runMode, encounterPool[], lootTableId, blurb }
-LootTable  { guaranteeEquipment, setIdChance, setIdWeights, gold/xiuwei/stardust/exp 区间 }
+// 现网
+DungeonDef { id, name, kind, runMode, encounterPool[], lootTableId, blurb, pressure }
+
+// 目标（猎装）
+GearDungeonDef { id, tier, unlockChapter, waves[], bossEncounterId, lootProfileId, pressure, staminaCost }
+LootProfile / DropTable → grant(itemId) + equipment_roll(profileId)
 ```
 
 - `runMode: 'battle' | 'instant'`  
@@ -60,8 +68,8 @@ LootTable  { guaranteeEquipment, setIdChance, setIdWeights, gold/xiuwei/stardust
 
 | 项 | 结论 |
 |----|------|
-| 关系 | 副本决定可掉哪些 `setId`、权重 |
-| 当前 | **B3 已落地**：猎装本提高 `setId` 掉落率；**不结算** 2/4 |
-| 后置 | 装备侧套装 2/4（等内容）；章节可再锁掉落池 |
+| 构筑 | 刷装爽点 = **随机词缀 / 条件 / T3 / 装等**，套装是附加标签 |
+| 掉落 | `setId` **低概率**即可；副本主要调 `rarityWeights`、装等、T3 池 |
+| 战斗 | 套装 2/4 效果在装备系统读；**不**要求刷本凑齐才能推进 |
 
-详见 [equipment.md §套装](./equipment.md)。
+详见 [gear-dungeon-redesign.md](./gear-dungeon-redesign.md)、[equipment.md §套装](./equipment.md)。

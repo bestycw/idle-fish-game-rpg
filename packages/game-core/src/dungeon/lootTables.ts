@@ -3,15 +3,40 @@ import {
   type GenerateEquipmentOptions,
 } from '../equipment/equipment.js';
 
-/** 镜渊：高压本掉「对症 T3」，不绑套装 */
-export const ABYSS_SOLUTION_T3_WEIGHTS: { id: string; weight: number }[] = [
-  { id: 'fx_skill_shred', weight: 4 },
-  { id: 'fx_purge_hit', weight: 4 },
-  { id: 'fx_heal_cleanse', weight: 3 },
-  { id: 'fx_skill_mark', weight: 2 },
-  { id: 'fx_cc_cut', weight: 2 },
-  { id: 'fx_self_cleanse', weight: 2 },
-];
+import { getGearDungeon, itemLevelForGearTier, SOLUTION_T3_WEIGHTS } from './gearDungeons.js';
+import { resolveGearRarityWeights } from './gearRarityByTier.js';
+import { resolveEquipmentRollChances, rollEquipmentDropCount } from './gearEquipRolls.js';
+
+/** @deprecated 用 SOLUTION_T3_WEIGHTS */
+export const ABYSS_SOLUTION_T3_WEIGHTS = SOLUTION_T3_WEIGHTS;
+
+function buildGearEquipOptions(
+  state: PlayerState,
+  dungeonId: DungeonId,
+): GenerateEquipmentOptions | null {
+  const gear = getGearDungeon(dungeonId);
+  if (!gear) return null;
+  const table = LOOT_TABLES[gear.lootTableId];
+  if (!table) throw new Error(`Unknown loot table: ${gear.lootTableId}`);
+  const cleared = state.chapterCleared ?? 0;
+  const nodeIndex = state.chapterNodeIndex ?? 0;
+  const opts: GenerateEquipmentOptions = {
+    setIdChance: table.setIdChance,
+    setIdWeights: table.setIdWeights,
+    itemLevel: itemLevelForGearTier(cleared, nodeIndex, gear.tier),
+  };
+  opts.rarityWeights = resolveGearRarityWeights(gear);
+  if (gear.t3IdWeights) opts.t3IdWeights = gear.t3IdWeights;
+  return opts;
+}
+
+function buildLegacyAbyssEquipOptions(dungeonId: DungeonId): Partial<GenerateEquipmentOptions> {
+  if (dungeonId !== 'abyss_mirror') return {};
+  return {
+    rarityWeights: { rare: 28, epic: 45, legendary: 12 },
+    t3IdWeights: SOLUTION_T3_WEIGHTS,
+  };
+}
 import { itemLevelFromProgress } from '../equipment/catalog/rarity.js';
 import { deployedT3Ids } from '../equipment/loadout.js';
 import { createRng } from '../shared/rng.js';
@@ -29,6 +54,8 @@ export interface LootTable {
   guaranteeEquipment: boolean;
   /** 非必出时仍可能掉装的概率；缺省 0 */
   equipmentChance?: number;
+  /** 覆盖递减掉率；猎装默认按难度档见 gearEquipRolls */
+  equipmentRollChances?: number[];
   setIdChance: number;
   setIdWeights: { id: string; weight: number }[];
   gold: [number, number];
@@ -39,10 +66,10 @@ export interface LootTable {
 
 /** 猎装：高 setId 倾向；修为微量（主修为走塔） */
 export const LOOT_TABLES: Record<string, LootTable> = {
-  loot_gear_trial: {
-    id: 'loot_gear_trial',
+  loot_gear_normal: {
+    id: 'loot_gear_normal',
     guaranteeEquipment: true,
-    setIdChance: 0.55,
+    setIdChance: 0.08,
     setIdWeights: [
       { id: 'set_pojun', weight: 2 },
       { id: 'set_tiebi', weight: 2 },
@@ -50,14 +77,27 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     ],
     gold: [5, 15],
     xiuwei: [0, 0],
-    stardust: [0, 2],
+    stardust: [0, 0],
     characterExp: [18, 32],
   },
-  /** 镜渊：高压 + 必掉装；偏紫/金与解法 T3；套装留给猎装 */
-  loot_abyss_mirror: {
-    id: 'loot_abyss_mirror',
+  loot_gear_hard: {
+    id: 'loot_gear_hard',
     guaranteeEquipment: true,
-    setIdChance: 0.1,
+    setIdChance: 0.08,
+    setIdWeights: [
+      { id: 'set_pojun', weight: 2 },
+      { id: 'set_tiebi', weight: 2 },
+      { id: 'set_jishi', weight: 1 },
+    ],
+    gold: [7, 16],
+    xiuwei: [0, 0],
+    stardust: [0, 0],
+    characterExp: [26, 42],
+  },
+  loot_gear_hell: {
+    id: 'loot_gear_hell',
+    guaranteeEquipment: true,
+    setIdChance: 0.08,
     setIdWeights: [
       { id: 'set_pojun', weight: 1 },
       { id: 'set_tiebi', weight: 1 },
@@ -65,7 +105,37 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     ],
     gold: [8, 18],
     xiuwei: [0, 0],
-    stardust: [1, 4],
+    stardust: [0, 0],
+    characterExp: [36, 55],
+  },
+  /** 兼容旧 id；逻辑同 loot_gear_normal */
+  loot_gear_trial: {
+    id: 'loot_gear_trial',
+    guaranteeEquipment: true,
+    setIdChance: 0.08,
+    setIdWeights: [
+      { id: 'set_pojun', weight: 2 },
+      { id: 'set_tiebi', weight: 2 },
+      { id: 'set_jishi', weight: 1 },
+    ],
+    gold: [5, 15],
+    xiuwei: [0, 0],
+    stardust: [0, 0],
+    characterExp: [18, 32],
+  },
+  /** 兼容旧 id；逻辑同 loot_gear_hell */
+  loot_abyss_mirror: {
+    id: 'loot_abyss_mirror',
+    guaranteeEquipment: true,
+    setIdChance: 0.08,
+    setIdWeights: [
+      { id: 'set_pojun', weight: 1 },
+      { id: 'set_tiebi', weight: 1 },
+      { id: 'set_jishi', weight: 1 },
+    ],
+    gold: [8, 18],
+    xiuwei: [0, 0],
+    stardust: [0, 0],
     characterExp: [36, 55],
   },
   /** 塔奖励由 climbTower 结算；表仅占位说明 */
@@ -106,7 +176,10 @@ function rangeRoll(rng: Rng, range: [number, number]): number {
 
 export type DungeonRewardResult = {
   state: PlayerState;
+  /** 第 1 件（主展示） */
   loot: Equipment | null;
+  /** 第 2 件起 */
+  bonusLoot: Equipment[];
   dungeonId: DungeonId;
 };
 
@@ -125,28 +198,28 @@ export function grantDungeonReward(
   const table = getLootTable(dungeon.lootTableId);
   const rng = createRng(state.seed + state.wins * 13 + state.inventory.length * 7 + dungeonId.length);
 
-  const equipOpts: GenerateEquipmentOptions = {
+  const gearOpts = buildGearEquipOptions(state, dungeonId);
+  const equipOpts: GenerateEquipmentOptions = gearOpts ?? {
     setIdChance: table.setIdChance,
     setIdWeights: table.setIdWeights,
     itemLevel: itemLevelFromProgress(state.chapterCleared ?? 0, state.chapterNodeIndex ?? 0),
+    ...buildLegacyAbyssEquipOptions(dungeonId),
   };
-  if (dungeonId === 'abyss_mirror') {
-    equipOpts.rarityWeights = { rare: 28, epic: 45, legendary: 12 };
-    equipOpts.t3IdWeights = ABYSS_SOLUTION_T3_WEIGHTS;
-  }
 
-  let loot: Equipment | null = null;
-  const rollEquip =
-    table.guaranteeEquipment || rng.next() < (table.equipmentChance ?? 0);
-  if (rollEquip) {
-    loot = generateEquipment(rng, undefined, equipOpts);
+  const rollChances = resolveEquipmentRollChances(table, dungeonId);
+  const dropCount = rollEquipmentDropCount(rng, rollChances);
+  const drops: Equipment[] = [];
+  for (let i = 0; i < dropCount; i++) {
+    drops.push(generateEquipment(rng, undefined, equipOpts));
   }
+  const loot = drops[0] ?? null;
+  const bonusLoot = drops.slice(1);
 
   let next: PlayerState = {
     ...ensureRoster(state),
     wins: state.wins + 1,
     gold: state.gold + rangeRoll(rng, table.gold),
-    inventory: loot ? [...state.inventory, loot] : [...state.inventory],
+    inventory: drops.length > 0 ? [...state.inventory, ...drops] : [...state.inventory],
     seed: state.seed + 1,
     encounterIndex: state.encounterIndex + 1,
   };
@@ -174,5 +247,5 @@ export function grantDungeonReward(
   const stardust = rangeRoll(rng, table.stardust);
   if (stardust > 0) next = grantCurrency(next, 'stardust', stardust);
 
-  return { state: next, loot, dungeonId };
+  return { state: next, loot, bonusLoot, dungeonId };
 }

@@ -1,7 +1,5 @@
 import {
   MAX_PARTY_SIZE,
-  STAMINA_COST_ABYSS,
-  STAMINA_COST_GEAR,
   STAMINA_COST_STARDUST,
   STAMINA_COST_TOWER,
   advanceStoryNode,
@@ -19,6 +17,8 @@ import {
   getTowerFloor,
   isContentUnlocked,
   isTowerMilestone,
+  listUnlockedGearDungeons,
+  STAMINA_COST_GEAR,
   MINE_DAILY_LIMIT,
   MINE_DEFS,
   MINE_STAMINA_COST,
@@ -28,7 +28,6 @@ import {
   resolveNodeCopy,
   formationResonancePreview,
   partyPower,
-  pressureForDungeon,
   runStardustRealm,
   tryClaimDaily,
   trySpendStamina,
@@ -46,8 +45,7 @@ import { MainlineStoryDialogue } from './MainlineStoryDialogue';
 type HubScreenProps = {
   player: PlayerState;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
-  onStartGearTrial: () => void;
-  onStartAbyssMirror: () => void;
+  onOpenGearDungeons: () => void;
   onStartChapterBattle: () => void;
   onOpenFormation: () => void;
   pushNotice: (msg: string) => void;
@@ -68,8 +66,7 @@ const LOCKED_ENTRIES = [
 export function HubScreen({
   player,
   setPlayer,
-  onStartGearTrial,
-  onStartAbyssMirror,
+  onOpenGearDungeons,
   onStartChapterBattle,
   onOpenFormation,
   pushNotice,
@@ -85,8 +82,7 @@ export function HubScreen({
   const route = getChapterRoute(player);
   const band = getChapterBand(player.chapterCleared ?? 0);
   const deployedPower = partyPower(player, Object.keys(player.formation));
-  const gearUnlocked = isContentUnlocked(player, 'dungeon', 'gear_trial');
-  const abyssUnlocked = isContentUnlocked(player, 'dungeon', 'abyss_mirror');
+  const gearHubUnlocked = listUnlockedGearDungeons(player).length > 0;
   const towerUnlocked = isContentUnlocked(player, 'dungeon', 'tower');
   const stardustUnlocked = isContentUnlocked(player, 'dungeon', 'stardust_realm');
   const formationCount = Object.keys(player.formation).length;
@@ -308,34 +304,18 @@ export function HubScreen({
 
       <div>
         <p className="mb-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground">历练</p>
-        <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-          周循环：八题看战前提示 · 缺装量→猎装 · 缺对症 T3→镜渊（第二章后）
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:gap-3">
           <EntryCard
-            title="猎装试炼"
+            title="猎装秘境"
             subtitle={
-              gearUnlocked
-                ? `建议 ${band.recommendedPower} · 刷装量 · 体力 ${STAMINA_COST_GEAR}`
-                : '未解锁'
+              gearHubUnlocked
+                ? `主题副本 · 左选右看 · 体力约 ${STAMINA_COST_GEAR} 起`
+                : '推进主线后开放'
             }
             mark="装"
             accent="amber"
-            disabled={!gearUnlocked}
-            onClick={onStartGearTrial}
-            wide
-          />
-          <EntryCard
-            title="镜渊试炼"
-            subtitle={
-              abyssUnlocked
-                ? `建议 ${Math.round(band.recommendedPower * pressureForDungeon('abyss_mirror'))} · 对症 T3 · 体力 ${STAMINA_COST_ABYSS}`
-                : '通关第二章解锁'
-            }
-            mark="渊"
-            accent="rose"
-            disabled={!abyssUnlocked}
-            onClick={onStartAbyssMirror}
+            disabled={!gearHubUnlocked}
+            onClick={onOpenGearDungeons}
             wide
           />
           <EntryCard

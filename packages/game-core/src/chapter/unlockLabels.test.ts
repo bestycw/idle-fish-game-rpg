@@ -8,10 +8,11 @@ describe('unlockLabels', () => {
     const ch2 = CHAPTERS.find((c) => c.id === 'ch2');
     assert.ok(ch2);
     const msg = formatUnlockSummary(ch2!.unlocksOnClear);
-    assert.match(msg, /镜渊试炼/);
+    assert.match(msg, /狱门/);
+    assert.match(msg, /铁壁灵阵/);
     assert.match(msg, /八题·铁壁灵阵/);
     assert.match(msg, /召唤入池/);
     assert.doesNotMatch(msg, /召唤池·caocao/);
-    assert.ok(msg.length < 220, `toast too long: ${msg.length}`);
+    assert.ok(msg.length < 320, `toast too long: ${msg.length}`);
   });
 });

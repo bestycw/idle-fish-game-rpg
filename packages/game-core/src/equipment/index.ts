@@ -1,4 +1,7 @@
 export * from './affixDisplay.js';
+export * from './revealLine.js';
+export * from './equipLocale.js';
+export * from './composeName.js';
 export * from './equipment.js';
 export * from './generate.js';
 export * from './gems.js';

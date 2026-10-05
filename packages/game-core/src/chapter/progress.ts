@@ -1,4 +1,5 @@
 import { getDungeon, type DungeonId } from '../dungeon/defs.js';
+import { GEAR_DUNGEON_DEFS, type GearDungeonDef } from '../dungeon/gearDungeons.js';
 import {
   battleWavesForNode,
   currentChapterBattleContext,
@@ -129,6 +130,19 @@ export function listUnlockedIds(state: PlayerState, kind: UnlockKind): string[] 
   return collectUnlocks(state)
     .filter((u) => u.kind === kind)
     .map((u) => u.id);
+}
+
+export function listUnlockedGearDungeons(state: PlayerState): GearDungeonDef[] {
+  return GEAR_DUNGEON_DEFS.filter((g) => isContentUnlocked(state, 'dungeon', g.id));
+}
+
+export function listGearDungeonCatalog(
+  state: PlayerState,
+): { def: GearDungeonDef; unlocked: boolean }[] {
+  return GEAR_DUNGEON_DEFS.map((def) => ({
+    def,
+    unlocked: isContentUnlocked(state, 'dungeon', def.id),
+  }));
 }
 
 export function getChapterView(state: PlayerState): ChapterView {

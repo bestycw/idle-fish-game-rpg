@@ -3,12 +3,19 @@ import { ZHONGTU_ROSTER } from '../character/roster/zhongtuRoster.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import type { ContentUnlock } from './defs.js';
 
+import { GEAR_DUNGEON_DEFS, GEAR_TIER_LABELS } from '../dungeon/gearDungeons.js';
+import { tGearDungeonName } from '../dungeon/gearDungeonLocale.js';
+
 const DUNGEON_LABELS: Record<string, string> = {
-  gear_trial: '猎装试炼（刷装量）',
-  abyss_mirror: '镜渊试炼（对症 T3）',
+  gear_trial: '猎装试炼（旧）',
+  abyss_mirror: '镜渊试炼（旧）',
   tower: '修炼塔',
   stardust_realm: '星尘秘境',
 };
+
+for (const g of GEAR_DUNGEON_DEFS) {
+  DUNGEON_LABELS[g.id] = `猎装·${tGearDungeonName(g.id, 'xianxia')}（${GEAR_TIER_LABELS[g.tier]}）`;
+}
 
 /** 玩家可读的解锁一句（Hub / 通关 toast） */
 export function formatContentUnlockLabel(u: ContentUnlock): string {

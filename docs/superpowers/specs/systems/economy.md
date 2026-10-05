@@ -30,7 +30,7 @@
 | `stardust` | 星尘 / 余烬 | **慢补碎片**，护抽卡核 | 星尘秘境、塔里程碑、补给、主线首通（少量） | 星尘兑碎片（日 1、助到 ★4） |
 | `gold` | 灵石 | 日常流通、商站、洗练/封存（装备） | 副本副产、主线首通、挖矿（后置） | 商店、强化（后置） |
 | `xiuwei` | 修为 | **破境/塔**专用，不直卖战力 | 修炼塔（唯一大产口） | 破境（character） |
-| `characterExp` | 历练感悟 | 伙伴等级（若有） | 猎装/镜渊战斗 | 升级 |
+| `characterExp` | 经验 | 伙伴等级（若有） | 猎装战斗 | 升级 |
 | **装备** | 法器行头 | **风格核** | 猎装、镜渊 | 穿戴、洗练、分解（后置） |
 | **强化石 / 宝石** | 淬灵石、灵珠 | 装备养成 | 挖矿 | 强化、镶嵌 |
 | **cardShards** | 同名缘契 | 升星 | 抽卡重复 | 升星 |
@@ -53,8 +53,8 @@
 |------|----------|------------|------------|--------------|----------|
 | **主线章节战** | 进战斗，无装备 RNG | 节点/章进度；解锁池（副本/遭遇/召唤圈） | 见 §13.2 首通包 | 必掉紫装、大量星尘 | 仅进度；结算 UI 显「无猎装」 |
 | **主线 story 节点** | 对话推进 | 同上 | 可选：微量 `gold` | 装备 | 无 |
-| **猎装试炼** `gear_trial` | 战斗 | **装备**（`setId` 加权） | `gold`、伙伴 `characterExp`、微量 `stardust` | 大份星尘、对症 T3 权重 | `loot_gear_trial` ✓ |
-| **镜渊试炼** `abyss_mirror` | 战斗 | **装备**（紫/金 + 解法 T3 加权） | 同上，略多 `stardust` | 高 `setId` | `loot_abyss_mirror` ✓ |
+| **猎装副本**（多分档实例） | 战斗，波次+Boss | **装备**（品级/装等/词缀/T3 随难度升） | `gold`、历练 | **星尘**（仅秘境/塔/补给等专口）、套装营销 | 见 [gear-dungeon-redesign](./gear-dungeon-redesign.md) |
+| **镜渊**（现网 `abyss_mirror`） | 战斗 | 拟并入 **困难/地狱** profile | 同上 | 与猎装双入口长期并存 | 旧表 `loot_abyss_mirror`；待合并 |
 | **星尘秘境** `stardust_realm` | instant | **`stardust` 8～12** | — | 装备 | `runStardustRealm` ✓ |
 | **修炼塔** `tower` | instant | **`xiuwei`**；每 5 层 `stardust` 里程碑 | — | 装备 | `climbTower` ✓ |
 | **摸鱼补给** | 日一次 | 体力 +20、`ticket` +1、少量 `stardust` | — | — | `tryClaimDaily` ✓ |
@@ -79,13 +79,27 @@
 
 叙事皮：通关宝箱 =「记名录封赏」「关隘缴获」，与猎装「猎妖取器」区分。
 
-### 13.3 猎装 vs 镜渊 vs 主线（玩家一句话）
+### 13.3 主线 vs 猎装副本（玩家一句话 · 2026-10 意向）
 
-| | 主线 | 猎装 | 镜渊 |
-|--|------|------|------|
-| 为何打 | 推剧情、解锁 | 凑套装、提装等 | 缺破甲/净疗等 **对症 T3** |
-| 掉什么 | 进度 + 首通小包 | **量 + 套装倾向** | **品质 + 解法特效** |
-| 体力 | 不扣（章节战） | 10 | 12 |
+| | 主线 | 猎装（普通→大秘境） |
+|--|------|---------------------|
+| 为何打 | 推剧情、解锁新本/新难度 | **更好的装备分布**、养等级历练 |
+| 掉什么 | 进度 + 首通包 + 零钱 | **第 1 件必得** + 第 2/3 件**独立递减概率**追加；历练；难度↑ → 追加率↑、品级/装等/T3↑ |
+| 套装 | 不刻意掉 | **点缀**，非刷本目标 |
+| 体力 | 章节战不扣 | 按副本 tier 扣（现网 10/12 待统一） |
+
+**猎装多件递减（对标手游体力本）：** 每件独立 roll，不叠乘。默认 `GEAR_EQUIP_ROLL_CHANCES`：
+
+| tier | 第1件 | 第2件 | 第3件 | 第4件 |
+|------|------|------|------|------|
+| normal | 100% | 22% | 6% | — |
+| hard | 100% | 38% | 12% | 3% |
+| hell | 100% | 48% | 18% | 6% |
+| rift | 100% | 55% | 22% | 8% |
+
+实现：`gearEquipRolls.ts` → `grantDungeonReward`；结算 `bonusEquipment[]`；猎装页预览格标「必掉 / XX%」（边框色=池内**最高**品级）。
+
+**品级权重：** 每件单独 `rollRarity`；猎装**不用**全局 `DROPTABLE`，按难度档 `GEAR_TIER_RARITY_WEIGHTS`（`gearRarityByTier.ts`）：普通 **凡~良**（封顶良）、困难 **精~珍**（封顶珍、无绝）、地狱/秘境 **良~绝**。预览格边框色 = 该本池内最高档。地狱实例可 `rarityWeights` 微调比例，不得突破档位上限（实例表仅地狱）。装等按章 + tier，与品级独立。
 
 ---
 
@@ -96,7 +110,8 @@
 ```
 BattleSettlement {
   source: 'chapter' | 'dungeon' | 'tower' | 'stardust' | 'mine' | 'daily'
-  equipment?: Equipment          // 猎装/镜渊
+  equipment?: Equipment          // 猎装/镜渊 第 1 件
+  bonusEquipment?: Equipment[]   // 猎装追加件
   currencies: { gold?, stardust?, xiuwei?, ticket? }
   materials?: { enhanceStone?, gems?[] }
   progress?: { chapterNode?, unlocks?, firstClearChapter? }
@@ -130,6 +145,7 @@ BattleSettlement {
 
 ## 16. 实现顺序（建议）
 
+0. **物品主表 + 掉落引用 id**（[item-registry.md](./item-registry.md)）：`ItemDef` / `tItem(skin)` / `DropTable` → 再扩池  
 1. **`BattleSettlement` + 结算 UI**（主线显示进度/首通包，副本显示装备卡）  
 2. **`grantChapterFirstClear` + 卷一表**（与 §13.2 对齐，单测）  
 3. **商站壳接 `gold`**（行商 NPC 已占位）  

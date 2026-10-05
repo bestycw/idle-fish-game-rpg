@@ -472,6 +472,8 @@ export interface PlayerState {
   mineExtraLimit?: number;
   /** 洗练尘 */
   rerollDust?: number;
+  /** 堆叠材料袋（炼药/锻造预留；与 Item Registry 对齐） */
+  materials?: Record<string, number>;
   /** 点开检视过的装备 id；不在此列的格子打「新」 */
   seenItemIds?: string[];
   /** 封存印（一条条件） */

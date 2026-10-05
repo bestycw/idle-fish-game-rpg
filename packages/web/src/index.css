@@ -834,6 +834,11 @@
   animation: prologue-emphasis-pop 0.55s ease-out both, prologue-shake 0.35s ease-in-out 1;
 }
 
+[data-radix-popper-content-wrapper] {
+  z-index: 80;
+  max-width: calc(100vw - 1.5rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .formation-slot-selected {
     transform: none;

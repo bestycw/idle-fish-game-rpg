@@ -34,7 +34,7 @@ describe('chapter', () => {
     const p = createInitialPlayer(1);
     assert.equal(p.chapterCleared, 0);
     assert.equal(p.chapterNodeIndex, 0);
-    assert.ok(isContentUnlocked(p, 'dungeon', 'gear_trial'));
+    assert.ok(isContentUnlocked(p, 'dungeon', 'gear_break_wall'));
     assert.ok(isContentUnlocked(p, 'gacha_unit', 'zhangfei'));
     assert.ok(isContentUnlocked(p, 'gacha_unit', 'houyi'));
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'baigujing'), false);

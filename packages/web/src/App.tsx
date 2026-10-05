@@ -8,8 +8,10 @@ import {
   resolveChapterBattleAfterWin,
   buildBattleSettlement,
   EMPTY_SETTLEMENT,
+  getChapterBand,
   getDungeon,
   grantDungeonReward,
+  partyPower,
   type BattleSettlement,
   grantSampleEquipment,
   loadOrCreatePlayer,
@@ -50,6 +52,7 @@ import {
 import { CharacterList, CharacterSheet } from './features/character/CharacterScreens';
 import { FormationScreen } from './features/character/FormationScreen';
 import { HubScreen } from './features/hub/HubScreen';
+import { GearDungeonScreen } from './features/hub/GearDungeonScreen';
 import { ParallelArcScreen } from './features/hub/ParallelArcScreen';
 import { PrologueScreen } from './features/hub/PrologueScreen';
 import { GachaScreen } from './features/gacha/GachaScreen';
@@ -66,7 +69,8 @@ type Screen =
   | 'character'
   | 'formation'
   | 'gacha'
-  | 'bag';
+  | 'bag'
+  | 'gear_dungeons';
 type BattleSource = 'dungeon' | 'chapter';
 
 function screenToTab(screen: Screen): NavTab {
@@ -76,7 +80,7 @@ function screenToTab(screen: Screen): NavTab {
   return 'hub';
 }
 
-const DEFAULT_BATTLE_DUNGEON: DungeonId = 'gear_trial';
+const DEFAULT_BATTLE_DUNGEON: DungeonId = 'gear_break_wall';
 const BATTLE_BASE_TICK_MS = 380;
 
 function bootstrapSession() {
@@ -116,6 +120,7 @@ export default function App() {
   const noticeTimerRef = useRef<number | null>(null);
   /** 平行线结算：等离开战斗结算页再弹，避免盖住战利 */
   const deferredParallelArcRef = useRef<ParallelArcId | null>(null);
+  const prepReturnScreenRef = useRef<Screen>('hub');
 
   const dismissNotice = () => {
     if (noticeTimerRef.current != null) {
@@ -209,7 +214,7 @@ export default function App() {
           setLastSettlement(EMPTY_SETTLEMENT);
         }
       } else {
-        const { state, loot } = grantDungeonReward(basePlayer, dungeonRef.current);
+        const { state, loot, bonusLoot } = grantDungeonReward(basePlayer, dungeonRef.current);
         setPlayer(state);
         setLastSettlement(
           buildBattleSettlement({
@@ -217,6 +222,7 @@ export default function App() {
             before: basePlayer,
             after: state,
             equipment: loot,
+            bonusEquipment: bonusLoot,
             lines: loot ? [] : ['本局未出装备，再试一把。'],
           }),
         );
@@ -267,16 +273,25 @@ export default function App() {
     finishBattle(final, playerRef.current);
   };
 
-  const openDungeonPrep = (dungeonId: DungeonId = DEFAULT_BATTLE_DUNGEON) => {
+  const openDungeonPrep = (
+    dungeonId: DungeonId = DEFAULT_BATTLE_DUNGEON,
+    returnTo: Screen = 'hub',
+  ) => {
     stopPlayback();
     const dungeon = getDungeon(dungeonId);
     if (dungeon.runMode !== 'battle') return;
+    prepReturnScreenRef.current = returnTo;
     const encIdx = pickUnlockedEncounterIndex(player, dungeonId, player.encounterIndex);
     battleSourceRef.current = 'dungeon';
     setActiveDungeonId(dungeonId);
     dungeonRef.current = dungeonId;
     setBattlePrep({ kind: 'dungeon', dungeonId, encounterIndex: encIdx });
     setScreen('battle_prep');
+  };
+
+  const openGearDungeons = () => {
+    stopPlayback();
+    setScreen('gear_dungeons');
   };
 
   const openChapterPrep = () => {
@@ -331,7 +346,7 @@ export default function App() {
     if (battleSourceRef.current === 'chapter') {
       openChapterPrep();
     } else {
-      openDungeonPrep(activeDungeonId);
+      openDungeonPrep(activeDungeonId, prepReturnScreenRef.current);
     }
   };
 
@@ -422,7 +437,9 @@ export default function App() {
   const handleBackToHub = () => {
     stopPlayback();
     setPlayer((p) => clearParallelMainlineDefeatRipple(p));
-    setScreen('hub');
+    const dest =
+      battleSourceRef.current === 'dungeon' ? prepReturnScreenRef.current : 'hub';
+    setScreen(dest);
     window.requestAnimationFrame(() => flushDeferredParallelArc());
   };
 
@@ -488,7 +505,9 @@ export default function App() {
               ? '九宫站位'
               : screen === 'bag'
                 ? '行囊'
-                : '布阵刷装 · 摸鱼深构筑';
+                : screen === 'gear_dungeons'
+                  ? '猎装秘境'
+                  : '布阵刷装 · 摸鱼深构筑';
 
   const combatFocus =
     screen === 'battle_prep' || screen === 'battle' || screen === 'result';
@@ -526,7 +545,8 @@ export default function App() {
         screen === 'result' ||
         screen === 'character' ||
         screen === 'formation' ||
-        screen === 'bag'
+        screen === 'bag' ||
+        screen === 'gear_dungeons'
       }
       notice={screen === 'result' || screen === 'battle' ? null : notice}
       onDismissNotice={dismissNotice}
@@ -614,12 +634,21 @@ export default function App() {
         <HubScreen
           player={player}
           setPlayer={setPlayer}
-          onStartGearTrial={() => openDungeonPrep('gear_trial')}
-          onStartAbyssMirror={() => openDungeonPrep('abyss_mirror')}
+          onOpenGearDungeons={openGearDungeons}
           onStartChapterBattle={openChapterPrep}
           onOpenFormation={() => openFormation('hub')}
           pushNotice={pushNotice}
           onOpenParallelRealWorld={openParallelRealWorldFromHub}
+        />
+      )}
+
+      {screen === 'gear_dungeons' && (
+        <GearDungeonScreen
+          player={player}
+          recommendedPower={getChapterBand(player.chapterCleared ?? 0).recommendedPower}
+          deployedPower={partyPower(player, Object.keys(player.formation))}
+          onBack={() => setScreen('hub')}
+          onEnter={(dungeonId) => openDungeonPrep(dungeonId, 'gear_dungeons')}
         />
       )}
 
@@ -631,7 +660,7 @@ export default function App() {
           pushNotice={pushNotice}
           onBack={() => {
             setBattlePrep(null);
-            setScreen('hub');
+            setScreen(prepReturnScreenRef.current);
           }}
           onConfirmStart={commitBattleStart}
         />
@@ -650,6 +679,7 @@ export default function App() {
 
       {screen === 'result' && battle && (
         <ResultScreen
+          player={player}
           battle={battle}
           settlement={lastSettlement}
           dungeonName={dungeonName}

@@ -1,9 +1,13 @@
 import {
   RARITY_LABELS,
+  equipmentRevealLine,
   itemPower,
+  settlementGrantRows,
   settlementHasLoot,
+  tItem,
   type BattleSettlement,
   type Equipment,
+  type WorldPreset,
 } from '@moyu/game-core';
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -13,85 +17,80 @@ import { EquipTooltip } from '../inventory/EquipTooltip';
 type BattleSettlementPanelProps = {
   settlement: BattleSettlement;
   onWearLoot?: (item: Equipment) => void;
+  worldPreset?: WorldPreset;
   /** stage：结算页文字行；card：带框卡片（复用场景） */
   variant?: 'card' | 'stage';
 };
 
-type RewardKind = 'gold' | 'stardust' | 'xiuwei' | 'ticket' | 'enhanceStones';
-
-const REWARD_LABELS: Record<RewardKind, string> = {
-  gold: '灵石',
-  stardust: '星尘',
-  xiuwei: '修为',
-  ticket: '寻访帖',
-  enhanceStones: '淬灵石',
-};
-
-function collectRewardTiles(settlement: BattleSettlement): { kind: RewardKind; amount: number }[] {
-  const rows: { kind: RewardKind; amount: number }[] = [];
-  if (settlement.gold > 0) rows.push({ kind: 'gold', amount: settlement.gold });
-  if (settlement.stardust > 0) rows.push({ kind: 'stardust', amount: settlement.stardust });
-  if (settlement.xiuwei > 0) rows.push({ kind: 'xiuwei', amount: settlement.xiuwei });
-  if (settlement.ticket > 0) rows.push({ kind: 'ticket', amount: settlement.ticket });
-  if (settlement.enhanceStones > 0) rows.push({ kind: 'enhanceStones', amount: settlement.enhanceStones });
-  return rows;
-}
-
 function RewardLedger({
   tiles,
-  loot,
+  equipment,
   onWearLoot,
+  worldPreset,
 }: {
-  tiles: { kind: RewardKind; amount: number }[];
-  loot: Equipment | null;
+  tiles: { itemId: string; amount: number }[];
+  equipment: Equipment[];
   onWearLoot?: (item: Equipment) => void;
+  worldPreset: WorldPreset;
 }) {
-  const [showDetail, setShowDetail] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   return (
     <div className="mx-auto w-full max-w-[16rem] sm:max-w-xs">
       <ul className="list-none space-y-2.5 text-sm leading-relaxed">
         {tiles.map((t, i) => (
           <li
-            key={t.kind}
+            key={t.itemId}
             className="reward-tile-in flex items-baseline justify-between gap-6"
             style={{ animationDelay: `${60 + i * 40}ms` }}
           >
-            <span className="text-foreground/70">{REWARD_LABELS[t.kind]}</span>
+            <span className="text-foreground/70">{tItem(t.itemId, worldPreset)}</span>
             <span className="tabular-nums text-foreground/95">+{t.amount}</span>
           </li>
         ))}
-        {loot ? (
-          <li
-            className="reward-tile-in flex items-baseline justify-between gap-6"
-            style={{ animationDelay: `${60 + tiles.length * 40}ms` }}
-          >
-            <span className={cn('min-w-0 truncate', rarityNameTone(loot.rarity))}>
-              {loot.enhanceLevel > 0 ? `+${loot.enhanceLevel} ` : ''}
-              {loot.name}
-            </span>
-            <span className="shrink-0 text-foreground/55">×1</span>
-          </li>
-        ) : null}
+        {equipment.map((loot, ei) => {
+          const row = tiles.length + ei;
+          return (
+            <li
+              key={loot.id}
+              className="reward-tile-in flex items-baseline justify-between gap-6"
+              style={{ animationDelay: `${60 + row * 40}ms` }}
+            >
+              <span className={cn('min-w-0 truncate', rarityNameTone(loot.rarity))}>
+                {loot.enhanceLevel > 0 ? `+${loot.enhanceLevel} ` : ''}
+                {loot.name}
+              </span>
+              <span className="shrink-0 text-foreground/55">×1</span>
+            </li>
+          );
+        })}
       </ul>
 
-      {loot ? (
+      {equipment[0] ? (
+        <p
+          className="reward-tile-in mt-4 text-center text-xs leading-relaxed text-foreground/65"
+          style={{ animationDelay: `${60 + (tiles.length + equipment.length) * 40}ms` }}
+        >
+          {equipmentRevealLine(equipment[0])}
+        </p>
+      ) : null}
+      {equipment[0] ? (
         <div
-          className="reward-tile-in mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
-          style={{ animationDelay: `${60 + (tiles.length + 1) * 40}ms` }}
+          className="reward-tile-in mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+          style={{ animationDelay: `${60 + (tiles.length + equipment.length + 1) * 40}ms` }}
         >
           <button
             type="button"
             className="underline-offset-2 hover:text-foreground/80 hover:underline"
-            onClick={() => setShowDetail((v) => !v)}
+            onClick={() => setDetailId((id) => (id === equipment[0]!.id ? null : equipment[0]!.id))}
           >
-            {showDetail ? '收起属性' : '属性'}
+            {detailId === equipment[0]!.id ? '收起属性' : '属性'}
           </button>
           {onWearLoot ? (
             <button
               type="button"
               className="text-primary/90 underline-offset-2 hover:text-primary hover:underline"
-              onClick={() => onWearLoot(loot)}
+              onClick={() => onWearLoot(equipment[0]!)}
             >
               穿戴
             </button>
@@ -99,9 +98,9 @@ function RewardLedger({
         </div>
       ) : null}
 
-      {loot && showDetail ? (
+      {equipment[0] && detailId === equipment[0].id ? (
         <div className="mt-3 rounded-lg border border-border/35 bg-black/20 p-3 text-left">
-          <EquipTooltip item={loot} compact />
+          <EquipTooltip item={equipment[0]} compact />
         </div>
       ) : null}
     </div>
@@ -142,7 +141,8 @@ function SettlementEquipCard({
           item.rarity === 'epic' && 'loot-equip-epic',
         )}
       >
-        <p className={cn('font-display text-lg', rarityNameTone(item.rarity))}>
+        <p className="text-xs leading-relaxed text-foreground/65">{equipmentRevealLine(item)}</p>
+        <p className={cn('mt-2 font-display text-lg', rarityNameTone(item.rarity))}>
           {item.enhanceLevel > 0 ? `+${item.enhanceLevel} ` : ''}
           {item.name}
         </p>
@@ -180,10 +180,15 @@ function SettlementEquipCard({
 export function BattleSettlementPanel({
   settlement,
   onWearLoot,
+  worldPreset = 'xianxia',
   variant = 'card',
 }: BattleSettlementPanelProps) {
-  const tiles = useMemo(() => collectRewardTiles(settlement), [settlement]);
+  const tiles = useMemo(() => settlementGrantRows(settlement), [settlement]);
   const loot = settlement.equipment;
+  const allEquipment = useMemo(
+    () => (loot ? [loot, ...settlement.bonusEquipment] : settlement.bonusEquipment),
+    [loot, settlement.bonusEquipment],
+  );
   const hasLoot = settlementHasLoot(settlement);
   const hasFirstClear = Boolean(settlement.firstClearChapter);
   const stage = variant === 'stage';
@@ -193,21 +198,27 @@ export function BattleSettlementPanel({
   const body = stage ? (
     <>
       <FirstClearLine settlement={settlement} />
-      <RewardLedger tiles={tiles} loot={loot} onWearLoot={onWearLoot} />
+      <RewardLedger
+        tiles={tiles}
+        equipment={allEquipment}
+        onWearLoot={onWearLoot}
+        worldPreset={worldPreset}
+      />
     </>
   ) : (
     <>
       <FirstClearLine settlement={settlement} />
-      {tiles.length > 0 ? (
-        <RewardLedger tiles={tiles} loot={null} />
+      {tiles.length > 0 || allEquipment.length > 0 ? (
+        <RewardLedger tiles={tiles} equipment={[]} worldPreset={worldPreset} />
       ) : null}
-      {loot ? (
+      {allEquipment.map((item, i) => (
         <SettlementEquipCard
-          item={loot}
+          key={item.id}
+          item={item}
           onWearLoot={onWearLoot}
-          revealIndex={tiles.length}
+          revealIndex={tiles.length + i}
         />
-      ) : null}
+      ))}
     </>
   );
 

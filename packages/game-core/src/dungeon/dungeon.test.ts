@@ -8,42 +8,80 @@ import {
   listBattleDungeons,
   pickEncounterIndex,
 } from './defs.js';
+import {
+  gearLootRarityMix,
+  maxRarityForGearTier,
+  maxRarityInWeights,
+  resolveGearRarityWeights,
+} from './gearRarityByTier.js';
+import { getGearDungeon } from './gearDungeons.js';
 import { ABYSS_SOLUTION_T3_WEIGHTS, getLootTable, grantDungeonReward } from './lootTables.js';
 import { climbTower } from './tower.js';
 
 describe('dungeon defs', () => {
-  it('ships gear trial (battle) and tower (instant)', () => {
-    assert.equal(getDungeon('gear_trial').runMode, 'battle');
+  it('ships gear instances (battle) and tower (instant)', () => {
+    assert.equal(getDungeon('gear_break_wall').runMode, 'battle');
     assert.equal(getDungeon('tower').runMode, 'instant');
-    assert.equal(listBattleDungeons().length, 2);
-    assert.ok(getDungeon('gear_trial').encounterPool.includes('wall'));
-    assert.ok(getDungeon('abyss_mirror').encounterPool.includes('boss_warden'));
+    assert.ok(listBattleDungeons().length >= 6);
+    assert.ok(getDungeon('gear_break_wall').encounterPool.includes('wall'));
+    assert.ok(getDungeon('gear_warden_trial').encounterPool.includes('boss_warden'));
   });
 
   it('pickEncounterIndex rotates pool by cursor', () => {
-    const poolLen = getDungeon('gear_trial').encounterPool.length;
-    const a = pickEncounterIndex('gear_trial', 0);
-    const b = pickEncounterIndex('gear_trial', 1);
-    const wrap = pickEncounterIndex('gear_trial', poolLen);
+    const poolLen = getDungeon('gear_raider_trail').encounterPool.length;
+    assert.ok(poolLen >= 2);
+    const a = pickEncounterIndex('gear_raider_trail', 0);
+    const b = pickEncounterIndex('gear_raider_trail', 1);
+    const wrap = pickEncounterIndex('gear_raider_trail', poolLen);
     assert.notEqual(a, b);
     assert.equal(a, wrap);
   });
 });
 
 describe('dungeon loot', () => {
-  it('gear trial always drops equipment and advances cursor', () => {
+  it('gear dungeon always drops equipment and advances cursor', () => {
     const player = createInitialPlayer(99);
     const before = player.encounterIndex;
-    const { state, loot } = grantDungeonReward(player, 'gear_trial');
+    const { state, loot, bonusLoot } = grantDungeonReward(player, 'gear_break_wall');
     assert.ok(loot);
-    assert.equal(state.inventory.length, player.inventory.length + 1);
+    const dropN = 1 + bonusLoot.length;
+    assert.equal(state.inventory.length, player.inventory.length + dropN);
     assert.equal(state.wins, player.wins + 1);
     assert.equal(state.encounterIndex, before + 1);
   });
 
-  it('gear trial setId chance is higher than default generate', () => {
-    const table = getLootTable('loot_gear_trial');
-    assert.ok(table.setIdChance > 0.25);
+  it('gear tier rarity pools are progressive', () => {
+    const normal = getGearDungeon('gear_break_wall')!;
+    const hard = getGearDungeon('gear_arrow_hard')!;
+    assert.equal(maxRarityForGearTier('normal'), 'rare');
+    assert.equal(maxRarityForGearTier('hard'), 'epic');
+    assert.equal(maxRarityForGearTier('hell'), 'legendary');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(normal)), 'rare');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(hard)), 'epic');
+    const normalWeights = resolveGearRarityWeights(normal);
+    assert.equal(normalWeights.legendary ?? 0, 0);
+    assert.equal((normalWeights.epic ?? 0), 0);
+    const mix = gearLootRarityMix(normal, 'xianxia');
+    assert.equal(mix.reduce((s, r) => s + r.pct, 0), 100);
+    assert.equal(mix.find((r) => r.rarity === 'common')?.pct, 45);
+  });
+
+  it('gear normal can roll bonus equipment with decaying chances', () => {
+    let sawBonus = false;
+    for (let i = 0; i < 400; i += 1) {
+      const player = createInitialPlayer(4000 + i);
+      const { loot, bonusLoot, state } = grantDungeonReward(player, 'gear_break_wall');
+      assert.ok(loot);
+      const n = 1 + bonusLoot.length;
+      assert.equal(state.inventory.length, player.inventory.length + n);
+      if (bonusLoot.length > 0) sawBonus = true;
+    }
+    assert.ok(sawBonus, 'expected some 2nd-piece drops at ~22%');
+  });
+
+  it('gear loot setId chance is accent not core', () => {
+    const table = getLootTable('loot_gear_normal');
+    assert.ok(table.setIdChance <= 0.12);
 
     let withSet = 0;
     for (let i = 0; i < 200; i += 1) {
@@ -53,7 +91,7 @@ describe('dungeon loot', () => {
       });
       if (item.setId) withSet += 1;
     }
-    assert.ok(withSet > 70, `expected many set drops, got ${withSet}/200`);
+    assert.ok(withSet < 50, `expected few set drops, got ${withSet}/200`);
   });
 
   it('rejects instant dungeon on battle reward API', () => {
@@ -61,14 +99,14 @@ describe('dungeon loot', () => {
     assert.throws(() => grantDungeonReward(player, 'tower'));
   });
 
-  it('abyss mirror drops gear biased to solution T3', () => {
+  it('hell warden trial drops gear biased to solution T3', () => {
     const solutionIds = new Set(ABYSS_SOLUTION_T3_WEIGHTS.map((w) => w.id));
     let withSolutionT3 = 0;
     let n = 0;
     for (let i = 0; i < 120; i += 1) {
       const player = createInitialPlayer(2000 + i);
-      const { loot } = grantDungeonReward(player, 'abyss_mirror');
-      assert.ok(loot, 'abyss should guarantee equipment');
+      const { loot } = grantDungeonReward(player, 'gear_warden_trial');
+      assert.ok(loot, 'hell gear dungeon should guarantee equipment');
       n += 1;
       if (loot.effectAffixId && solutionIds.has(loot.effectAffixId)) withSolutionT3 += 1;
     }
