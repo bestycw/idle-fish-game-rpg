@@ -487,8 +487,12 @@ export default function App() {
         ? `主线 · ${formatChapterBattleWaveProgress(chapterPendingWaves)}`
         : '主线节点'
       : getDungeon(activeDungeonId).name;
+  const chapterBetweenWaves =
+    battle?.status === 'won' &&
+    battleSourceRef.current === 'chapter' &&
+    (player.chapterBattleWaveIndex ?? 0) > 0;
   const chapterNextBattleHint =
-    battle?.status === 'won' && chapterPendingWaves
+    chapterBetweenWaves && chapterPendingWaves
       ? formatChapterBattleWaveProgress(chapterPendingWaves)
       : null;
 

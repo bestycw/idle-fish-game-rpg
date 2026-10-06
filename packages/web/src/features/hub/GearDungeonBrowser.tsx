@@ -132,7 +132,6 @@ function DungeonDetailPanel({
           tiles={selected.lootPreview}
           preset={worldPreset}
           rarityMix={selected.lootRarityMix}
-          affixHint={selected.lootLine}
         />
 
         {!selected.unlocked ? (

@@ -43,13 +43,16 @@ export function ResultScreen({
 }: ResultScreenProps) {
   const won = battle.status === 'won';
   const [logOpen, setLogOpen] = useState(false);
-  const chapterHasNextBattle =
+  const chapterMidWave =
     battleSource === 'chapter' && won && Boolean(chapterNextBattleHint);
-  const restartLabel = chapterHasNextBattle
+  const dungeonCleared = battleSource === 'dungeon' && won;
+  const restartLabel = chapterMidWave
     ? '下一场战斗'
-    : won
+    : dungeonCleared
       ? '再刷一把'
-      : '重整再战';
+      : won
+        ? '继续冒险'
+        : '重整再战';
 
   const showRewardBlock = won && settlementShowsRewardBlock(settlement);
   const worldPreset = resolveWorldPreset(player);
@@ -75,8 +78,7 @@ export function ResultScreen({
     });
   };
 
-  const showSecondaryRestart =
-    chapterHasNextBattle || !won || battleSource === 'dungeon';
+  const showSecondaryRestart = chapterMidWave || !won || dungeonCleared;
 
   return (
     <div className="result-stage relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
@@ -121,12 +123,12 @@ export function ResultScreen({
             )}
           </div>
 
-          {chapterHasNextBattle ? (
+          {chapterMidWave ? (
             <p className="mt-8 text-center text-sm text-muted-foreground">
               本节尚有后续交战
             </p>
           ) : null}
-          {chapterHasNextBattle && chapterNextBattleHint ? (
+          {chapterMidWave && chapterNextBattleHint ? (
             <p className="mt-2 text-center text-xs tracking-wide text-primary/80">
               {chapterNextBattleHint}
             </p>
@@ -137,8 +139,13 @@ export function ResultScreen({
               <BattleSettlementPanel
                 variant="stage"
                 settlement={settlement}
+                player={player}
                 worldPreset={worldPreset}
-                onWearLoot={settlement.equipment ? wearLootItem : undefined}
+                onWearLoot={
+                  settlement.equipment || settlement.bonusEquipment.length > 0
+                    ? wearLootItem
+                    : undefined
+                }
               />
             </div>
           ) : won ? (
@@ -172,7 +179,7 @@ export function ResultScreen({
                   : 'bg-primary py-[1.125rem] text-base text-primary-foreground shadow-[0_8px_32px_rgba(226,160,74,0.22)] hover:brightness-110',
               )}
             >
-              {chapterHasNextBattle ? '稍后继续' : '返回冒险'}
+              {chapterMidWave ? '稍后继续' : '返回冒险'}
             </button>
           </div>
 

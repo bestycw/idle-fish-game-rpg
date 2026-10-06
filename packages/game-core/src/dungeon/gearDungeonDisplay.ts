@@ -1,5 +1,4 @@
 import { isContentUnlocked } from '../chapter/progress.js';
-import { getT3Def } from '../equipment/catalog/t3.js';
 import type { PlayerState, WorldPreset } from '../shared/types.js';
 import { ENCOUNTERS } from './encounters.js';
 import {
@@ -15,7 +14,6 @@ import {
   gearDungeonUnlockHint,
   tGearDungeonBlurb,
   tGearDungeonLineName,
-  tGearDungeonLootLine,
   tGearDungeonName,
 } from './gearDungeonLocale.js';
 
@@ -26,9 +24,7 @@ export type GearDungeonView = {
   unlockHint: string;
   name: string;
   blurb: string;
-  lootLine: string;
   encounterLabels: string[];
-  featuredAffixNames: string[];
   pressure: number;
   staminaCost: number;
   lootPreview: LootPreviewTile[];
@@ -37,18 +33,6 @@ export type GearDungeonView = {
 
 function encounterLabel(encounterId: string): string {
   return ENCOUNTERS.find((e) => e.id === encounterId)?.name ?? encounterId;
-}
-
-function featuredAffixNames(def: GearDungeonDef): string[] {
-  const weights = def.t3IdWeights ?? [];
-  if (weights.length === 0) return [];
-  const top = [...weights].sort((a, b) => b.weight - a.weight).slice(0, 3);
-  const names: string[] = [];
-  for (const w of top) {
-    const t3 = getT3Def(w.id);
-    if (t3?.name) names.push(t3.name);
-  }
-  return names;
 }
 
 export type GearLineTierSlot = {
@@ -93,10 +77,6 @@ export function buildGearDungeonView(
   preset: WorldPreset,
   unlocked: boolean,
 ): GearDungeonView {
-  const affixNames = featuredAffixNames(def);
-  const lootLine = tGearDungeonLootLine(def.id, preset);
-  const affixSuffix =
-    affixNames.length > 0 ? `（${affixNames.join(' · ')}）` : '';
   return {
     id: def.id,
     tier: def.tier,
@@ -104,9 +84,7 @@ export function buildGearDungeonView(
     unlockHint: gearDungeonUnlockHint(def.id),
     name: tGearDungeonName(def.id, preset),
     blurb: tGearDungeonBlurb(def.id, preset),
-    lootLine: affixSuffix ? `${lootLine}${affixSuffix}` : lootLine,
     encounterLabels: def.encounterPool.map(encounterLabel),
-    featuredAffixNames: affixNames,
     pressure: def.pressure,
     staminaCost: def.staminaCost,
     lootPreview: buildGearLootPreview(def),

@@ -99,10 +99,9 @@ type LootPreviewStripProps = {
   tiles: LootPreviewTile[];
   preset: WorldPreset;
   rarityMix?: GearLootRarityMixEntry[];
-  affixHint?: string;
 };
 
-export function LootPreviewStrip({ tiles, preset, rarityMix, affixHint }: LootPreviewStripProps) {
+export function LootPreviewStrip({ tiles, preset, rarityMix }: LootPreviewStripProps) {
   if (tiles.length === 0) return null;
 
   const equipTiles = tiles.filter((t): t is LootPreviewEquipTile => t.kind === 'equip_random');
@@ -120,9 +119,6 @@ export function LootPreviewStrip({ tiles, preset, rarityMix, affixHint }: LootPr
         })}
       </div>
       {rarityMix && rarityMix.length > 0 ? <RarityMixRow mix={rarityMix} /> : null}
-      {affixHint ? (
-        <p className="mt-2 text-[11px] leading-relaxed text-foreground/60">{affixHint}</p>
-      ) : null}
     </div>
   );
 }

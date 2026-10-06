@@ -23,7 +23,7 @@ describe('dungeon defs', () => {
     assert.equal(getDungeon('gear_break_wall').runMode, 'battle');
     assert.equal(getDungeon('tower').runMode, 'instant');
     assert.ok(listBattleDungeons().length >= 6);
-    assert.ok(getDungeon('gear_break_wall').encounterPool.includes('wall'));
+    assert.ok(getDungeon('gear_break_wall').encounterPool.includes('boss_wall'));
     assert.ok(getDungeon('gear_warden_trial').encounterPool.includes('boss_warden'));
   });
 
