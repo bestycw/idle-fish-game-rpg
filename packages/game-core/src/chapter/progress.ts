@@ -5,6 +5,7 @@ import {
   currentChapterBattleContext,
   resetChapterBattleWave,
 } from './battleWaves.js';
+import { MAINLINE_WAVES_PER_UNIT } from './mainlineBattleWaves.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import type { PlayerState } from '../shared/types.js';
 import {
@@ -27,7 +28,7 @@ import {
   formatFirstClearRewardLine,
   type BattleSettlement,
 } from '../reward/battleSettlement.js';
-import { grantMainlineBattleScrap } from '../reward/mainlineBattleScrap.js';
+import { grantMainlineBattleWaveReward } from '../reward/mainlineBattleScrap.js';
 
 export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
 
@@ -182,9 +183,6 @@ function finishNode(state: PlayerState): {
   const nextIndex = view.nodeIndex + 1;
   if (nextIndex < ch.nodes.length) {
     let nextState = resetChapterBattleWave({ ...state, chapterNodeIndex: nextIndex });
-    if (completedNode.kind === 'battle') {
-      nextState = grantMainlineBattleScrap(nextState, ch.order * 100 + view.nodeIndex);
-    }
     return {
       state: nextState,
       clearedChapter: null,
@@ -199,9 +197,6 @@ function finishNode(state: PlayerState): {
     chapterCleared: cleared,
     chapterNodeIndex: 0,
   });
-  if (completedNode.kind === 'battle') {
-    nextState = grantMainlineBattleScrap(nextState, ch.order * 100 + view.nodeIndex);
-  }
   nextState = applyParallelReportAfterChapterClear(nextState, cleared);
   const first = applyChapterFirstClear(nextState, ch);
   nextState = first.state;
@@ -277,40 +272,63 @@ export function resolveChapterBattleAfterWin(
   if (!ctx) {
     return { ok: false, message: '无法解析当前遭遇。' };
   }
-  const waves = battleWavesForNode(view.node);
+  const waves = battleWavesForNode(view.node, chapter.order);
   const nextWave = ctx.waveIndex + 1;
   if (nextWave < ctx.waveTotal) {
     const nextDef = waves[nextWave];
     const label = nextDef?.label?.trim();
-    const msg = label
-      ? `前锋已破。下一阵：${label}。`
-      : `第 ${nextWave + 1}/${ctx.waveTotal} 波敌军压上。`;
+    const nextUnit = nextDef?.unitIndex;
+    const newUnit =
+      nextUnit != null &&
+      nextUnit > ctx.unitIndex &&
+      nextWave % MAINLINE_WAVES_PER_UNIT === 0;
+    const unitHint = newUnit ? nextDef?.unitLabel ?? `第 ${nextUnit + 1} 阵` : null;
+    const msg = newUnit
+      ? unitHint
+        ? `${unitHint}压上${label ? `：${label}` : ''}。`
+        : `下一阵敌军压上。`
+      : label
+        ? `前锋已破。下一战：${label}。`
+        : `第 ${nextWave + 1}/${ctx.waveTotal} 场敌军压上。`;
     const before = state;
-    const after = grantMainlineBattleScrap(
+    const wave = grantMainlineBattleWaveReward(
       { ...state, chapterBattleWaveIndex: nextWave },
-      chapter.order * 1000 + view.nodeIndex * 10 + ctx.waveIndex,
+      {
+        chapterOrder: chapter.order,
+        waveIndexInNode: ctx.waveIndex,
+        salt: chapter.order * 1000 + view.nodeIndex * 10 + ctx.waveIndex,
+      },
     );
     return {
       ok: true,
-      state: after,
+      state: wave.state,
       clearedChapter: null,
       hasNextWave: true,
       message: msg,
       settlement: buildBattleSettlement({
         source: 'chapter',
         before,
-        after,
+        after: wave.state,
+        characterExpPerMember: wave.characterExpPerMember,
+        partyExpRows: wave.partyExpRows,
         lines: [],
       }),
     };
   }
   const before = state;
-  const done = finishNode(resetChapterBattleWave(state));
+  const wave = grantMainlineBattleWaveReward(state, {
+    chapterOrder: chapter.order,
+    waveIndexInNode: ctx.waveIndex,
+    salt: chapter.order * 1000 + view.nodeIndex * 10 + ctx.waveIndex,
+  });
+  const done = finishNode(resetChapterBattleWave(wave.state));
   const lines = [done.message, done.firstClearLine].filter(Boolean) as string[];
   const settlement = buildBattleSettlement({
     source: 'chapter',
     before,
     after: done.state,
+    characterExpPerMember: wave.characterExpPerMember,
+    partyExpRows: wave.partyExpRows,
     lines,
     firstClearChapter: done.clearedChapter
       ? { order: done.clearedChapter.order, name: done.clearedChapter.name }

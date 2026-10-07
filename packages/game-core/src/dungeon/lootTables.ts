@@ -41,12 +41,11 @@ import { itemLevelFromProgress } from '../equipment/catalog/rarity.js';
 import { deployedT3Ids } from '../equipment/loadout.js';
 import { createRng } from '../shared/rng.js';
 import type { Equipment, PlayerState, Rng } from '../shared/types.js';
-import {
-  ensureRoster,
-  grantCharacterExp,
-  grantCurrency,
-} from '../character/growth.js';
+import { ensureRoster, grantCurrency } from '../character/growth.js';
+import { grantDeployedBattleExp, type PartyExpGainRow } from '../reward/battleExp.js';
+import { grantExpPillDrop, rollExpPillDrop } from '../reward/expPills.js';
 import { getDungeon, type DungeonId } from './defs.js';
+import { normalizeFormation } from '../formation/formation.js';
 
 export interface LootTable {
   id: string;
@@ -107,6 +106,20 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     xiuwei: [0, 0],
     stardust: [0, 0],
     characterExp: [36, 55],
+  },
+  loot_gear_rift: {
+    id: 'loot_gear_rift',
+    guaranteeEquipment: true,
+    setIdChance: 0.1,
+    setIdWeights: [
+      { id: 'set_pojun', weight: 1 },
+      { id: 'set_tiebi', weight: 1 },
+      { id: 'set_jishi', weight: 1 },
+    ],
+    gold: [10, 22],
+    xiuwei: [0, 0],
+    stardust: [0, 1],
+    characterExp: [42, 64],
   },
   /** 兼容旧 id；逻辑同 loot_gear_normal */
   loot_gear_trial: {
@@ -181,6 +194,8 @@ export type DungeonRewardResult = {
   /** 第 2 件起 */
   bonusLoot: Equipment[];
   dungeonId: DungeonId;
+  characterExpPerMember: number;
+  partyExpRows: PartyExpGainRow[];
 };
 
 /**
@@ -224,7 +239,7 @@ export function grantDungeonReward(
     encounterIndex: state.encounterIndex + 1,
   };
 
-  const deployed = Object.keys(next.formation);
+  const deployed = Object.keys(normalizeFormation(next.formation));
   const t3Ids = deployedT3Ids(state);
   if (t3Ids.has('fx_lucky_stone')) {
     next = { ...next, enhanceStones: (next.enhanceStones ?? 0) + 1 };
@@ -237,15 +252,22 @@ export function grantDungeonReward(
     next = { ...next, rerollDust: (next.rerollDust ?? 0) + 1 };
   }
   const exp = rangeRoll(rng, table.characterExp);
-  if (exp > 0) {
-    for (const id of deployed) {
-      next = grantCharacterExp(next, id, exp);
-    }
-  }
+  const expGrant = grantDeployedBattleExp(next, exp);
+  next = expGrant.state;
+  const characterExpPerMember = exp;
+  const pill = rollExpPillDrop(rng, state.chapterCleared ?? 0);
+  next = grantExpPillDrop(next, pill);
   const xiuwei = rangeRoll(rng, table.xiuwei);
   if (xiuwei > 0) next = grantCurrency(next, 'xiuwei', xiuwei);
   const stardust = rangeRoll(rng, table.stardust);
   if (stardust > 0) next = grantCurrency(next, 'stardust', stardust);
 
-  return { state: next, loot, bonusLoot, dungeonId };
+  return {
+    state: next,
+    loot,
+    bonusLoot,
+    dungeonId,
+    characterExpPerMember,
+    partyExpRows: expGrant.partyRows,
+  };
 }

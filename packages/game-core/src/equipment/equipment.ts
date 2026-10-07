@@ -23,6 +23,7 @@ export function equipItem(state: PlayerState, itemId: string, templateId: string
 
   const tier = state.roster?.[templateId]?.breakthroughTier ?? 0;
   if (!canWearEquipment(item, tier)) return state;
+  if (itemIdsWornByOthers(state, templateId).has(itemId)) return state;
   const charEquip = { ...(state.characterEquip ?? {}) };
   const slots = { ...(charEquip[templateId] ?? {}) };
   slots[item.slot] = item.id;
@@ -40,8 +41,16 @@ export function unequipSlot(state: PlayerState, slot: EquipSlot, templateId: str
   return { ...state, characterEquip: charEquip };
 }
 
-export function itemsForSlot(state: PlayerState, slot: EquipSlot): Equipment[] {
-  return state.inventory.filter((e) => e.slot === slot);
+export function itemsForSlot(
+  state: PlayerState,
+  slot: EquipSlot,
+  /** 传入时排除其他角色已穿的同槽装备 */
+  templateId?: string,
+): Equipment[] {
+  const base = state.inventory.filter((e) => e.slot === slot);
+  if (!templateId) return base;
+  const taken = itemIdsWornByOthers(state, templateId);
+  return base.filter((e) => !taken.has(e.id));
 }
 
 /** 不写存档：按槽位预览穿上 / 卸下后的人物状态。 */

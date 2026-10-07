@@ -38,6 +38,22 @@ function HpBar({ unit }: { unit: UnitRuntime }) {
   );
 }
 
+function unitCellFrame(unit: UnitRuntime, side: 'enemy' | 'ally'): string {
+  if (unit.rank === 'boss') {
+    return side === 'enemy'
+      ? 'border-amber-400/85 bg-gradient-to-b from-amber-950/45 via-rose-950/25 to-rose-950/12 shadow-[inset_0_1px_0_rgba(251,191,36,0.25),0_0_16px_rgba(251,191,36,0.14)]'
+      : 'border-amber-400/70 bg-gradient-to-b from-amber-950/35 to-teal-950/15 shadow-[inset_0_1px_0_rgba(251,191,36,0.2)]';
+  }
+  if (unit.rank === 'elite') {
+    return side === 'enemy'
+      ? 'border-rose-400/55 bg-rose-950/28'
+      : 'border-teal-400/50 bg-teal-950/22';
+  }
+  return side === 'enemy'
+    ? 'border-rose-500/25 bg-rose-950/20'
+    : 'border-teal-500/25 bg-teal-950/15';
+}
+
 const FX_CLASS: Record<BattleCellFx['kind'], string> = {
   hit: 'battle-cell-fx-hit',
   crit: 'battle-cell-fx-crit',
@@ -87,13 +103,28 @@ function GridCell({
       className={cn(
         'relative flex flex-col gap-0.5 rounded-lg border px-1.5 py-1 text-left transition',
         compact ? 'min-h-[2.35rem]' : 'min-h-[4.25rem] gap-1 px-2 py-1.5',
-        side === 'enemy' ? 'border-rose-500/25 bg-rose-950/20' : 'border-teal-500/25 bg-teal-950/15',
+        unitCellFrame(unit, side),
         down && 'opacity-40 grayscale',
         unit.isHero && side === 'ally' && 'ring-1 ring-primary/45',
         cellFx && FX_CLASS[cellFx.kind],
       )}
       title={`格 ${slot} · ${rowLabel(rowOf(unit.slot))}`}
     >
+      {unit.rank === 'boss' ? (
+        <span
+          className="pointer-events-none absolute -right-px -top-px z-[1] rounded-bl rounded-tr-lg border border-amber-400/50 bg-amber-950/90 px-1 py-0.5 font-mono text-[8px] font-bold leading-none tracking-wide text-amber-200"
+          aria-hidden
+        >
+          首领
+        </span>
+      ) : unit.rank === 'elite' ? (
+        <span
+          className="pointer-events-none absolute -right-px -top-px z-[1] rounded-bl bg-rose-950/85 px-1 py-0.5 font-mono text-[8px] leading-none text-rose-200/90"
+          aria-hidden
+        >
+          精英
+        </span>
+      ) : null}
       {cellFloats?.map((f) => (
         <span
           key={f.id}

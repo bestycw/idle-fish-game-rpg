@@ -1,4 +1,5 @@
 export * from './encounters.js';
+export * from './encounterResolve.js';
 export * from './resolveEncounterDisplay.js';
 export * from '../narrative/officialEnemyNames.zh.js';
 export * from './encounterModifiers.js';

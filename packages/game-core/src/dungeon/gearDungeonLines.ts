@@ -11,7 +11,11 @@ export const GEAR_DUNGEON_LINES: GearDungeonLineDef[] = [
   {
     id: 'line_wall',
     order: 1,
-    tiers: { normal: 'gear_break_wall', hard: 'gear_spirit_array' },
+    tiers: {
+      normal: 'gear_break_wall',
+      hard: 'gear_wall_hard',
+      hell: 'gear_wall_hell',
+    },
   },
   {
     id: 'line_archer',
@@ -24,14 +28,29 @@ export const GEAR_DUNGEON_LINES: GearDungeonLineDef[] = [
     tiers: { normal: 'gear_raider_trail', hard: 'gear_raider_hard' },
   },
   {
-    id: 'line_chaos',
+    id: 'line_spirit',
     order: 4,
+    tiers: { normal: 'gear_spirit_gate', hard: 'gear_spirit_array' },
+  },
+  {
+    id: 'line_oil',
+    order: 5,
+    tiers: { normal: 'gear_oil_well', hard: 'gear_oil_furnace' },
+  },
+  {
+    id: 'line_shield',
+    order: 6,
+    tiers: { normal: 'gear_shield_vault', hard: 'gear_shield_bastion' },
+  },
+  {
+    id: 'line_chaos',
+    order: 7,
     tiers: { hard: 'gear_chaos_shrine', hell: 'gear_chaos_hell' },
   },
   {
     id: 'line_warden',
-    order: 5,
-    tiers: { hell: 'gear_warden_trial' },
+    order: 8,
+    tiers: { hell: 'gear_warden_trial', rift: 'gear_warden_rift' },
   },
 ];
 

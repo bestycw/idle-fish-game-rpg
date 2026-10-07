@@ -3,6 +3,7 @@
  * 后续加章、改解锁、改节点 → 只改本文件；禁止在 Hub/战斗主循环写死章 id 业务。
  */
 import { expandIdsByUnlock } from '../character/roster/expandRoster.js';
+import type { MainlineBattleCap } from './mainlineBattleWaves.js';
 
 /** 解锁种类：各系统用 isContentUnlocked 查询 */
 export type UnlockKind = 'dungeon' | 'gacha_unit' | 'encounter';
@@ -18,6 +19,10 @@ export type ChapterNodeKind = 'story' | 'battle';
 export interface BattleWaveDef {
   encounterId: string;
   label?: string;
+  /** 0-based：本节内第几个「三连战单元」 */
+  unitIndex?: number;
+  /** 展示用，如「第 2 阵」 */
+  unitLabel?: string;
 }
 
 export interface ChapterNodeDef {
@@ -32,6 +37,8 @@ export interface ChapterNodeDef {
   encounterId?: string;
   /** battle 多波（引擎默认表 · 非 Skill） */
   battleWaves?: BattleWaveDef[];
+  /** 主线八题 cap；运行时展开为多阵连战（与 battleWaves 二选一） */
+  battleCap?: MainlineBattleCap;
 }
 
 export function nodePlace(node: Pick<ChapterNodeDef, 'place' | 'title'>): string {
@@ -92,10 +99,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '初战盾墙',
         place: '盾墙关隘',
         blurb: '盾阵压上，先破前排再谈速攻。',
-        battleWaves: [
-          { encounterId: 'gate_skirmish', label: '前锋' },
-          { encounterId: 'wall', label: '盾墙' },
-        ],
+        battleCap: 'wall',
       },
       {
         id: 'ch1_n3',
@@ -110,7 +114,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '箭道试锋',
         place: '关外箭道',
         blurb: '关隘侧翼弓手试射，练切后排与护阵。',
-        encounterId: 'archers',
+        battleCap: 'archers',
       },
       {
         id: 'ch1_n5',
@@ -122,6 +126,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     unlocksOnClear: [
       { kind: 'dungeon', id: 'gear_raider_trail' },
+      { kind: 'dungeon', id: 'gear_oil_well' },
       { kind: 'encounter', id: 'raiders' },
       ...gachaUnlocks(...expandIdsByUnlock('ch1')),
     ],
@@ -145,7 +150,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '速攻来袭',
         place: '密林伏击',
         blurb: '高机动切入，备好治疗与坦克换位。',
-        encounterId: 'raiders',
+        battleCap: 'raiders',
       },
       {
         id: 'ch2_n3',
@@ -160,7 +165,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '祭纹余波',
         place: '林中空场',
         blurb: '乱心祭纹未散，控场与净化要跟上。',
-        encounterId: 'chaos_rite',
+        battleCap: 'chaos_rite',
       },
       {
         id: 'ch2_n5',
@@ -175,11 +180,17 @@ export const CHAPTERS: ChapterDef[] = [
         title: '出口戒严',
         place: '林道出口',
         blurb: '出口戒严，最后一阵速攻试探。',
-        encounterId: 'raiders',
+        battleCap: 'raiders',
       },
     ],
     unlocksOnClear: [
+      { kind: 'dungeon', id: 'gear_wall_hard' },
+      { kind: 'dungeon', id: 'gear_wall_hell' },
+      { kind: 'dungeon', id: 'gear_spirit_gate' },
       { kind: 'dungeon', id: 'gear_spirit_array' },
+      { kind: 'dungeon', id: 'gear_oil_furnace' },
+      { kind: 'dungeon', id: 'gear_shield_vault' },
+      { kind: 'dungeon', id: 'gear_shield_bastion' },
       { kind: 'dungeon', id: 'gear_arrow_hard' },
       { kind: 'dungeon', id: 'gear_raider_hard' },
       { kind: 'dungeon', id: 'gear_chaos_shrine' },
@@ -211,7 +222,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '弓阵',
         place: '试剑台',
         blurb: '箭雨压阵，切后排或护阵二选一。',
-        encounterId: 'archers',
+        battleCap: 'archers',
       },
       {
         id: 'ch3_n3',
@@ -226,7 +237,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '盾墙回测',
         place: '台下山道',
         blurb: '盾墙再阵，检验近身破阵是否稳固。',
-        encounterId: 'wall',
+        battleCap: 'wall',
       },
       {
         id: 'ch3_n5',
@@ -237,6 +248,7 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
+      { kind: 'dungeon', id: 'gear_warden_rift' },
       { kind: 'encounter', id: 'boss_warden' },
       ...gachaUnlocks(...expandIdsByUnlock('ch3')),
     ],
@@ -260,7 +272,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '再战盾墙',
         place: '盾墙回廊',
         blurb: '构筑检验战，前排压力复现。',
-        encounterId: 'wall',
+        battleCap: 'wall',
       },
       {
         id: 'ch4_n3',
@@ -275,7 +287,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '叠盾演武',
         place: '营外校场',
         blurb: '叠盾阵脚专打破甲节奏。',
-        encounterId: 'shield_stack',
+        battleCap: 'shield_stack',
       },
       {
         id: 'ch4_n5',
@@ -308,7 +320,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '乱战',
         place: '劫灰原',
         blurb: '速攻再临，阵脚一乱就满盘皆输。',
-        encounterId: 'raiders',
+        battleCap: 'raiders',
       },
       {
         id: 'ch5_n3',
@@ -323,7 +335,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '灵障试压',
         place: '原边灵障',
         blurb: '灵障盾阵抬高承伤，考验持续输出。',
-        encounterId: 'spirit_wall',
+        battleCap: 'spirit_wall',
       },
       {
         id: 'ch5_n5',
@@ -356,7 +368,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '余波',
         place: '歇点外缘',
         blurb: '卷中战，叠盾余波，非卷终。',
-        encounterId: 'shield_stack',
+        battleCap: 'shield_stack',
       },
       {
         id: 'ch6_n3',
@@ -371,7 +383,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '丹炉油阵',
         place: '亭外油道',
         blurb: '油阵灼场，走位与净化要跟上。',
-        encounterId: 'oil_cask',
+        battleCap: 'oil_cask',
       },
       {
         id: 'ch6_n5',
@@ -386,7 +398,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '亭前试刃',
         place: '望劫亭前',
         blurb: '卷中最后一练，叠盾与破甲节奏再验。',
-        encounterId: 'shield_stack',
+        battleCap: 'shield_stack',
       },
       {
         id: 'ch6_n7',
@@ -419,7 +431,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '门线',
         place: '关隘线',
         blurb: '灵障守门，先破盾再谈深入。',
-        encounterId: 'spirit_wall',
+        battleCap: 'spirit_wall',
       },
       {
         id: 'ch7_n3',
@@ -434,7 +446,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '弓线再压',
         place: '关内箭楼',
         blurb: '远矢再压，后排威胁回归。',
-        encounterId: 'archers',
+        battleCap: 'archers',
       },
       {
         id: 'ch7_n5',
@@ -465,7 +477,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '暗涌',
         place: '内层狭场',
         blurb: '乱心祭坛余波，控场与爆发要取舍。',
-        encounterId: 'chaos_rite',
+        battleCap: 'chaos_rite',
       },
       {
         id: 'ch8_n3',
@@ -480,7 +492,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '侧翼再切',
         place: '秘径狭口',
         blurb: '速攻侧切，保护后排。',
-        encounterId: 'raiders',
+        battleCap: 'raiders',
       },
       {
         id: 'ch8_n5',
@@ -511,7 +523,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '前哨',
         place: '门前哨',
         blurb: '卷终前哨战，油阵与走位。',
-        encounterId: 'oil_cask',
+        battleCap: 'oil_cask',
       },
       {
         id: 'ch9_n3',
@@ -526,7 +538,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '盾墙终练',
         place: '殿前校场',
         blurb: '盾墙终练，为守门战热阵。',
-        encounterId: 'wall',
+        battleCap: 'wall',
       },
       {
         id: 'ch9_n5',
@@ -541,7 +553,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '门前演练',
         place: '劫域门外',
         blurb: '门前最后一练，灵障与油阵轮换。',
-        encounterId: 'spirit_wall',
+        battleCap: 'spirit_wall',
       },
     ],
     unlocksOnClear: [],
@@ -564,11 +576,8 @@ export const CHAPTERS: ChapterDef[] = [
         kind: 'battle',
         title: '门线清扫',
         place: '劫域门外',
-        blurb: '守门战前清扫，灵障与前锋连战。',
-        battleWaves: [
-          { encounterId: 'gate_skirmish', label: '前锋' },
-          { encounterId: 'spirit_wall', label: '灵障' },
-        ],
+        blurb: '守门战前清扫，多阵连战热阵。',
+        battleCap: 'spirit_wall',
       },
       {
         id: 'ch10_n3',
@@ -583,7 +592,7 @@ export const CHAPTERS: ChapterDef[] = [
         title: '卷终',
         place: '镇守门内',
         blurb: '卷 BOSS 守门战，集火与禁疗要算清楚。',
-        encounterId: 'boss_warden',
+        battleCap: 'boss_warden',
       },
       {
         id: 'ch10_n5',

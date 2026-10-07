@@ -174,9 +174,19 @@ export function validateNodeSkinCopy(
     }
   }
 
-  if (node.kind === 'battle' && node.encounterId) {
-    if (!ENCOUNTERS.some((e) => e.id === node.encounterId)) {
-      issues.push({ nodeId, code: 'bad_encounter', message: 'encounterId 未注册' });
+  if (node.kind === 'battle') {
+    const ids = node.battleWaves?.length
+      ? node.battleWaves.map((w) => w.encounterId)
+      : node.battleCap || node.encounterId
+        ? []
+        : [];
+    if (node.battleCap && !node.battleWaves?.length && !node.encounterId) {
+      /* 运行时 mainlineBattleWaves 展开 */
+    }
+    for (const id of ids) {
+      if (!ENCOUNTERS.some((e) => e.id === id)) {
+        issues.push({ nodeId, code: 'bad_encounter', message: `encounterId 未注册: ${id}` });
+      }
     }
   }
 

@@ -1,10 +1,13 @@
 import {
   ENCOUNTERS,
   battlePressure,
+  getChapterView,
+  mainlineStoryPressure,
   buildPlayerParty,
   createBattle,
   createBattleDisplayOpts,
   currentChapterBattleContext,
+  encounterDisplayTier,
   getDungeon,
   isGearDungeonId,
   resolveWorldPreset,
@@ -51,9 +54,11 @@ function battlePressureFor(
   dungeonId: DungeonId,
 ): number {
   const chapter = player.chapterCleared ?? 0;
-  return kind === 'chapter'
-    ? battlePressure(chapter)
-    : battlePressure(chapter, pressureForDungeon(dungeonId));
+  if (kind === 'chapter') {
+    const order = getChapterView(player).playing?.order ?? chapter + 1;
+    return mainlineStoryPressure(chapter, order);
+  }
+  return battlePressure(chapter, pressureForDungeon(dungeonId));
 }
 
 function buildPreview(
@@ -63,10 +68,15 @@ function buildPreview(
 ): BattleState | null {
   const party = buildPlayerParty(player);
   if (party.length === 0) return null;
-  return createBattle(party, battleSeed(player, config.kind), encounterIndex, {
+  const seed = battleSeed(player, config.kind);
+  const displayContext =
+    config.kind === 'dungeon'
+      ? { dungeonId: config.dungeonId, battleSeed: seed }
+      : undefined;
+  return createBattle(party, seed, encounterIndex, {
     pressure: battlePressureFor(player, config.kind, config.dungeonId),
     rollEncounterModifiers: true,
-    ...createBattleDisplayOpts(player, encounterIndex),
+    ...createBattleDisplayOpts(player, encounterIndex, displayContext),
   });
 }
 
@@ -82,9 +92,14 @@ export function BattlePrepScreen({
   const partyCount = Object.keys(player.formation).length;
   const chapterWave =
     config.kind === 'chapter' ? currentChapterBattleContext(player) : null;
+  const prepSeed = battleSeed(player, config.kind);
+  const prepDisplayContext =
+    config.kind === 'dungeon'
+      ? { dungeonId: config.dungeonId, battleSeed: prepSeed }
+      : undefined;
   const encounterDisplayName = encounter
-    ? createBattleDisplayOpts(player, config.encounterIndex).encounterDisplayName ??
-      encounter.name
+    ? createBattleDisplayOpts(player, config.encounterIndex, prepDisplayContext)
+        .encounterDisplayName ?? encounter.name
     : '';
 
   const preview = useMemo(
@@ -113,9 +128,13 @@ export function BattlePrepScreen({
         : getDungeon(config.dungeonId).name;
   const waveBadge =
     chapterWave && chapterWave.waveTotal > 1
-      ? ` · 第 ${chapterWave.waveIndex + 1}/${chapterWave.waveTotal} 波${
-          chapterWave.waveLabel ? `「${chapterWave.waveLabel}」` : ''
-        }`
+      ? chapterWave.unitTotal > 1
+        ? ` · ${chapterWave.unitLabel ?? `第 ${chapterWave.unitIndex + 1} 阵`} · 第 ${
+            chapterWave.waveInUnit + 1
+          }/3 场${chapterWave.waveLabel ? `「${chapterWave.waveLabel}」` : ''}`
+        : ` · 第 ${chapterWave.waveIndex + 1}/${chapterWave.waveTotal} 场${
+            chapterWave.waveLabel ? `「${chapterWave.waveLabel}」` : ''
+          }`
       : '';
 
   const canStart = Boolean(preview && partyCount > 0);
@@ -159,6 +178,19 @@ export function BattlePrepScreen({
             <section>
               <p className="mb-1 font-mono text-[9px] tracking-[0.14em] text-rose-300/75">
                 敌情预览
+                {config.kind === 'chapter' && chapterWave ? (
+                  <span className="ml-1.5 font-normal text-muted-foreground">
+                    ·{' '}
+                    {chapterWave.waveInUnit < 2
+                      ? '剧情小怪'
+                      : encounterDisplayTier(encounter.id) === 'boss'
+                        ? '首领'
+                        : encounterDisplayTier(encounter.id) === 'elite'
+                          ? '精锐'
+                          : '剧情小怪'}
+                    {chapterWave.waveLabel ? `（${chapterWave.waveLabel}）` : ''}
+                  </span>
+                ) : null}
               </p>
               <BattleGridEnemyOnly battle={preview} />
             </section>

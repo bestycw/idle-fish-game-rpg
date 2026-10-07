@@ -24,5 +24,14 @@ export function settlementGrantRows(settlement: BattleSettlement): SettlementGra
       amount: settlement.enhanceStones,
     });
   }
+  if (settlement.characterExpPerMember > 0) {
+    rows.push({
+      itemId: SETTLEMENT_FIELD_TO_ITEM_ID.characterExp,
+      amount: settlement.characterExpPerMember,
+    });
+  }
+  for (const m of settlement.materialDrops ?? []) {
+    if (m.amount > 0) rows.push({ itemId: m.itemId, amount: m.amount });
+  }
   return rows;
 }

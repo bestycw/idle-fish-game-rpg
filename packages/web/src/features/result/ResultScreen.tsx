@@ -1,6 +1,5 @@
 import {
   EMPTY_SETTLEMENT,
-  firstWearableDeployed,
   resolveWorldPreset,
   wearLoot,
   type BattleSettlement,
@@ -68,13 +67,12 @@ export function ResultScreen({
 
   const wearLootItem = (item: Equipment) => {
     setPlayer((p) => {
-      const wearer = firstWearableDeployed(p, item);
-      if (!wearer) {
-        pushNotice(`无人可穿（装等 ${item.itemLevel}）`);
+      const result = wearLoot(p, item.id);
+      if (!result.ok) {
+        pushNotice(result.message ?? '无法穿戴');
         return p;
       }
-      pushNotice(`已穿戴 ${item.name}`);
-      return wearLoot(p, item.id);
+      return result.state;
     });
   };
 

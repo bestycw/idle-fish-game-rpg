@@ -1,5 +1,6 @@
 import { deriveGrowthStats, getProgress } from '../character/growth.js';
 import { getTemplate } from '../character/templates.js';
+import { normalizeFormation } from '../formation/formation.js';
 import type { Equipment, PlayerState } from '../shared/types.js';
 import {
   emptyBonuses,
@@ -39,6 +40,12 @@ const W: Record<keyof EquipmentBonuses, number> = {
 const CONDITION_PER_PCT = 12;
 const COMBAT_T3_SCORE = 80;
 
+/**
+ * 全队战力读数缩表（与 `CHAPTER_BANDS` 同倍率）。
+ * 只影响展示 / 脊柱 / 门槛，不改战斗内属性。
+ */
+export const COMBAT_POWER_SCALE = 0.38;
+
 export function powerFromBonuses(bonus: EquipmentBonuses, items: Equipment[]): number {
   let n = 0;
   for (const [k, w] of Object.entries(W) as [keyof EquipmentBonuses, number][]) {
@@ -53,7 +60,7 @@ export function powerFromBonuses(bonus: EquipmentBonuses, items: Equipment[]): n
       if (def?.scope === 'combat') n += COMBAT_T3_SCORE;
     }
   }
-  return Math.max(0, Math.round(n));
+  return Math.max(0, Math.round(n * COMBAT_POWER_SCALE));
 }
 
 export function itemPower(item: Equipment): number {
@@ -118,4 +125,9 @@ export function characterPower(state: PlayerState, templateId: string): number {
 
 export function partyPower(state: PlayerState, templateIds: string[]): number {
   return templateIds.reduce((s, id) => s + characterPower(state, id), 0);
+}
+
+/** 当前布阵出战五人（normalize 后）的队伍战力读数 */
+export function deployedPartyPower(state: PlayerState): number {
+  return partyPower(state, Object.keys(normalizeFormation(state.formation)));
 }

@@ -33,6 +33,7 @@ import {
   composeSkillFor,
   type SkillComposeContext,
 } from './skillCompose.js';
+import { STARTER_OWNED_IDS } from './starterRoster.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 
 export {
@@ -98,14 +99,7 @@ export {
   type SkillModifierSource,
 } from './skillCompose.js';
 
-/** 开局已拥有（与 DEFAULT_DEPLOYED_IDS 对齐；主角必有） */
-export const STARTER_OWNED_IDS = [
-  'hero',
-  'zhangfei',
-  'zhaoyun',
-  'wukong',
-  'huatuo',
-] as const;
+export { STARTER_OWNED_IDS };
 
 /** 每境小节点数（修为点；满后才能破境） */
 export const CULTIVATION_NODES_PER_TIER = 10;
@@ -128,8 +122,13 @@ export function levelCapForTier(tier: number): number {
   return LEVEL_CAP_BY_TIER[idx]!;
 }
 
+/**
+ * 伙伴升级曲线（非线形）：前期友好，中后加速。
+ * Lv1→2≈40，Lv10→11≈130，Lv20→21≈340
+ */
 export function expToNextLevel(level: number): number {
-  return 30 + level * 12;
+  const lv = Math.max(1, Math.floor(level));
+  return Math.max(20, Math.floor(28 * Math.pow(lv, 1.45) + 12));
 }
 
 /** 当前境第 nodeIndex 个小节点消耗（nodeIndex 0..9） */
@@ -761,8 +760,34 @@ export function grantCharacterExp(
 ): PlayerState {
   const s = ensureRoster(state);
   const progress = { ...getProgress(s, templateId) };
-  progress.exp += amount;
+  progress.exp += Math.max(0, Math.floor(amount));
   return { ...s, roster: { ...s.roster, [templateId]: progress } };
+}
+
+/** 用已攒经验连升，直到不够一级或触及境界等级上限 */
+export function applyPendingLevelUps(
+  state: PlayerState,
+  templateId: string,
+): { state: PlayerState; levelsGained: number } {
+  let next = ensureRoster(state);
+  let levelsGained = 0;
+  for (;;) {
+    const r = tryLevelUp(next, templateId);
+    if (!r.ok) break;
+    next = r.state;
+    levelsGained += 1;
+  }
+  return { state: next, levelsGained };
+}
+
+/** 战斗结算：加经验并自动连升 */
+export function grantCharacterExpAndLevel(
+  state: PlayerState,
+  templateId: string,
+  amount: number,
+): { state: PlayerState; levelsGained: number } {
+  const withExp = grantCharacterExp(state, templateId, amount);
+  return applyPendingLevelUps(withExp, templateId);
 }
 
 /** 战斗技能：走 compose 管道（升星/破境/装特技） */

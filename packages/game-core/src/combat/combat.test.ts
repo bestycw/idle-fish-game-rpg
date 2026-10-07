@@ -429,7 +429,8 @@ describe('combat enrichment', () => {
     const player = createInitialPlayer(42);
     const party = buildPlayerParty(player);
     assert.equal(party.length, 5);
-    assert.ok(party.some((u) => u.templateId === 'wukong'));
+    assert.ok(party.some((u) => u.templateId === 'zhaoyun'));
+    assert.ok(party.some((u) => u.templateId === 'menghuo'));
     assert.equal(party.some((u) => u.templateId === 'baigujing'), false);
     const wallIdx = ENCOUNTERS.findIndex((e) => e.id === 'wall');
     assert.ok(wallIdx >= 0);

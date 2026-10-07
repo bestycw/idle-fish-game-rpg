@@ -18,12 +18,28 @@ function rarityFill(rarity: Equipment['rarity']): string {
   return 'from-[#2a3340] via-[#141a22] to-[#0c1014]';
 }
 
+function UpgradeArrowGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      width="9"
+      height="10"
+      viewBox="0 0 10 12"
+      className={cn('drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]', className)}
+      aria-hidden
+    >
+      <path d="M5 1 L9 6 H6 V11 H4 V6 H1 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 type EquipBagCellProps = {
   item?: Equipment;
   selected?: boolean;
   unseen?: boolean;
   worn?: boolean;
   blocked?: boolean;
+  /** 相对当前槽位穿戴件战力更高 */
+  showUpgradeArrow?: boolean;
   onSelect?: () => void;
 };
 
@@ -33,6 +49,7 @@ export function EquipBagCell({
   unseen,
   worn,
   blocked,
+  showUpgradeArrow,
   onSelect,
 }: EquipBagCellProps) {
   if (!item) {
@@ -66,6 +83,14 @@ export function EquipBagCell({
       {item.enhanceLevel > 0 ? (
         <span className="absolute left-0.5 top-0 font-mono text-[9px] tabular-nums text-emerald-300">
           +{item.enhanceLevel}
+        </span>
+      ) : null}
+      {showUpgradeArrow && !unseen && !worn ? (
+        <span
+          className="pointer-events-none absolute left-0.5 top-0.5 z-10 text-emerald-400"
+          title="战力提升"
+        >
+          <UpgradeArrowGlyph />
         </span>
       ) : null}
       {unseen ? (

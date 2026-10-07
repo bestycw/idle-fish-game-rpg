@@ -193,7 +193,7 @@ describe('character growth', () => {
       ['level', 'cultivate', 'breakthrough', 'star'],
     );
     let state = createInitialPlayer(5);
-    state = grantCharacterExp(state, 'hero', 500);
+    state = { ...state, materials: { ...(state.materials ?? {}), exp_pill_1: 8 } };
     const r = applyGrowthTrack(state, 'level', 'hero');
     assert.equal(r.ok, true);
   });

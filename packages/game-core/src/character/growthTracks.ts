@@ -15,13 +15,13 @@ import {
   starShardCost,
   tryBreakthrough,
   tryCultivateNode,
-  tryLevelUp,
   tryStarUp,
   type GrowthActionResult,
 } from './growth.js';
 import { previewBreakthroughStep } from './growthHelpers.js';
 import { STARDUST_ASSIST_STAR_CAP, STARDUST_PER_SHARD } from './stardustExchange.js';
 import { breakthroughLabel, nextBreakthroughLabel } from './breakthroughDisplay.js';
+import { levelUpWithExpPills, previewPillLevelUp } from '../reward/expPills.js';
 
 /** 成长轴 id；awaken/bond 预留，本阶段不注册为 enabled */
 export type GrowthTrackId =
@@ -61,24 +61,27 @@ function levelTrack(): GrowthTrackDef {
     order: 10,
     enabled: true,
     canApply(state, templateId) {
-      return tryLevelUp(state, templateId).ok;
+      return previewPillLevelUp(state, templateId, 1).ready;
     },
     preview(state, templateId) {
       const progress = getProgress(state, templateId);
       const cap = levelCapForTier(progress.breakthroughTier);
-      const need = expToNextLevel(progress.level);
       const atCap = progress.level >= cap;
+      const pill = previewPillLevelUp(state, templateId, 1);
+      const need = expToNextLevel(progress.level);
       return {
-        costLine: atCap ? `已达上限 Lv${cap}` : `经验 ${progress.exp}/${need}`,
+        costLine: atCap ? `已达上限 Lv${cap}` : pill.costLine,
         effectLine: atCap
           ? `等级已满；用修为点小节点/破境`
-          : `Lv ${progress.level} → ${progress.level + 1}`,
-        current: progress.exp,
-        need,
-        ready: !atCap && progress.exp >= need,
+          : `${pill.effectLine} · 优先消耗低档经验丹`,
+        current: pill.haveExpFromPills,
+        need: Math.max(1, pill.needExp || need),
+        ready: pill.ready,
       };
     },
-    apply: tryLevelUp,
+    apply(state, templateId) {
+      return levelUpWithExpPills(state, templateId, 1);
+    },
   };
 }
 

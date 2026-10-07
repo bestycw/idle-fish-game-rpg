@@ -78,6 +78,10 @@ const LIVE_MORPH: ItemDef[] = MORPH_STONE_DEFS.map((m) =>
 
 const LIVE_OTHER: ItemDef[] = [
   def('character_exp', 'material', ['character_growth'], { type: 'character_exp' }, true),
+  def('exp_pill_1', 'consumable', ['character_growth', 'consumable'], { type: 'materials' }, true),
+  def('exp_pill_2', 'consumable', ['character_growth', 'consumable'], { type: 'materials' }, true),
+  def('exp_pill_3', 'consumable', ['character_growth', 'consumable'], { type: 'materials' }, true),
+  def('exp_pill_4', 'consumable', ['character_growth', 'consumable'], { type: 'materials' }, true),
 ];
 
 /** 未开放玩法：id 占位，enabled false */
@@ -135,6 +139,7 @@ export const SETTLEMENT_FIELD_TO_ITEM_ID: Record<string, string> = {
   xiuwei: 'xiuwei',
   ticket: 'ticket',
   enhanceStones: 'enhance_stone',
+  characterExp: 'character_exp',
 };
 
 export function resolveWorldPreset(state?: {

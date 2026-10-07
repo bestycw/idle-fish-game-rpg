@@ -2,6 +2,7 @@ import type { BattleSettlement, Equipment, PlayerState, WorldPreset } from '@moy
 import { useMemo } from 'react';
 import { SettlementLootGrid } from '@/components/game/SettlementLootGrid';
 import { settlementShowsCurrencyGrants } from '@/components/game/SettlementCurrencyLine';
+import { SettlementPartyExp } from '@/components/game/SettlementPartyExp';
 
 type BattleSettlementPanelProps = {
   settlement: BattleSettlement;
@@ -37,8 +38,9 @@ export function BattleSettlementPanel({
   const hasFirstClear = Boolean(settlement.firstClearChapter);
   const hasEquipLoot = allEquipment.length > 0;
   const hasCurrency = settlementShowsCurrencyGrants(settlement);
+  const hasPartyExp = (settlement.partyExpRows?.length ?? 0) > 0;
 
-  if (!hasEquipLoot && !hasFirstClear && !hasCurrency) return null;
+  if (!hasEquipLoot && !hasFirstClear && !hasCurrency && !hasPartyExp) return null;
 
   const body = (
     <>
@@ -53,6 +55,7 @@ export function BattleSettlementPanel({
             onWearLoot={onWearLoot}
           />
         ) : null}
+        {hasPartyExp ? <SettlementPartyExp settlement={settlement} /> : null}
       </div>
     </>
   );
@@ -76,6 +79,7 @@ export function settlementShowsRewardBlock(settlement: BattleSettlement): boolea
     settlementShowsCurrencyGrants(settlement) ||
     settlement.equipment != null ||
     settlement.bonusEquipment.length > 0 ||
-    Boolean(settlement.firstClearChapter)
+    Boolean(settlement.firstClearChapter) ||
+    (settlement.partyExpRows?.length ?? 0) > 0
   );
 }

@@ -738,9 +738,17 @@ export interface WorldSkinNames {
   npcEpithets?: Partial<Record<string, string>>;
 }
 
+/** 战斗 HUD/战前显示皮（Spine encounterId + 敌人下标不变） */
+export interface BattleDisplaySkin {
+  encounterTitles?: Partial<Record<string, string>>;
+  enemyUnitNames?: Partial<Record<string, Partial<Record<number, string>>>>;
+}
+
 export interface NarrativeOverlay {
   nodes: Record<string, NarrativeNodeSkinCopy>;
   worldSkinNames?: WorldSkinNames;
+  /** Skill 可选填充：覆盖 preset 遭遇标题 / 敌人名牌，不改 encounters 表 */
+  battleDisplay?: BattleDisplaySkin;
 }
 
 /** 书级 Skin 真源（Phase A） */

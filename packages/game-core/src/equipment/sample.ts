@@ -15,7 +15,10 @@ const SAMPLES: { rarity: Rarity; slot: EquipSlot; itemLevel: number }[] = [
   { rarity: 'legendary', slot: 'offhand', itemLevel: 20 },
 ];
 
-/** 往背包塞一套各品级样装，方便读条 / 洗练 / 封存。已有 sample_ 件则跳过。 */
+/**
+ * 往背包塞一套各品级样装（仅测试 / 工具用，正式流程勿调用）。
+ * 已有 sample_ 件则跳过。
+ */
 export function grantSampleEquipment(
   state: PlayerState,
   opts?: { replace?: boolean },

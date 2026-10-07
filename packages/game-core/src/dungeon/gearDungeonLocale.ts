@@ -56,12 +56,55 @@ const NEUTRAL: GearDungeonLocaleTable = {
     blurb: '地狱：守门首领高压，需完整解法。对症 T3 器纹集中，套装仅偶得。',
     lootLine: '地狱 · 对症器纹（破甲/净化/标记）',
   },
+  gear_warden_rift: {
+    name: '镜渊终局',
+    blurb: '秘境：镇守/乱心/叠盾三首领轮换，猎装顶点。绝品与对症 T3 权重最高。',
+    lootLine: '秘境 · 绝品、对症 T3',
+  },
+  gear_wall_hard: {
+    name: '盾鸣廊·重关',
+    blurb: '困难：盾墙与叠盾首领轮换，破甲器纹权重升。',
+    lootLine: '困难 · 破甲、破盾',
+  },
+  gear_wall_hell: {
+    name: '不动关·狱门',
+    blurb: '地狱：盾墙与镇守首领，高压破盾链。',
+    lootLine: '地狱 · 破甲、破盾、对症',
+  },
+  gear_spirit_gate: {
+    name: '灵障关口',
+    blurb: '灵阵首领试锋，力修易碰壁。深破甲器纹入门。',
+    lootLine: '器纹：深破甲、灵伤',
+  },
+  gear_oil_well: {
+    name: '油火井',
+    blurb: '油火首领续命阵，练禁疗与点杀后排医士。',
+    lootLine: '器纹：禁疗、穿透',
+  },
+  gear_oil_furnace: {
+    name: '油火锻炉',
+    blurb: '困难：油火与速攻首领轮换，控场与斩杀向。',
+    lootLine: '困难 · 禁疗、控场',
+  },
+  gear_shield_vault: {
+    name: '叠盾秘库',
+    blurb: '叠盾首领反复开盾，对盾增伤/破盾器纹。',
+    lootLine: '器纹：破盾、对盾增伤',
+  },
+  gear_shield_bastion: {
+    name: '叠盾堡垒',
+    blurb: '困难：叠盾与盾墙双首领，破盾器纹集中。',
+    lootLine: '困难 · 破盾、破甲',
+  },
 };
 
 const LINE_NEUTRAL: Record<string, string> = {
   line_wall: '盾墙试炼',
   line_archer: '箭道试炼',
   line_raider: '乱阵林蹊',
+  line_spirit: '灵障试炼',
+  line_oil: '油火试炼',
+  line_shield: '叠盾试炼',
   line_chaos: '乱心祠',
   line_warden: '镇守灵阙',
 };
@@ -70,6 +113,9 @@ const LINE_XIANXIA: Record<string, string> = {
   line_wall: '青石关',
   line_archer: '落鸦矢道',
   line_raider: '乱阵林蹊',
+  line_spirit: '铁壁灵障',
+  line_oil: '油火井',
+  line_shield: '叠盾秘库',
   line_chaos: '乱心祠',
   line_warden: '镇守灵阙',
 };
@@ -78,6 +124,9 @@ const LINE_WUXIA: Record<string, string> = {
   line_wall: '铁壁驿',
   line_archer: '穿云箭台',
   line_raider: '乱镖小道',
+  line_spirit: '内劲障',
+  line_oil: '火油坞',
+  line_shield: '叠盾窟',
   line_chaos: '迷心祠',
   line_warden: '剑冢守门',
 };
@@ -86,6 +135,9 @@ const LINE_CYBER: Record<string, string> = {
   line_wall: '硬壳回廊',
   line_archer: '轨道伏击线',
   line_raider: '闪击穿插带',
+  line_spirit: '灵防节点',
+  line_oil: '燃烧井',
+  line_shield: '叠盾仓',
   line_chaos: '噪声祭坛',
   line_warden: '零日守门',
 };
@@ -141,6 +193,46 @@ const XIANXIA: GearDungeonLocaleTable = {
     name: '狱门',
     blurb: '地狱：灵阙守门，需完整解法链。对症 T3 器纹集中，套装仅偶得纹章。',
     lootLine: '地狱 · 对症器纹（破甲/净化/标记）',
+  },
+  gear_warden_rift: {
+    name: '镜渊终局',
+    blurb: '秘境：三首领终局轮换，猎装顶点。绝品与对症器纹权重最高。',
+    lootLine: '秘境 · 绝品、对症器纹',
+  },
+  gear_wall_hard: {
+    name: '青石关·重阙',
+    blurb: '困难：盾墙与叠盾首领轮换，破甲诀器纹权重升。',
+    lootLine: '困难 · 破甲、破盾器纹',
+  },
+  gear_wall_hell: {
+    name: '不动关·狱门',
+    blurb: '地狱：盾墙与镇守首领，高压破盾链。',
+    lootLine: '地狱 · 破甲、破盾、对症',
+  },
+  gear_spirit_gate: {
+    name: '灵障关口',
+    blurb: '灵阵首领试锋，力修易碰壁。深破甲器纹入门。',
+    lootLine: '器纹：深破甲、灵伤',
+  },
+  gear_oil_well: {
+    name: '油火井',
+    blurb: '油火首领续命，练禁疗与点杀医士。',
+    lootLine: '器纹：禁疗、穿透',
+  },
+  gear_oil_furnace: {
+    name: '油火锻炉',
+    blurb: '困难：油火与速攻首领轮换。',
+    lootLine: '困难 · 禁疗、控场',
+  },
+  gear_shield_vault: {
+    name: '叠盾秘库',
+    blurb: '叠盾首领开盾循环，破盾器纹。',
+    lootLine: '器纹：破盾、对盾增伤',
+  },
+  gear_shield_bastion: {
+    name: '叠盾堡垒',
+    blurb: '困难：叠盾与盾墙双首领。',
+    lootLine: '困难 · 破盾、破甲',
   },
 };
 
@@ -222,10 +314,18 @@ export const GEAR_DUNGEON_UNLOCK_HINT: Record<string, string> = {
   gear_arrow_hard: '通关第二章',
   gear_raider_trail: '通关第一章',
   gear_raider_hard: '通关第二章',
+  gear_wall_hard: '通关第二章',
+  gear_wall_hell: '通关第二章',
+  gear_spirit_gate: '通关第二章',
   gear_spirit_array: '通关第二章',
+  gear_oil_well: '通关第一章',
+  gear_oil_furnace: '通关第二章',
+  gear_shield_vault: '通关第二章',
+  gear_shield_bastion: '通关第二章',
   gear_chaos_shrine: '通关第二章',
   gear_chaos_hell: '通关第二章',
   gear_warden_trial: '通关第二章',
+  gear_warden_rift: '通关第三章',
 };
 
 function entry(id: string, preset: WorldPreset): GearDungeonLocaleEntry {

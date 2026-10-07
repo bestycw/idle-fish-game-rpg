@@ -7,6 +7,7 @@ import {
   resolveEncounterModifiers,
   rollEncounterModifiers,
 } from '../dungeon/encounterModifiers.js';
+import { resolveEncounterEnemies } from '../dungeon/encounterResolve.js';
 import {
   DEFAULT_BATTLE_MAX_TURNS,
   ENCOUNTERS,
@@ -1311,7 +1312,8 @@ export function createBattle(
 ): BattleState {
   const pressure = opts.pressure ?? 1;
   const encounter = ENCOUNTERS[encounterIndex % ENCOUNTERS.length]!;
-  const enemies = encounter.enemies.map((spec, i) => {
+  const enemySpecs = resolveEncounterEnemies(encounter);
+  const enemies = enemySpecs.map((spec, i) => {
     const unit = enemyFromSpec(spec, i, pressure);
     const skin = opts.enemyDisplayNames?.[i];
     if (skin) unit.name = skin;

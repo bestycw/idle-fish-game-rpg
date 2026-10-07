@@ -1,4 +1,4 @@
-import { getStaminaView, type PlayerState } from '@moyu/game-core';
+import { deployedPartyPower, getStaminaView, type PlayerState } from '@moyu/game-core';
 import { cn } from '@/lib/utils';
 
 type StatusBarProps = {
@@ -30,6 +30,7 @@ export function StatusBar({
   onSettings,
 }: StatusBarProps) {
   const stamina = getStaminaView(player);
+  const deployedPower = deployedPartyPower(player);
   if (compact) {
     return (
       <div
@@ -39,6 +40,8 @@ export function StatusBar({
         )}
       >
         <span className="tabular-nums">
+          战力 {deployedPower}
+          <span className="text-border"> · </span>
           体力 {stamina.current}/{stamina.max}
           {chapterLabel ? ` · ${chapterLabel}` : ''}
         </span>
@@ -53,6 +56,8 @@ export function StatusBar({
         className,
       )}
     >
+      <Stat label="战力" value={deployedPower} />
+      <span className="text-border">·</span>
       <Stat label="体力" value={`${stamina.current}/${stamina.max}`} />
       <span className="text-border">·</span>
       <Stat label="券" value={player.currencies?.ticket ?? 0} />

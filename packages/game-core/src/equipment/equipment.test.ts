@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createInitialPlayer } from '../save/player.js';
+import { createInitialPlayer, wearLoot } from '../save/player.js';
 import {
   generateEquipment,
   sumEquipmentBonuses,
   equipItem,
   autoEquipBest,
   previewLoadout,
+  itemsForSlot,
 } from './equipment.js';
+import { grantStarterEquipmentKit, STARTER_KIT_SLOTS } from './starterKit.js';
 import { characterPower, equippedPower, nakedPower } from './power.js';
 import { applyActiveSetBonuses, countEquippedSets, resolveSetId } from './sets.js';
 import { createRng } from '../shared/rng.js';
@@ -355,6 +357,38 @@ describe('wear / reroll / seal / disassemble', () => {
     const r = autoEquipBest(p, 'hero');
     assert.equal(r.state.characterEquip?.hero?.weapon, 'w1');
     assert.equal(r.state.characterEquip?.zhaoyun?.weapon, 'w2');
+  });
+
+  it('itemsForSlot excludes gear worn by other characters', () => {
+    let p = createInitialPlayer(99);
+    const mine = stubItem({ id: 'w_mine', slot: 'weapon', setId: undefined, baseStats: { atk: 1 } });
+    const theirs = stubItem({ id: 'w_theirs', slot: 'weapon', setId: undefined, baseStats: { atk: 2 } });
+    p = { ...p, inventory: [...p.inventory, mine, theirs] };
+    p = equipItem(p, 'w_theirs', 'zhaoyun');
+    assert.equal(p.characterEquip?.zhaoyun?.weapon, 'w_theirs');
+    const heroOnly = itemsForSlot(p, 'weapon', 'hero');
+    assert.ok(heroOnly.some((e) => e.id === 'w_mine'));
+    assert.equal(heroOnly.some((e) => e.id === 'w_theirs'), false);
+    assert.equal(equipItem(p, 'w_theirs', 'hero'), p);
+  });
+
+  it('wearLoot refuses gear worn by another character', () => {
+    let p = createInitialPlayer(12);
+    const w = stubItem({ id: 'w_shared', slot: 'weapon', setId: undefined, baseStats: { atk: 3 } });
+    p = { ...p, inventory: [...p.inventory, w] };
+    p = equipItem(p, 'w_shared', 'zhaoyun');
+    const r = wearLoot(p, 'w_shared');
+    assert.equal(r.ok, false);
+    assert.match(r.message ?? '', /其他角色/);
+  });
+
+  it('grantStarterEquipmentKit equips six slots per deployed member', () => {
+    const p = grantStarterEquipmentKit(createInitialPlayer(7));
+    for (const charId of ['hero', 'zhaoyun', 'machao', 'xushu', 'menghuo']) {
+      for (const slot of STARTER_KIT_SLOTS) {
+        assert.equal(p.characterEquip?.[charId]?.[slot], `kit_${charId}_${slot}`);
+      }
+    }
   });
 
   it('grantSampleEquipment drops one of each rarity', () => {

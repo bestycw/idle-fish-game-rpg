@@ -25,8 +25,11 @@ function assertBattleFlow(state: BattleState, label: string): void {
   const actions = state.events.filter((e) => e.code === 'action');
   assert.ok(actions.length >= 1, `${label}: no actions`);
   const usedSkill = actions.some((e) => String(e.payload.action ?? '').includes('技能'));
-  const usedAtk = actions.some((e) => String(e.payload.action ?? '').includes('攻击'));
-  assert.ok(usedSkill || usedAtk, `${label}: neither skill nor attack`);
+  const usedAtk = actions.some((e) => {
+    const label = String(e.payload.action ?? '');
+    return label.includes('普攻') || label.includes('攻击');
+  });
+  assert.ok(usedSkill || usedAtk, `${label}: neither skill nor basic attack`);
   if (state.status === 'won') {
     assert.ok(state.enemy.units.some((u) => u.dead), `${label}: won but no enemy dead`);
   }
@@ -76,7 +79,7 @@ describe('combat flow smoke (loop gate)', () => {
   });
 
   it('loop spotlight cards each replace one slot and still flow', () => {
-    const baseIds = ['hero', 'zhangfei', 'huatuo', 'wukong', 'zhuge'];
+    const baseIds = ['hero', 'zhaoyun', 'machao', 'xushu', 'zhuge'];
     for (const spotlightId of LOOP_COMBAT_SPOTLIGHT) {
       const t = getTemplate(spotlightId);
       assert.ok(t, spotlightId);

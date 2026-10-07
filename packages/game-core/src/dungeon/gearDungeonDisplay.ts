@@ -1,6 +1,8 @@
+import { gearDungeonCombatReadout } from '../chapter/powerSpine.js';
 import { isContentUnlocked } from '../chapter/progress.js';
 import type { PlayerState, WorldPreset } from '../shared/types.js';
-import { ENCOUNTERS } from './encounters.js';
+import { isBossEncounterId } from './encounters.js';
+import { gearDungeonEncounterChipLabel } from './gearDungeonEnemySkin.js';
 import {
   GEAR_DUNGEON_LINES,
   dungeonIdOnLine,
@@ -24,16 +26,14 @@ export type GearDungeonView = {
   unlockHint: string;
   name: string;
   blurb: string;
-  encounterLabels: string[];
+  encounters: { id: string; label: string; isBoss: boolean }[];
   pressure: number;
   staminaCost: number;
+  /** 当前存档进度下建议队伍战力（战力脊柱） */
+  playerTargetPower: number;
   lootPreview: LootPreviewTile[];
   lootRarityMix: GearLootRarityMixEntry[];
 };
-
-function encounterLabel(encounterId: string): string {
-  return ENCOUNTERS.find((e) => e.id === encounterId)?.name ?? encounterId;
-}
 
 export type GearLineTierSlot = {
   tier: GearDungeonTier;
@@ -60,7 +60,7 @@ export function buildGearLineCatalog(state: PlayerState, preset: WorldPreset): G
           tier,
           dungeonId,
           unlocked,
-          view: buildGearDungeonView(def, preset, unlocked),
+          view: buildGearDungeonView(def, preset, unlocked, state.chapterCleared ?? 0),
         };
       })
       .filter((x): x is GearLineTierSlot => x !== null);
@@ -76,7 +76,9 @@ export function buildGearDungeonView(
   def: GearDungeonDef,
   preset: WorldPreset,
   unlocked: boolean,
+  chapterCleared = 0,
 ): GearDungeonView {
+  const spine = gearDungeonCombatReadout(def.id, chapterCleared);
   return {
     id: def.id,
     tier: def.tier,
@@ -84,9 +86,14 @@ export function buildGearDungeonView(
     unlockHint: gearDungeonUnlockHint(def.id),
     name: tGearDungeonName(def.id, preset),
     blurb: tGearDungeonBlurb(def.id, preset),
-    encounterLabels: def.encounterPool.map(encounterLabel),
+    encounters: def.encounterPool.map((id) => ({
+      id,
+      label: gearDungeonEncounterChipLabel(def.id, id, preset),
+      isBoss: isBossEncounterId(id),
+    })),
     pressure: def.pressure,
     staminaCost: def.staminaCost,
+    playerTargetPower: spine?.playerTargetNow ?? 0,
     lootPreview: buildGearLootPreview(def),
     lootRarityMix: gearLootRarityMix(def, preset),
   };

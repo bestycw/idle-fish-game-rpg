@@ -32,6 +32,25 @@ describe('battle settlement', () => {
         xiuwei: 0,
         ticket: 0,
         enhanceStones: 0,
+        characterExpPerMember: 0,
+        partyExpRows: [],
+        materialDrops: [],
+        lines: [],
+      }),
+    );
+    assert.ok(
+      settlementHasLoot({
+        source: 'chapter',
+        equipment: null,
+        bonusEquipment: [],
+        gold: 0,
+        stardust: 0,
+        xiuwei: 0,
+        ticket: 0,
+        enhanceStones: 0,
+        characterExpPerMember: 12,
+        partyExpRows: [],
+        materialDrops: [],
         lines: [],
       }),
     );

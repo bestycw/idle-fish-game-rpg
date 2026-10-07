@@ -5,16 +5,11 @@ import { applyBonusesToUnit, sumEquipmentBonuses } from '../equipment/equipment.
 import { loadoutConditions, loadoutT3Ids } from '../equipment/loadout.js';
 import { getChainBonus, getTeamChainBonus } from '../equipment/enhance.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
+import { DEFAULT_STARTER_GIFT_IDS } from '../character/starterRoster.js';
 import { MAX_PARTY_SIZE, type GridSlot, type PlayerState, type UnitRuntime } from '../shared/types.js';
 
-/** 默认上阵 5：主角 / 张飞 / 赵云 / 孙悟空 / 华佗 */
-export const DEFAULT_DEPLOYED_IDS = [
-  'hero',
-  'zhangfei',
-  'zhaoyun',
-  'wukong',
-  'huatuo',
-] as const;
+/** 默认上阵 = 开局赠送（见 starterRoster.ts） */
+export const DEFAULT_DEPLOYED_IDS = DEFAULT_STARTER_GIFT_IDS;
 
 export function defaultFormation(): Partial<Record<string, GridSlot>> {
   const formation: Partial<Record<string, GridSlot>> = {};

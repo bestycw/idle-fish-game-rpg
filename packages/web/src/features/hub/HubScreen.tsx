@@ -7,6 +7,7 @@ import {
   canClaimDaily,
   currentChapterBattleContext,
   formatChapterBattleWaveProgress,
+  formatMainlineBattleNodeCommitment,
   canMine,
   climbTower,
   doMine,
@@ -27,7 +28,7 @@ import {
   resolveCurrentNodeCopy,
   resolveNodeCopy,
   formationResonancePreview,
-  partyPower,
+  deployedPartyPower,
   runStardustRealm,
   tryClaimDaily,
   trySpendStamina,
@@ -81,7 +82,7 @@ export function HubScreen({
   const chapter = getChapterView(player);
   const route = getChapterRoute(player);
   const band = getChapterBand(player.chapterCleared ?? 0);
-  const deployedPower = partyPower(player, Object.keys(player.formation));
+  const deployedPower = deployedPartyPower(player);
   const gearHubUnlocked = listUnlockedGearDungeons(player).length > 0;
   const towerUnlocked = isContentUnlocked(player, 'dungeon', 'tower');
   const stardustUnlocked = isContentUnlocked(player, 'dungeon', 'stardust_realm');
@@ -135,7 +136,9 @@ export function HubScreen({
   const routeStopLabel = (stop: (typeof route.stops)[number]) => {
     const copy = resolveNodeCopy(player, stop.node.id);
     const waveCount =
-      stop.node.kind === 'battle' ? battleWavesForNode(stop.node).length : 0;
+      stop.node.kind === 'battle' && playing
+        ? battleWavesForNode(stop.node, playing.order).length
+        : 0;
     const baseTitle = copy?.title ?? stop.node.title;
     return {
       place: copy?.place ?? nodePlace(stop.node),
@@ -149,7 +152,13 @@ export function HubScreen({
     : node
       ? node.kind === 'story' && storyDialogueBeats && storyDialogueBeats.length > 0
         ? `点下方「进入 · ${storyPlace}」推进剧情；想闲聊可开地图找人物。`
-        : [resolvedNode?.blurb ?? node.blurb, battlePrep ? `战前：${battlePrep}` : '']
+        : [
+            resolvedNode?.blurb ?? node.blurb,
+            node.kind === 'battle' && playing
+              ? formatMainlineBattleNodeCommitment(node, playing.order)
+              : '',
+            battlePrep ? `战前：${battlePrep}` : '',
+          ]
             .filter(Boolean)
             .join(' ')
       : '夜色里，试炼的门还亮着。';
@@ -240,7 +249,9 @@ export function HubScreen({
     : !node
       ? ''
       : node.kind === 'battle' && chapterBattleWave && chapterBattleWave.waveTotal > 1
-        ? `开战 · ${chapterBattleWave.waveIndex + 1}/${chapterBattleWave.waveTotal} 场`
+        ? chapterBattleWave.unitTotal > 1
+          ? `开战 · ${chapterBattleWave.unitLabel ?? `第 ${chapterBattleWave.unitIndex + 1} 阵`} ${chapterBattleWave.waveInUnit + 1}/3`
+          : `开战 · ${chapterBattleWave.waveIndex + 1}/${chapterBattleWave.waveTotal} 场`
         : node.kind === 'battle'
           ? '开战'
           : `进入 · ${here ?? '当前'}`;

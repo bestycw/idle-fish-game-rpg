@@ -2,6 +2,7 @@ import {
   ENCOUNTERS,
   getEncounterModifier,
   getFormationResonance,
+  encounterDisplayTier,
   type BattleState,
 } from '@moyu/game-core';
 import { BattleLog } from '../shared/battleLog';
@@ -48,6 +49,7 @@ export function BattleScreen({
         maxTurns={battle.maxTurns}
         statusLine={statusLine}
         encounterName={encounterName}
+        encounterTier={encounterDisplayTier(battle.encounterId)}
         modifierLabels={modifierLabels}
         resonanceLabels={resonanceLabels}
       />

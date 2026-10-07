@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createInitialPlayer } from '../save/player.js';
-import { partyPower } from '../equipment/power.js';
+import { deployedPartyPower } from '../equipment/power.js';
 import {
   CHAPTER_BANDS,
   battlePressure,
   getChapterBand,
   powerGate,
 } from './bands.js';
+import { battleWavesForNode } from './battleWaves.js';
 import { CHAPTERS, listChapters, nodePlace } from './defs.js';
 import {
   advanceStoryNode,
@@ -19,8 +20,49 @@ import {
   resolveChapterBattleAfterWin,
 } from './progress.js';
 import { encounterIndexFromId } from './battleWaves.js';
+import {
+  MAINLINE_WAVES_PER_UNIT,
+  mainlineBattleUnitCount,
+  mainlineBattleWaves,
+} from './mainlineBattleWaves.js';
+import { MAINLINE_BIOME_ENCOUNTERS } from '../dungeon/mainlineBiomeEncounters.js';
+import { MAINLINE_CAP_BLEND_ENCOUNTERS } from '../dungeon/mainlineCapBlendEncounters.js';
+import {
+  MAINLINE_HEADCOUNT_RANGE,
+  assertMainlineHeadcount,
+} from './mainlineThreatBudget.js';
 
 describe('chapter', () => {
+  it('mainline battle unit count grows with chapter order', () => {
+    assert.equal(mainlineBattleUnitCount(1), 3);
+    assert.equal(mainlineBattleUnitCount(5), 7);
+    assert.equal(mainlineBattleUnitCount(10), 9);
+    const ch1 = mainlineBattleWaves(1, 'wall', 0);
+    assert.equal(ch1.length, 3 * MAINLINE_WAVES_PER_UNIT);
+    const ch9 = mainlineBattleWaves(9, 'oil_cask', 0);
+    assert.equal(ch9.length, 9 * MAINLINE_WAVES_PER_UNIT);
+    const ch2 = mainlineBattleWaves(2, 'raiders', 0);
+    assert.ok(ch2[0]!.encounterId.startsWith('biome_forest_'));
+    const ch6 = mainlineBattleWaves(6, 'shield_stack', 0);
+    assert.equal(ch6[2]!.encounterId, 'mainline_blend_shield_stack');
+    assert.equal(ch6[ch6.length - 1]!.encounterId, 'boss_shield_stack');
+    const ch1n4 = mainlineBattleWaves(1, 'archers', 1);
+    assert.notEqual(ch1n4[0]!.encounterId, ch1[0]!.encounterId);
+    for (const e of MAINLINE_BIOME_ENCOUNTERS) {
+      assert.ok(
+        assertMainlineHeadcount('skirmish', e.enemies.length),
+        `${e.id} count ${e.enemies.length} outside skirmish band`,
+      );
+    }
+    for (const e of MAINLINE_CAP_BLEND_ENCOUNTERS) {
+      assert.ok(
+        assertMainlineHeadcount('blend_elite', e.enemies.length),
+        `${e.id} count ${e.enemies.length} outside blend band`,
+      );
+    }
+    assert.equal(MAINLINE_HEADCOUNT_RANGE.skirmish.max, 7);
+  });
+
   it('each chapter has at least five nodes', () => {
     for (const ch of listChapters()) {
       assert.ok(
@@ -32,6 +74,9 @@ describe('chapter', () => {
 
   it('starts with START_UNLOCKS only', () => {
     const p = createInitialPlayer(1);
+    assert.ok(p.roster.menghuo?.owned);
+    assert.ok(p.roster.zhaoyun?.owned);
+    assert.equal(Object.keys(p.formation).length, 5);
     assert.equal(p.chapterCleared, 0);
     assert.equal(p.chapterNodeIndex, 0);
     assert.ok(isContentUnlocked(p, 'dungeon', 'gear_break_wall'));
@@ -60,17 +105,15 @@ describe('chapter', () => {
     p = s1.state;
     assert.equal(getChapterView(p).node?.id, 'ch1_n2');
     assert.equal(p.chapterBattleWaveIndex ?? 0, 0);
-    const w1 = resolveChapterBattleAfterWin(p);
-    assert.ok(w1.ok);
-    assert.equal(w1.hasNextWave, true);
-    p = w1.state;
-    assert.equal(p.chapterBattleWaveIndex, 1);
-    assert.equal(getChapterView(p).node?.kind, 'battle');
-    assert.ok(encounterIndexFromId('wall') >= 0);
-    const w2 = resolveChapterBattleAfterWin(p);
-    assert.ok(w2.ok);
-    assert.equal(w2.hasNextWave, false);
-    p = w2.state;
+    const battleNode = CHAPTERS[0].nodes.find((n) => n.id === 'ch1_n2')!;
+    const expectedWaves = battleWavesForNode(battleNode, 1).length;
+    for (let i = 0; i < expectedWaves; i++) {
+      const r = resolveChapterBattleAfterWin(p);
+      assert.ok(r.ok);
+      assert.equal(r.hasNextWave, i < expectedWaves - 1);
+      p = r.state;
+      assert.equal(getChapterView(p).node?.kind, i < expectedWaves - 1 ? 'battle' : 'story');
+    }
     assert.equal(p.chapterBattleWaveIndex ?? 0, 0);
     assert.equal(getChapterView(p).node?.kind, 'story');
   });
@@ -134,7 +177,7 @@ describe('chapter bands', () => {
     assert.equal(battlePressure(0, 1.3), 1.3);
     assert.ok(battlePressure(2, 1) > 1);
     const p = createInitialPlayer(1);
-    const power = partyPower(p, Object.keys(p.formation));
+    const power = deployedPartyPower(p);
     const band = getChapterBand(0);
     assert.ok(power >= band.floorPower, `starter ${power} below floor ${band.floorPower}`);
     assert.ok(power < band.crushPower, `starter ${power} already at crush ${band.crushPower}`);

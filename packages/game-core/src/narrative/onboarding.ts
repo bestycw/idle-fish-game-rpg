@@ -3,6 +3,8 @@ import { DEFAULT_HERO_NAME, normalizeHeroName } from './narrativeProfile.zh.js';
 import { normalizeNarrativePreferences } from './narrativePreferences.js';
 import { defaultNarrativePreferences } from './narrativeVector.zh.js';
 import { PROLOGUE_SKIP_DEFAULT_PRESET } from './prologue.zh.js';
+import { grantStarterEquipmentKit, playerNeedsStarterKit } from '../equipment/starterKit.js';
+import { ensureStarterTrialRoster } from '../formation/starterTrial.js';
 import {
   applyOnboardingSkinBatch,
   generateOnboardingSkinBatch,
@@ -38,7 +40,12 @@ export function completeNarrativeOnboarding(
     preferences,
     maxChapterOrder: ONBOARDING_SKIN_BATCH_CHAPTER_MAX,
   });
-  return applyOnboardingSkinBatch(state, worldPreset, heroName, preferences, batch);
+  let next = applyOnboardingSkinBatch(state, worldPreset, heroName, preferences, batch);
+  next = ensureStarterTrialRoster(next);
+  if (playerNeedsStarterKit(next)) {
+    next = grantStarterEquipmentKit(next);
+  }
+  return next;
 }
 
 export function skipPrologueToMainline(state: PlayerState): PlayerState {

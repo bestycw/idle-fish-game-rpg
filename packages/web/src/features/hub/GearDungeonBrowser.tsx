@@ -123,10 +123,24 @@ function DungeonDetailPanel({
 
         <p className="mt-3 text-sm leading-relaxed text-foreground/78">{selected.blurb}</p>
 
-        <p className="mt-3 text-sm">
-          <span className="text-muted-foreground">遭遇 · </span>
-          <span className="text-foreground/85">{selected.encounterLabels.join(' · ')}</span>
-        </p>
+        <div className="mt-3">
+          <p className="text-[11px] text-muted-foreground">首领轮换</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {selected.encounters.map((enc) => (
+              <span
+                key={enc.id}
+                className={cn(
+                  'rounded border px-2 py-1 text-[11px] leading-tight',
+                  enc.isBoss
+                    ? 'border-amber-400/55 bg-amber-950/30 text-amber-100/95 shadow-[inset_0_1px_0_rgba(251,191,36,0.15)]'
+                    : 'border-border/45 bg-black/25 text-foreground/80',
+                )}
+              >
+                {enc.label}
+              </span>
+            ))}
+          </div>
+        </div>
 
         <LootPreviewStrip
           tiles={selected.lootPreview}
@@ -195,7 +209,10 @@ export function GearDungeonBrowser({
     return <p className="text-xs text-muted-foreground">猎装秘境数据未就绪。</p>;
   }
 
-  const recPower = Math.round(recommendedPower * activeSlot.view.pressure);
+  const recPower =
+    activeSlot.view.playerTargetPower > 0
+      ? activeSlot.view.playerTargetPower
+      : Math.round(recommendedPower * activeSlot.view.pressure);
   const powerOk = deployedPower >= recPower * 0.85;
 
   return (

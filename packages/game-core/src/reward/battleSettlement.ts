@@ -1,5 +1,7 @@
 import type { Equipment, PlayerState } from '../shared/types.js';
 import type { ChapterFirstClearReward } from './chapterFirstClear.js';
+import type { PartyExpGainRow } from './battleExp.js';
+import { EXP_PILL_IDS } from './expPills.js';
 
 export type BattleSettlementSource = 'chapter' | 'dungeon';
 
@@ -13,6 +15,12 @@ export interface BattleSettlement {
   xiuwei: number;
   ticket: number;
   enhanceStones: number;
+  /** 本场每位上阵成员获得的经验（猎装/主线） */
+  characterExpPerMember: number;
+  /** 上阵经验条 / LV UP 展示 */
+  partyExpRows: PartyExpGainRow[];
+  /** 本场掉落的经验丹等材料 */
+  materialDrops: { itemId: string; amount: number }[];
   /** 展示用文案（进度、首通、解锁等） */
   lines: string[];
   firstClearChapter?: { order: number; name: string };
@@ -27,6 +35,9 @@ export const EMPTY_SETTLEMENT: BattleSettlement = {
   xiuwei: 0,
   ticket: 0,
   enhanceStones: 0,
+  characterExpPerMember: 0,
+  partyExpRows: [],
+  materialDrops: [],
   lines: [],
 };
 
@@ -40,12 +51,23 @@ function currencyDelta(before: PlayerState, after: PlayerState) {
   };
 }
 
+function materialDropsBetween(before: PlayerState, after: PlayerState): { itemId: string; amount: number }[] {
+  const rows: { itemId: string; amount: number }[] = [];
+  for (const id of EXP_PILL_IDS) {
+    const d = (after.materials?.[id] ?? 0) - (before.materials?.[id] ?? 0);
+    if (d > 0) rows.push({ itemId: id, amount: d });
+  }
+  return rows;
+}
+
 export function buildBattleSettlement(opts: {
   source: BattleSettlementSource;
   before: PlayerState;
   after: PlayerState;
   equipment?: Equipment | null;
   bonusEquipment?: Equipment[];
+  characterExpPerMember?: number;
+  partyExpRows?: PartyExpGainRow[];
   lines: string[];
   firstClearChapter?: { order: number; name: string };
 }): BattleSettlement {
@@ -59,6 +81,9 @@ export function buildBattleSettlement(opts: {
     xiuwei: d.xiuwei,
     ticket: d.ticket,
     enhanceStones: d.enhanceStones,
+    characterExpPerMember: opts.characterExpPerMember ?? 0,
+    partyExpRows: opts.partyExpRows ?? [],
+    materialDrops: materialDropsBetween(opts.before, opts.after),
     lines: opts.lines.filter(Boolean),
     firstClearChapter: opts.firstClearChapter,
   };
@@ -72,7 +97,10 @@ export function settlementHasLoot(s: BattleSettlement): boolean {
     s.stardust > 0 ||
     s.xiuwei > 0 ||
     s.ticket > 0 ||
-    s.enhanceStones > 0
+    s.enhanceStones > 0 ||
+    s.characterExpPerMember > 0 ||
+    s.partyExpRows.length > 0 ||
+    s.materialDrops.length > 0
   );
 }
 

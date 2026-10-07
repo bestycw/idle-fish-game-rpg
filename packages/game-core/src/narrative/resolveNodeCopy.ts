@@ -2,6 +2,10 @@
  * 运行时节点文案：defs → official 地点皮 → overlay → 状态注入
  */
 
+import {
+  chapterOrderFromNodeId,
+  mainlineCapEncounterId,
+} from '../chapter/mainlineBattleWaves.js';
 import { CHAPTERS, getChapterByOrder, type ChapterNodeDef } from '../chapter/defs.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import { isOwned } from '../character/growth.js';
@@ -133,6 +137,19 @@ export function resolveCurrentNodeCopy(state: PlayerState): ResolvedNodeCopy | n
 }
 
 export function prepHintForNode(node: ChapterNodeDef): string | undefined {
-  if (node.kind !== 'battle' || !node.encounterId) return undefined;
-  return ENCOUNTERS.find((e) => e.id === node.encounterId)?.prepHint;
+  if (node.kind !== 'battle') return undefined;
+  const capId =
+    node.encounterId ??
+    (node.battleCap
+      ? undefined
+      : node.battleWaves?.length
+        ? node.battleWaves[node.battleWaves.length - 1]?.encounterId
+        : undefined);
+  if (!capId && node.battleCap) {
+    const order = chapterOrderFromNodeId(node.id);
+    const lastId = mainlineCapEncounterId(order, node.battleCap);
+    return ENCOUNTERS.find((e) => e.id === lastId)?.prepHint;
+  }
+  if (!capId) return undefined;
+  return ENCOUNTERS.find((e) => e.id === capId)?.prepHint;
 }

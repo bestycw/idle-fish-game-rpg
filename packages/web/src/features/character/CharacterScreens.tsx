@@ -6,6 +6,9 @@ import {
   UNIT_TEMPLATES,
   MAX_PARTY_SIZE,
   applyGrowthTrack,
+  levelUpWithExpPills,
+  previewPillLevelUp,
+  expToNextLevel,
   autoEquipBest,
   bagCellSignature,
   breakthroughLabel,
@@ -291,7 +294,6 @@ export function CharacterSheet({
 }: CharacterSheetProps) {
   const notice = onNotice ?? (() => undefined);
   const [pickingSlot, setPickingSlot] = useState<EquipSlot | null>(null);
-  const [inspectSlot, setInspectSlot] = useState<EquipSlot | null>(null);
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const [slotPopup, setSlotPopup] = useState(false);
   const [tab, setTab] = useState<SheetTab>('stats');
@@ -525,7 +527,7 @@ export function CharacterSheet({
       : basePower;
 
   const candidates = pickingSlot
-    ? [...itemsForSlot(player, pickingSlot)].sort((a, b) => {
+    ? [...itemsForSlot(player, pickingSlot, templateId)].sort((a, b) => {
         const blockedA = wearBlockedReason(a, progress.breakthroughTier) ? 1 : 0;
         const blockedB = wearBlockedReason(b, progress.breakthroughTier) ? 1 : 0;
         if (blockedA !== blockedB) return blockedA - blockedB;
@@ -575,8 +577,7 @@ export function CharacterSheet({
       return;
     }
     const map = player.characterEquip?.[templateId] ?? {};
-    const list = itemsForSlot(player, slot);
-    setInspectSlot(slot);
+    const list = itemsForSlot(player, slot, templateId);
     setTab('gear');
     setShowMorphPicker(false);
     if (pickingSlot === slot && map[slot]) {
@@ -613,9 +614,8 @@ export function CharacterSheet({
   };
 
   const charEquipMap = player.characterEquip?.[templateId] ?? {};
-  const inspectItem = inspectSlot
-    ? itemById(player, charEquipMap[inspectSlot])
-    : undefined;
+  const pickingSlotWorn =
+    pickingSlot ? itemById(player, charEquipMap[pickingSlot]) : undefined;
 
   const renderSlot = (slot: EquipSlot) => {
     const item = itemById(player, charEquipMap[slot]);
@@ -707,7 +707,6 @@ export function CharacterSheet({
                 className="w-full rounded-md border border-border/70 py-1.5 text-sm text-muted-foreground"
                 onClick={() => {
                   setPlayer((p) => unequipSlot(p, item.slot, templateId));
-                  notice(`已卸下 ${item.name}`);
                   setSlotPopup(false);
                 }}
               >
@@ -826,7 +825,6 @@ export function CharacterSheet({
               setTab(t.id);
               if (t.id !== 'gear') {
                 setPickingSlot(null);
-                setInspectSlot(null);
                 setPreviewItemId(null);
                 setSlotPopup(false);
               }
@@ -921,28 +919,77 @@ export function CharacterSheet({
                     </button>
                   ) : null}
                         {levelTrack && levelPrev ? (
-                          <button
-                            type="button"
-                            onClick={() => run('level')}
-                            className={cn(
-                              'w-full rounded-xl border px-3 py-1.5 text-left transition',
-                              levelPrev.ready
-                                ? 'border-primary/40 bg-card/70 hover:border-primary/60'
-                                : 'border-border/60 bg-card/40',
-                            )}
-                          >
-                            <div className="flex items-baseline justify-between gap-2">
-                              <strong className="font-display text-[15px]">升级</strong>
-                              <span className="font-mono text-[11px] text-muted-foreground">
-                                {levelPrev.costLine}
-                              </span>
+                          <div className="space-y-1.5">
+                            <div
+                              className={cn(
+                                'w-full rounded-xl border px-3 py-1.5 text-left',
+                                'border-border/60 bg-card/40',
+                              )}
+                            >
+                              <div className="flex items-baseline justify-between gap-2">
+                                <strong className="font-display text-[15px]">等级</strong>
+                                <span className="font-mono text-[11px] text-muted-foreground">
+                                  Lv {progress.level}
+                                  {progress.level < cap
+                                    ? ` · 余量 ${progress.exp}/${expToNextLevel(progress.level)}`
+                                    : ' · 已达境限'}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                战斗经验自动升级；此处用经验丹补级（优先低档）
+                              </p>
+                              <Progress
+                                value={growthPct(progress.exp, expToNextLevel(progress.level))}
+                                className="mt-1.5 h-1"
+                              />
                             </div>
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">{levelPrev.effectLine}</p>
-                            <Progress
-                              value={growthPct(levelPrev.current, levelPrev.need)}
-                              className="mt-1.5 h-1"
-                            />
-                          </button>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button
+                                type="button"
+                                disabled={!previewPillLevelUp(player, templateId, 1).ready}
+                                onClick={() => {
+                                  setPlayer((p) => {
+                                    const r = levelUpWithExpPills(p, templateId, 1);
+                                    notice(r.ok ? r.message : r.message);
+                                    return r.ok ? r.state : p;
+                                  });
+                                }}
+                                className={cn(
+                                  'rounded-xl border px-3 py-2 text-left transition',
+                                  previewPillLevelUp(player, templateId, 1).ready
+                                    ? 'border-primary/40 bg-card/70 hover:border-primary/60'
+                                    : 'border-border/50 bg-card/30 opacity-60',
+                                )}
+                              >
+                                <strong className="font-display text-[14px]">升 1 级</strong>
+                                <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                                  {previewPillLevelUp(player, templateId, 1).costLine}
+                                </p>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!previewPillLevelUp(player, templateId, 10).ready}
+                                onClick={() => {
+                                  setPlayer((p) => {
+                                    const r = levelUpWithExpPills(p, templateId, 10);
+                                    notice(r.ok ? r.message : r.message);
+                                    return r.ok ? r.state : p;
+                                  });
+                                }}
+                                className={cn(
+                                  'rounded-xl border px-3 py-2 text-left transition',
+                                  previewPillLevelUp(player, templateId, 10).ready
+                                    ? 'border-primary/40 bg-card/70 hover:border-primary/60'
+                                    : 'border-border/50 bg-card/30 opacity-60',
+                                )}
+                              >
+                                <strong className="font-display text-[14px]">升 10 级</strong>
+                                <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                                  {previewPillLevelUp(player, templateId, 10).costLine}
+                                </p>
+                              </button>
+                            </div>
+                          </div>
                         ) : null}
                   {import.meta.env.DEV ? (
                     <details className="rounded-lg border border-border/50 bg-card/20 px-2 py-1">
@@ -955,18 +1002,14 @@ export function CharacterSheet({
                           className="rounded border border-border px-2 py-0.5 text-[11px]"
                           onClick={() =>
                             setPlayer((p) => {
-                              const cur = getProgress(p, templateId);
-                              return {
-                                ...p,
-                                roster: {
-                                  ...p.roster,
-                                  [templateId]: { ...cur, exp: cur.exp + 60 },
-                                },
-                              };
+                              const materials = { ...(p.materials ?? {}) };
+                              materials.exp_pill_1 = (materials.exp_pill_1 ?? 0) + 5;
+                              materials.exp_pill_2 = (materials.exp_pill_2 ?? 0) + 2;
+                              return { ...p, materials };
                             })
                           }
                         >
-                          +经验
+                          +经验丹
                         </button>
                         <button
                           type="button"
@@ -1120,9 +1163,11 @@ export function CharacterSheet({
                             const setCounts = countEquippedSets(
                               previewEquipped.map((it) => it.setId),
                             );
-                            const powerDelta = inspectItem
-                              ? itemPower(item) - itemPower(inspectItem)
-                              : null;
+                            const powerDelta = pickingSlotWorn
+                              ? itemPower(item) - itemPower(pickingSlotWorn)
+                              : itemPower(item);
+                            const isUpgrade =
+                              !blocked && powerDelta > 0;
                             return (
                               <Popover.Root
                                 key={item.id}
@@ -1141,6 +1186,7 @@ export function CharacterSheet({
                                       selected={previewing}
                                       worn={worn}
                                       blocked={Boolean(blocked)}
+                                      showUpgradeArrow={isUpgrade}
                                       unseen={isItemUnseen(player, item.id)}
                                       onSelect={() => {
                                         if (blocked) {
@@ -1181,24 +1227,12 @@ export function CharacterSheet({
                                                 templateId,
                                               ),
                                             );
-                                            setPickingSlot(item.slot);
                                             setPreviewItemId(null);
-                                            setInspectSlot(item.slot);
-                                            setSlotPopup(true);
-                                            notice(`已穿戴 ${item.name}`);
+                                            setSlotPopup(false);
+                                            setPickingSlot(null);
                                           }}
                                         >
                                           穿上
-                                          {powerDelta != null && powerDelta !== 0 ? (
-                                            <span
-                                              className={cn(
-                                                'ml-1.5 font-mono text-[11px] tabular-nums',
-                                                powerDelta > 0 ? 'text-emerald-400' : 'text-rose-400',
-                                              )}
-                                            >
-                                              {powerDelta > 0 ? `+${powerDelta}` : powerDelta}
-                                            </span>
-                                          ) : null}
                                         </button>
                                       )}
                                     </div>

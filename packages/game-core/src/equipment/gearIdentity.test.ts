@@ -4,13 +4,14 @@ import { defaultProgress } from '../character/growth.js';
 import { getTemplate } from '../character/templates.js';
 import { createBattle, runAutoBattle } from '../combat/combat.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
+import { STARTER_TRIAL_LINEUP } from '../character/starterRoster.js';
 import { buildPlayerParty } from '../formation/formation.js';
 import { createInitialPlayer } from '../save/player.js';
 import type { ConditionId, Equipment, PlayerState } from '../shared/types.js';
 import { equipItem } from './equipment.js';
 import { listEquipmentSkillModifiers } from './morphs.js';
 
-const PARTY = ['hero', 'zhangfei', 'huatuo', 'zhaoyun', 'wukong'] as const;
+const PARTY = STARTER_TRIAL_LINEUP;
 
 function encIndex(id: string): number {
   const i = ENCOUNTERS.findIndex((e) => e.id === id);
@@ -116,9 +117,9 @@ describe('gear identity', () => {
         winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_purge_hit' }), 'shield_stack', seeds, 1),
       ],
       [
-        'spirit shred T3',
-        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_start_shield' }), 'spirit_wall', seeds, 1.15),
-        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_skill_shred' }), 'spirit_wall', seeds, 1.15),
+        'shield purge T3 (boss)',
+        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_start_shield' }), 'boss_shield_stack', seeds, 1),
+        winRate(dressWeapons(base, PARTY, { effectAffixId: 'fx_purge_hit' }), 'boss_shield_stack', seeds, 1),
       ],
     ];
     const failed = rows

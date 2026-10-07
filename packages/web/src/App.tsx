@@ -11,9 +11,8 @@ import {
   getChapterBand,
   getDungeon,
   grantDungeonReward,
-  partyPower,
+  deployedPartyPower,
   type BattleSettlement,
-  grantSampleEquipment,
   loadOrCreatePlayer,
   persistPlayer,
   pickUnlockedEncounterIndex,
@@ -153,10 +152,6 @@ export default function App() {
   }, [player]);
 
   useEffect(() => {
-    setPlayer((p) => grantSampleEquipment(p));
-  }, []);
-
-  useEffect(() => {
     const arc = unseenParallelArcReport(playerRef.current);
     if (arc) setPendingParallelArc(arc);
   }, []);
@@ -214,7 +209,10 @@ export default function App() {
           setLastSettlement(EMPTY_SETTLEMENT);
         }
       } else {
-        const { state, loot, bonusLoot } = grantDungeonReward(basePlayer, dungeonRef.current);
+        const { state, loot, bonusLoot, characterExpPerMember, partyExpRows } = grantDungeonReward(
+          basePlayer,
+          dungeonRef.current,
+        );
         setPlayer(state);
         setLastSettlement(
           buildBattleSettlement({
@@ -223,6 +221,8 @@ export default function App() {
             after: state,
             equipment: loot,
             bonusEquipment: bonusLoot,
+            characterExpPerMember,
+            partyExpRows,
             lines: loot ? [] : ['本局未出装备，再试一把。'],
           }),
         );
@@ -401,9 +401,9 @@ export default function App() {
         ],
         roster,
       };
-      return grantSampleEquipment(next, { replace: true });
+      return next;
     });
-    pushNotice('🔧 DEV：全资源拉满（含样装/强化石/宝石/形态石）');
+    pushNotice('🔧 DEV：全资源拉满（强化石/宝石/形态石）');
   };
 
   const applyDevPlayer = (next: PlayerState, message: string) => {
@@ -650,7 +650,7 @@ export default function App() {
         <GearDungeonScreen
           player={player}
           recommendedPower={getChapterBand(player.chapterCleared ?? 0).recommendedPower}
-          deployedPower={partyPower(player, Object.keys(player.formation))}
+          deployedPower={deployedPartyPower(player)}
           onBack={() => setScreen('hub')}
           onEnter={(dungeonId) => openDungeonPrep(dungeonId, 'gear_dungeons')}
         />

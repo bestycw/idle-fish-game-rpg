@@ -1,3 +1,4 @@
+import { encounterDisplayTier } from '@moyu/game-core';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +53,7 @@ export function BattlePrepBrief({
   prepHint,
 }: BattlePrepBriefProps) {
   const [panel, setPanel] = useState<PrepPanel>(null);
+  const tier = encounterDisplayTier(encounterId);
 
   const toggle = (next: PrepPanel) => {
     setPanel((cur) => (cur === next ? null : next));
@@ -71,10 +73,28 @@ export function BattlePrepBrief({
   }, [encounterId, prepHint]);
 
   return (
-    <div className="shrink-0 space-y-1.5">
+    <div
+      className={cn(
+        'shrink-0 space-y-1.5 rounded-lg border px-2 py-1.5',
+        tier === 'boss'
+          ? 'border-amber-400/40 bg-amber-950/20 shadow-[inset_0_1px_0_rgba(251,191,36,0.12)]'
+          : tier === 'elite'
+            ? 'border-rose-400/35 bg-rose-950/15 shadow-[inset_0_1px_0_rgba(244,63,94,0.08)]'
+            : 'border-transparent',
+      )}
+    >
       <div className="flex items-center gap-2">
-        <h2 className="font-display min-w-0 flex-1 truncate text-lg leading-tight tracking-wide">
-          {encounterName}
+        <h2 className="font-display flex min-w-0 flex-1 items-center gap-1.5 truncate text-lg leading-tight tracking-wide">
+          {tier === 'boss' ? (
+            <span className="shrink-0 rounded border border-amber-400/50 bg-amber-950/55 px-1 py-0.5 font-mono text-[9px] font-semibold text-amber-200">
+              首领
+            </span>
+          ) : tier === 'elite' ? (
+            <span className="shrink-0 rounded border border-rose-400/45 bg-rose-950/55 px-1 py-0.5 font-mono text-[9px] font-semibold text-rose-200">
+              精锐
+            </span>
+          ) : null}
+          <span className="truncate">{encounterName}</span>
         </h2>
         <div className="flex shrink-0 items-center gap-1">
           {modifierLabels.length > 0 ? (

@@ -6,6 +6,12 @@ import { ENCOUNTERS } from '../dungeon/encounters.js';
 import type { PlayerState } from '../shared/types.js';
 import type { BattleWaveDef, ChapterNodeDef } from './defs.js';
 import { getChapterByOrder, maxChapterOrder } from './defs.js';
+import {
+  chapterOrderFromNodeId,
+  mainlineBattleWaves,
+  mainlinePlanOffsetFromNodeId,
+  MAINLINE_WAVES_PER_UNIT,
+} from './mainlineBattleWaves.js';
 
 export type { BattleWaveDef } from './defs.js';
 
@@ -14,10 +20,18 @@ export function encounterIndexFromId(encounterId: string): number {
   return idx >= 0 ? idx : 0;
 }
 
-/** 单 encounter 或 battleWaves；无则空 */
-export function battleWavesForNode(node: ChapterNodeDef): BattleWaveDef[] {
+/** 单 encounter、battleCap 或手写 battleWaves */
+export function battleWavesForNode(
+  node: ChapterNodeDef,
+  chapterOrder?: number,
+): BattleWaveDef[] {
   if (node.kind !== 'battle') return [];
   if (node.battleWaves?.length) return node.battleWaves;
+  if (node.battleCap) {
+    const order = chapterOrder ?? chapterOrderFromNodeId(node.id);
+    const offset = mainlinePlanOffsetFromNodeId(node.id);
+    return mainlineBattleWaves(order, node.battleCap, offset);
+  }
   if (node.encounterId) return [{ encounterId: node.encounterId }];
   return [];
 }
@@ -32,6 +46,10 @@ export interface ChapterBattleContext {
   waveIndex: number;
   waveTotal: number;
   waveLabel?: string;
+  unitIndex: number;
+  unitTotal: number;
+  waveInUnit: number;
+  unitLabel?: string;
 }
 
 function currentBattleNode(state: PlayerState): ChapterNodeDef | null {
@@ -42,20 +60,40 @@ function currentBattleNode(state: PlayerState): ChapterNodeDef | null {
   return playing?.nodes[nodeIndex] ?? null;
 }
 
+function chapterOrderForState(state: PlayerState): number {
+  const cleared = Math.max(0, state.chapterCleared ?? 0);
+  if (cleared >= maxChapterOrder()) return maxChapterOrder();
+  return getChapterByOrder(cleared + 1)?.order ?? 1;
+}
+
 /** 当前 battle 节点 + 波次 → 本场 encounter */
 export function currentChapterBattleContext(state: PlayerState): ChapterBattleContext | null {
   const node = currentBattleNode(state);
   if (!node || node.kind !== 'battle') return null;
-  const waves = battleWavesForNode(node);
+  const waves = battleWavesForNode(node, chapterOrderForState(state));
   if (waves.length === 0) return null;
   const waveIndex = Math.min(chapterBattleWaveIndex(state), waves.length - 1);
   const wave = waves[waveIndex]!;
+  const hasUnits = waves.some((w) => w.unitIndex != null);
+  const unitTotal = hasUnits
+    ? Math.max(1, ...waves.map((w) => (w.unitIndex ?? 0) + 1))
+    : 1;
+  const unitIndex = hasUnits
+    ? (wave.unitIndex ?? Math.floor(waveIndex / MAINLINE_WAVES_PER_UNIT))
+    : 0;
+  const waveInUnit = hasUnits
+    ? waveIndex - unitIndex * MAINLINE_WAVES_PER_UNIT
+    : waveIndex;
   return {
     encounterIndex: encounterIndexFromId(wave.encounterId),
     encounterId: wave.encounterId,
     waveIndex,
     waveTotal: waves.length,
     waveLabel: wave.label,
+    unitIndex,
+    unitTotal,
+    waveInUnit,
+    unitLabel: wave.unitLabel,
   };
 }
 
@@ -71,11 +109,28 @@ export function pendingChapterBattleWaves(state: PlayerState): ChapterBattleCont
   return currentChapterBattleContext(state);
 }
 
-/** Hub/结算用：「本节 N 场 · 当前第 k 场」 */
+/** Hub/结算用：单元数 + 当前阵内进度 */
 export function formatChapterBattleWaveProgress(ctx: ChapterBattleContext): string {
-  const head = `本节 ${ctx.waveTotal} 场战斗`;
+  const head =
+    ctx.unitTotal > 1
+      ? `本节 ${ctx.unitTotal} 阵 · 共 ${ctx.waveTotal} 场`
+      : `本节 ${ctx.waveTotal} 场战斗`;
   if (ctx.waveTotal <= 1) return head;
+  const u = ctx.unitLabel?.trim() || `第 ${ctx.unitIndex + 1} 阵`;
+  const inUnit = `第 ${ctx.waveInUnit + 1}/${MAINLINE_WAVES_PER_UNIT} 场`;
   const label = ctx.waveLabel?.trim();
-  const cur = `第 ${ctx.waveIndex + 1}/${ctx.waveTotal} 场`;
-  return label ? `${head} · ${cur}（${label}）` : `${head} · ${cur}`;
+  const tail = label ? `${inUnit}（${label}）` : inUnit;
+  return `${head} · ${u} · ${tail}`;
+}
+
+/** Hub：战斗节规模一句话 */
+export function formatMainlineBattleNodeCommitment(
+  node: ChapterNodeDef,
+  chapterOrder: number,
+): string | null {
+  if (node.kind !== 'battle') return null;
+  const waves = battleWavesForNode(node, chapterOrder);
+  if (waves.length <= 1) return null;
+  const unitTotal = Math.max(1, ...waves.map((w) => (w.unitIndex ?? 0) + 1));
+  return `${unitTotal} 阵连战 · 共 ${waves.length} 场（小怪→精锐/首领）`;
 }

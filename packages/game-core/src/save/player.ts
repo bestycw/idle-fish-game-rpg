@@ -1,6 +1,6 @@
 import { equipItem } from '../equipment/equipment.js';
 import { migrateSeenItemIds } from '../equipment/unseen.js';
-import { canWearEquipment } from '../equipment/wear.js';
+import { canWearEquipment, wearBlockedReason } from '../equipment/wear.js';
 import { defaultFormation, normalizeFormation } from '../formation/formation.js';
 import {
   defaultNewNarrativeState,
@@ -14,6 +14,14 @@ import {
   migrateLegacyRealmTier,
 } from '../character/growth.js';
 import { UNIT_TEMPLATES } from '../character/templates.js';
+import { SAMPLE_GEAR_PREFIX } from '../equipment/sample.js';
+import {
+  ensureStarterEquipmentKit,
+  grantStarterEquipmentKit,
+  playerNeedsStarterKit,
+  rebalanceStarterKitInventory,
+} from '../equipment/starterKit.js';
+import { ensureStarterTrialRoster } from '../formation/starterTrial.js';
 import { STAMINA_MAX, syncStamina } from '../stamina/stamina.js';
 import { migrateZhongtuV16, REMOVED_FOREIGN_IDS } from './zhongtuMigrate.js';
 
@@ -37,6 +45,14 @@ const REMOVED_TEMPLATE_IDS = new Set([
   'ctrl_a',
   ...REMOVED_FOREIGN_IDS,
 ]);
+
+function stripDevSampleGear(state: PlayerState): PlayerState {
+  if (!state.inventory.some((e) => e.id.startsWith(SAMPLE_GEAR_PREFIX))) return state;
+  return {
+    ...state,
+    inventory: state.inventory.filter((e) => !e.id.startsWith(SAMPLE_GEAR_PREFIX)),
+  };
+}
 
 function withStaminaDefaults(state: PlayerState, now = Date.now()): PlayerState {
   const withChapter = {
@@ -90,7 +106,7 @@ export function createInitialPlayer(seed = Date.now() % 1_000_000): PlayerState 
     characterEquip: {},
     narrative: defaultNewNarrativeState(),
   };
-  return ensureRoster(base);
+  return ensureStarterTrialRoster(ensureRoster(base));
 }
 
 /** Migrate old shared `equipped` to per-character `characterEquip` */
@@ -271,9 +287,20 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       migrated.formation = defaultFormation();
     }
     migrated.equipped = {};
-    return withStaminaDefaults(ensureRoster(migrated), now);
+    let ready = withStaminaDefaults(ensureRoster(migrated), now);
+    if (playerNeedsStarterKit(ready)) {
+      ready = grantStarterEquipmentKit(ready);
+    } else {
+      ready = ensureStarterEquipmentKit(ready);
+    }
+    ready = rebalanceStarterKitInventory(ready);
+    return stripDevSampleGear(ready);
   }
-  const fresh = createInitialPlayer();
+  const fresh = stripDevSampleGear(
+    rebalanceStarterKitInventory(
+      grantStarterEquipmentKit(ensureStarterTrialRoster(createInitialPlayer())),
+    ),
+  );
   adapter.save(fresh);
   return fresh;
 }
@@ -288,10 +315,29 @@ export function firstWearableDeployed(state: PlayerState, item: Equipment): stri
   );
 }
 
-export function wearLoot(state: PlayerState, itemId: string): PlayerState {
+export type WearLootResult = {
+  state: PlayerState;
+  ok: boolean;
+  message?: string;
+};
+
+export function wearLoot(state: PlayerState, itemId: string): WearLootResult {
   const item = state.inventory.find((e) => e.id === itemId);
-  if (!item) return state;
+  if (!item) {
+    return { ok: false, state, message: '背包里找不到这件装备。' };
+  }
   const wearer = firstWearableDeployed(state, item);
-  if (!wearer) return state;
-  return equipItem(state, itemId, wearer);
+  if (!wearer) {
+    return { ok: false, state, message: `阵中无人可穿戴（装等 ${item.itemLevel}）。` };
+  }
+  const tier = state.roster?.[wearer]?.breakthroughTier ?? 0;
+  const blocked = wearBlockedReason(item, tier);
+  if (blocked) {
+    return { ok: false, state, message: blocked };
+  }
+  const next = equipItem(state, itemId, wearer);
+  if (next.characterEquip?.[wearer]?.[item.slot] !== itemId) {
+    return { ok: false, state, message: '该装备已被其他角色穿戴。' };
+  }
+  return { ok: true, state: next };
 }

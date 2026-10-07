@@ -14,6 +14,10 @@ export const LOCALE_NEUTRAL: ItemLocaleTable = {
   enhance_stone: { name: '强化石', desc: '装备强化与封存' },
   reroll_dust: { name: '洗练尘', desc: '重铸装备随机词' },
   character_exp: { name: '经验', desc: '伙伴升级' },
+  exp_pill_1: { name: '初级经验丹', desc: '服用后获得少量经验' },
+  exp_pill_2: { name: '中级经验丹', desc: '服用后获得中量经验' },
+  exp_pill_3: { name: '高级经验丹', desc: '服用后获得大量经验' },
+  exp_pill_4: { name: '特级经验丹', desc: '服用后获得巨量经验' },
   gem_atk: { name: '攻击宝石' },
   gem_def: { name: '防御宝石' },
   gem_res: { name: '灵抗宝石' },
@@ -43,7 +47,12 @@ export const LOCALE_XIANXIA: ItemLocaleTable = {
   ticket: { name: '寻访帖', desc: '叩问命格的凭引' },
   enhance_stone: { name: '淬灵石', desc: '温养器纹的粗坯' },
   reroll_dust: { name: '洗练砂', desc: '重淬器纹余屑' },
-  character_exp: { name: '经验', desc: '伙伴升级' },
+  character_exp: { name: '经验', desc: '伙伴历练' },
+  /** 阅历系：与修为/破境丹区分 */
+  exp_pill_1: { name: '阅历散', desc: '薄薄一层行路见闻，服之略长本事' },
+  exp_pill_2: { name: '历练丹', desc: '集数场磨砺之识，服之精进' },
+  exp_pill_3: { name: '精修丹', desc: '苦练凝成的体悟，服之长进显著' },
+  exp_pill_4: { name: '百战丹', desc: '百战余韵入药，服之可破经验瓶颈' },
   gem_atk: { name: '力量灵珠' },
   gem_def: { name: '坚固灵珠' },
   gem_res: { name: '灵护灵珠' },
@@ -67,14 +76,31 @@ export const LOCALE_XIANXIA: ItemLocaleTable = {
   mat_ore_spirit: { name: '灵矿砂' },
 };
 
+/** 武侠皮：练手精进，不跟修为混 */
+export const LOCALE_WUXIA: ItemLocaleTable = {
+  ...LOCALE_XIANXIA,
+  gold: { name: '银两', desc: '江湖流通的硬通货' },
+  xiuwei: { name: '内力', desc: '破境参悟所积' },
+  ticket: { name: '英雄帖', desc: '寻访豪杰的凭引' },
+  character_exp: { name: '经验', desc: '伙伴练手' },
+  exp_pill_1: { name: '入门练手丹', desc: '初入江湖的薄功' },
+  exp_pill_2: { name: '小成丹', desc: '小有所成的体悟' },
+  exp_pill_3: { name: '大成丹', desc: '大成前的精进' },
+  exp_pill_4: { name: '宗师感悟丹', desc: '近乎宗师的一缕感悟' },
+};
+
 export const LOCALE_CYBERPUNK: ItemLocaleTable = {
   gold: { name: '信用点', desc: '合约结算用的流通单位' },
   stardust: { name: '链屑', desc: '分布式账本掉落的碎片' },
-  xiuwei: { name: '算力余温', desc: '神经训练积累的阈值' },
+  xiuwei: { name: '算力余温', desc: '神经训练积累的峰值' },
   ticket: { name: '招募码', desc: '人事池单次检索权' },
   enhance_stone: { name: '热插拔晶粒', desc: '外骨骼模组校准耗材' },
   reroll_dust: { name: '纳米沉屑', desc: '重编译模组用的粉尘' },
-  character_exp: { name: '经验', desc: '伙伴升级' },
+  character_exp: { name: '经验', desc: '伙伴同步进度' },
+  exp_pill_1: { name: '基础神经贴片', desc: '低带宽技能缓存注入' },
+  exp_pill_2: { name: '进阶同步芯片', desc: '中等同步增益' },
+  exp_pill_3: { name: '深度灌注模块', desc: '高密度经验写入' },
+  exp_pill_4: { name: '超频意识胶囊', desc: '短时超频训练峰值' },
   gem_atk: { name: '出力晶体' },
   gem_def: { name: '装甲晶体' },
   gem_res: { name: '滤波晶体' },
@@ -93,7 +119,7 @@ export const LOCALE_CYBERPUNK: ItemLocaleTable = {
 
 const PRESET_TABLES: Record<WorldPreset, ItemLocaleTable> = {
   xianxia: LOCALE_XIANXIA,
-  wuxia: LOCALE_XIANXIA,
+  wuxia: LOCALE_WUXIA,
   cyberpunk: LOCALE_CYBERPUNK,
 };
 

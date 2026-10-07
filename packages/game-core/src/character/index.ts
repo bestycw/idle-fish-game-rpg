@@ -4,6 +4,7 @@ export * from './templates.js';
 export * from './intros.js';
 export * from './factory.js';
 export * from './growth.js';
+export * from './starterRoster.js';
 export * from './labels.js';
 export * from './growthTracks.js';
 export * from './growthHelpers.js';
