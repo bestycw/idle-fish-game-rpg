@@ -1,4 +1,4 @@
-import { DEFAULT_DEPLOYED_IDS } from '../formation/formation.js';
+import { deployedOrStarterIds } from '../formation/formation.js';
 import { createRng } from '../shared/rng.js';
 import type { Equipment, EquipSlot, PlayerState } from '../shared/types.js';
 import { SLOT_NAMES } from './catalog/slots.js';
@@ -35,8 +35,9 @@ export function softenStarterItem(item: Equipment): Equipment {
 export function grantStarterEquipmentKit(state: PlayerState): PlayerState {
   const rng = createRng(state.seed + 9001);
   let next: PlayerState = { ...state, inventory: [...state.inventory] };
+  const deployed = deployedOrStarterIds(next);
 
-  for (const templateId of DEFAULT_DEPLOYED_IDS) {
+  for (const templateId of deployed) {
     for (const slot of STARTER_KIT_SLOTS) {
       const equippedId = next.characterEquip?.[templateId]?.[slot];
       if (equippedId) continue;
@@ -52,6 +53,7 @@ export function grantStarterEquipmentKit(state: PlayerState): PlayerState {
         rarity: 'common',
         itemLevel: 1,
         setIdChance: 0,
+        skipEarlyBaseSoft: true,
       });
       item = softenStarterItem(item);
       item.id = kitId;
@@ -64,7 +66,7 @@ export function grantStarterEquipmentKit(state: PlayerState): PlayerState {
 }
 
 export function playerNeedsStarterKit(state: PlayerState): boolean {
-  const deployed = DEFAULT_DEPLOYED_IDS as readonly string[];
+  const deployed = deployedOrStarterIds(state);
   for (const id of deployed) {
     const slots = state.characterEquip?.[id];
     if (slots && Object.values(slots).some(Boolean)) return false;
@@ -74,7 +76,7 @@ export function playerNeedsStarterKit(state: PlayerState): boolean {
 
 /** 读档后补全头/裤/鞋等缺失入门槽 */
 export function ensureStarterEquipmentKit(state: PlayerState): PlayerState {
-  for (const templateId of DEFAULT_DEPLOYED_IDS) {
+  for (const templateId of deployedOrStarterIds(state)) {
     for (const slot of STARTER_KIT_SLOTS) {
       if (state.characterEquip?.[templateId]?.[slot]) continue;
       const kitId = starterKitItemId(templateId, slot);

@@ -56,12 +56,19 @@ export const MAINLINE_MAX_UNITS = 9;
 
 export function mainlineBattleUnitCount(chapterOrder: number): number {
   const o = Math.max(1, Math.min(10, Math.round(chapterOrder)));
-  return Math.min(MAINLINE_MAX_UNITS, 2 + o);
+  // 第一章：单阵教学（两小怪 + 阵末精锐）；其后每章 +1 阵
+  if (o === 1) return 1;
+  return Math.min(MAINLINE_MAX_UNITS, 1 + o);
 }
 
 function unitLabel(unitIndex: number): string {
   return `第 ${unitIndex + 1} 阵`;
 }
+
+export type MainlineWavePlanOpts = {
+  /** 本章最后一个 battle 节点：收尾单元打首领而非精锐 */
+  chapterFinale?: boolean;
+};
 
 function capEncounterForUnit(
   chapterOrder: number,
@@ -69,12 +76,14 @@ function capEncounterForUnit(
   unitIndex: number,
   unitTotal: number,
   planOffset: number,
+  opts?: MainlineWavePlanOpts,
 ): { encounterId: string; label: string } {
   const isLastUnit = unitIndex === unitTotal - 1;
   if (cap === 'boss_warden') {
     return { encounterId: 'boss_warden', label: '守门' };
   }
-  const useBoss = chapterOrder >= 5 && isLastUnit;
+  // 章末节点收尾，或卷五起任意节点收尾阵 → 首领
+  const useBoss = isLastUnit && (Boolean(opts?.chapterFinale) || chapterOrder >= 5);
   if (useBoss) {
     return { encounterId: BOSS_CAP[cap], label: '首领' };
   }
@@ -93,10 +102,18 @@ export function mainlineBattleUnitWaves(
   unitIndex: number,
   unitTotal: number,
   planOffset: number,
+  opts?: MainlineWavePlanOpts,
 ): BattleWaveDef[] {
   const uLabel = unitLabel(unitIndex);
   const [e1, l1, e2, l2] = mainlineBiomeSkirmishPair(chapterOrder, unitIndex, planOffset);
-  const fin = capEncounterForUnit(chapterOrder, cap, unitIndex, unitTotal, planOffset);
+  const fin = capEncounterForUnit(
+    chapterOrder,
+    cap,
+    unitIndex,
+    unitTotal,
+    planOffset,
+    opts,
+  );
   const tag = { unitIndex, unitLabel: uLabel };
   return [
     { encounterId: e1, label: l1, ...tag },
@@ -126,6 +143,7 @@ export function mainlineBattleWaves(
   chapterOrder: number,
   primaryCap: MainlineBattleCap,
   planOffset = 0,
+  opts?: MainlineWavePlanOpts,
 ): BattleWaveDef[] {
   const unitTotal = mainlineBattleUnitCount(chapterOrder);
   const caps = capsForBattleNode(chapterOrder, primaryCap);
@@ -138,6 +156,7 @@ export function mainlineBattleWaves(
         u,
         unitTotal,
         planOffset,
+        opts,
       ),
     );
   }
@@ -158,7 +177,8 @@ export function chapterOrderFromNodeId(nodeId: string): number {
 export function mainlineCapEncounterId(
   chapterOrder: number,
   cap: MainlineBattleCap,
+  opts?: MainlineWavePlanOpts,
 ): string {
-  const waves = mainlineBattleWaves(chapterOrder, cap);
+  const waves = mainlineBattleWaves(chapterOrder, cap, 0, opts);
   return waves[waves.length - 1]!.encounterId;
 }

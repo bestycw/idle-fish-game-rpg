@@ -485,6 +485,22 @@ export interface PlayerState {
   };
   /** 序章 / 世界选择 / 主线叙事进度 */
   narrative?: PlayerNarrativeState;
+  /** 开局随机珍品伙伴 templateId（序章绑定点名；与 seed 一起决定） */
+  starterCompanionId?: string;
+  /** 主线教学 / 引导标记 */
+  tutorialFlags?: {
+    ch1EliteTicketGranted?: boolean;
+    /** 结算页应弹出嘲讽→发券对话 */
+    ch1EliteDialoguePending?: boolean;
+    /** 已看过发券对话（之后不再弹长对话） */
+    ch1EliteDialogueSeen?: boolean;
+    /** 第二章碰壁：引导猎装对话待弹 */
+    ch2GearGuidePending?: boolean;
+    /** 已看过猎装引导 */
+    ch2GearGuideSeen?: boolean;
+  };
+  /** 结算/Hub 一次性系统台词（读后清除） */
+  pendingTutorialLine?: string;
 }
 
 export type WorldPreset = 'wuxia' | 'xianxia' | 'cyberpunk';

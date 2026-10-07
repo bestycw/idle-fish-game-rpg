@@ -36,14 +36,33 @@ describe('powerSpine', () => {
   });
 
   it('gear unlock chapter and targets are stable', () => {
-    assert.equal(unlockAtChapterCleared('dungeon', 'gear_break_wall'), 0);
-    assert.equal(unlockAtChapterCleared('dungeon', 'gear_raider_trail'), 1);
-    const t0 = gearDungeonPlayerTarget('gear_break_wall', 0);
-    const t1 = gearDungeonPlayerTarget('gear_break_wall', 2);
-    assert.ok(t1 > t0);
+    assert.equal(unlockAtChapterCleared('dungeon', 'gear_break_wall'), 1);
+    assert.equal(unlockAtChapterCleared('dungeon', 'gear_raider_trail'), 2);
+    const wall = gearDungeonPlayerTarget('gear_break_wall', 0);
+    const wallLater = gearDungeonPlayerTarget('gear_break_wall', 2);
+    assert.equal(wallLater, wall, 'first gear dungeon stays on ch1 band after ch2');
+    assert.equal(wall, milestoneForChapterOrder(1).powerEnterTarget);
+    assert.ok(wall < getChapterBand(0).recommendedPower, 'first normal gear below ch1 hub rec');
+    const laterLine = gearDungeonPlayerTarget('gear_arrow_lane', 2);
+    assert.ok(laterLine > wall, `later line ${laterLine} vs first ${wall}`);
+    const starter = grantStarterEquipmentKit(createInitialPlayer(1));
+    const power = deployedPartyPower(starter);
+    assert.ok(
+      power >= wall * 0.9,
+      `post-ch1 farm target ${wall} should be reachable from starter ${power}`,
+    );
+    assert.equal(unlockAtChapterCleared('dungeon', 'gear_wall_hard'), 3);
+    assert.equal(unlockAtChapterCleared('dungeon', 'gear_wall_hell'), 5);
+    assert.equal(unlockAtChapterCleared('dungeon', 'gear_warden_rift'), 7);
+    const hard = gearDungeonPlayerTarget('gear_wall_hard');
+    const hell = gearDungeonPlayerTarget('gear_wall_hell');
+    const rift = gearDungeonPlayerTarget('gear_warden_rift');
+    assert.ok(hard > laterLine, `hard ${hard} should beat early normal ${laterLine}`);
+    assert.ok(hell > hard * 1.4, `hell ${hell} should sit well above hard ${hard}`);
+    assert.ok(rift > hell, `rift ${rift} should top hell ${hell}`);
     const ro = gearDungeonCombatReadout('gear_wall_hell', 5);
     assert.ok(ro);
-    assert.ok(ro.unlockAtChapterCleared >= 1);
+    assert.equal(ro.unlockAtChapterCleared, 5);
     assert.ok(ro.playerTargetNow >= ro.playerTargetAtUnlock);
   });
 

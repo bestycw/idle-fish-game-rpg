@@ -42,9 +42,10 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
   {
     id: 'gear_break_wall',
     name: '不动关·盾鸣廊',
+    /** 第一本教学刷装：精英盾墙，不是满配首领（首领留给困难+） */
     tier: 'normal',
-    blurb: '盾墙首领；破甲/破盾器纹。',
-    encounterPool: ['boss_wall'],
+    blurb: '盾墙精锐巡逻；破甲/破盾器纹。',
+    encounterPool: ['wall'],
     lootTableId: 'loot_gear_normal',
     pressure: 1,
     staminaCost: 10,
@@ -81,7 +82,6 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
       { id: 'fx_purge_hit', weight: 4 },
       { id: 'fx_skill_mark', weight: 2 },
     ],
-    rarityWeights: { rare: 26, epic: 42, legendary: 10 },
   },
   {
     id: 'gear_spirit_gate',
@@ -171,7 +171,7 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
     id: 'gear_arrow_hard',
     name: '落鸦矢道·紧弦',
     tier: 'hard',
-    blurb: '困难：伏弓首领加压，紫装率提升。',
+    blurb: '困难：伏弓首领加压，蓝装率提升。',
     encounterPool: ['boss_archers', 'boss_raiders'],
     lootTableId: 'loot_gear_hard',
     pressure: 1.16,
@@ -205,7 +205,7 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
     id: 'gear_spirit_array',
     name: '铁壁灵阵',
     tier: 'hard',
-    blurb: '困难：灵阵/叠盾首领，紫装率提升。',
+    blurb: '困难：灵阵/叠盾首领，蓝装率提升。',
     encounterPool: ['boss_spirit_wall', 'boss_shield_stack'],
     lootTableId: 'loot_gear_hard',
     pressure: 1.18,
@@ -245,7 +245,6 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
       { id: 'fx_purge_hit', weight: 3 },
       { id: 'fx_skill_shred', weight: 2 },
     ],
-    rarityWeights: { rare: 26, epic: 42, legendary: 10 },
   },
   {
     id: 'gear_warden_trial',
@@ -257,7 +256,6 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
     pressure: 1.3,
     staminaCost: 12,
     t3IdWeights: SOLUTION_T3_WEIGHTS,
-    rarityWeights: { rare: 28, epic: 45, legendary: 12 },
   },
   {
     id: 'gear_warden_rift',
@@ -269,7 +267,6 @@ export const GEAR_DUNGEON_DEFS: GearDungeonDef[] = [
     pressure: 1.36,
     staminaCost: 13,
     t3IdWeights: SOLUTION_T3_WEIGHTS,
-    rarityWeights: { rare: 14, epic: 44, legendary: 22 },
   },
 ];
 

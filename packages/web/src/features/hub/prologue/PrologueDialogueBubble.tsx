@@ -10,12 +10,14 @@ function resolveSide(speaker?: string): DialogueSide {
 function avatarLabel(speaker?: string, side?: DialogueSide): string {
   if (side === 'player') return '我';
   if (speaker === '老板') return '老';
+  if (speaker === '系统' || speaker === '说明书') return '系';
   return (speaker?.slice(0, 1) ?? '?');
 }
 
 function roleCaption(speaker?: string, side?: DialogueSide): string {
   if (side === 'player') return '你';
   if (speaker === '老板') return '老板 · 语音';
+  if (speaker === '系统') return '系统 · 冷嘲';
   return speaker ?? '对话';
 }
 

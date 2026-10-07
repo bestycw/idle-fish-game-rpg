@@ -29,7 +29,7 @@ export type GearDungeonView = {
   encounters: { id: string; label: string; isBoss: boolean }[];
   pressure: number;
   staminaCost: number;
-  /** 当前存档进度下建议队伍战力（战力脊柱） */
+  /** 该猎装实例建议队伍战力（按解锁档，不跟当前章漂移） */
   playerTargetPower: number;
   lootPreview: LootPreviewTile[];
   lootRarityMix: GearLootRarityMixEntry[];

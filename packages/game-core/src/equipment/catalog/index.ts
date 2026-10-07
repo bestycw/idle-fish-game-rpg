@@ -5,6 +5,8 @@ export {
   RARITY_LABELS_EQUIP,
   droptableOf,
   itemLevelScale,
+  earlyGearBaseSoft,
+  affixLevelScale,
   wearTierForItemLevel,
   itemLevelFromProgress,
   itemLevelBandForChapter,

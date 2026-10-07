@@ -17,6 +17,11 @@ type GearEncounterSkin = {
 /** 猎装线主题皮：按 lineId × encounterId 扩行；小怪/精英名用 battleSeed 抽池，首领走 DUNGEON_BOSS_NAME */
 const LINE_ENCOUNTER_SKIN: Record<string, Partial<Record<string, GearEncounterSkin>>> = {
   line_wall: {
+    wall: {
+      title: '青石关·盾廊巡阵',
+      elitePool: ['巡廊盾队长', '鸣锣盾伕', '关墙巡丁'],
+      minionPool: ['青石关丁', '廊道伕役', '驿卒'],
+    },
     boss_wall: {
       title: '青石关·瓮城尉试阵',
       elitePool: ['瓮城戍卒', '鸣锣盾伕', '关墙巡丁'],
@@ -120,7 +125,8 @@ const LINE_ENCOUNTER_SKIN: Record<string, Partial<Record<string, GearEncounterSk
 };
 
 const DUNGEON_BOSS_NAME: Partial<Record<string, Partial<Record<string, string>>>> = {
-  gear_break_wall: { boss_wall: '不动关尉·石鸣' },
+  /** 普通第一本是精英盾墙，芯片用队长名（非首领） */
+  gear_break_wall: { wall: '巡廊盾队长·石鸣' },
   gear_wall_hard: {
     boss_wall: '重关都尉·铁盘踞',
     boss_shield_stack: '叠盾监军·霍甲',
@@ -171,7 +177,7 @@ const DUNGEON_BOSS_NAME: Partial<Record<string, Partial<Record<string, string>>>
 };
 
 const DUNGEON_ENCOUNTER_TITLE: Partial<Record<string, Partial<Record<string, string>>>> = {
-  gear_break_wall: { boss_wall: '不动关·瓮城尉试阵' },
+  gear_break_wall: { wall: '不动关·盾廊巡阵' },
   gear_warden_rift: {
     boss_warden: '镜渊终局·狱门',
     boss_chaos_rite: '镜渊终局·祭烟',
@@ -233,8 +239,8 @@ export function gearDungeonEncounterChipLabel(
   encounterId: string,
   preset: WorldPreset,
 ): string {
-  const boss = DUNGEON_BOSS_NAME[dungeonId]?.[encounterId];
-  if (boss) return boss;
+  const named = DUNGEON_BOSS_NAME[dungeonId]?.[encounterId];
+  if (named) return named;
   const def = ENCOUNTERS.find((e) => e.id === encounterId);
   return resolveGearEncounterBattleTitle(
     dungeonId,

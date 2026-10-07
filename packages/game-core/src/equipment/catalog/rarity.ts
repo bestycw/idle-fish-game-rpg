@@ -102,10 +102,31 @@ export function droptableOf(rarity: Rarity): DroptableRow {
   return DROPTABLE.find((r) => r.rarity === rarity)!;
 }
 
-/** 装等只抬底子。ilvl 1 = ×1，每级 +1.5%。 */
+/** 装等对白字底子（中后期）。ilvl 1 = ×1，每级 +1.5%。 */
 export function itemLevelScale(itemLevel: number): number {
   const ilvl = Math.max(1, Math.min(100, Math.round(itemLevel)));
   return 1 + (ilvl - 1) * 0.015;
+}
+
+/**
+ * 炼气档白字额外软化：猎装绿装替换入门件时不应 +10 攻翻盘。
+ * ilvl1 ≈0.50，ilvl20 ≈1.0；与入门装 0.36 soften 仍有差距但可控。
+ */
+export function earlyGearBaseSoft(itemLevel: number): number {
+  const ilvl = Math.max(1, Math.min(100, Math.round(itemLevel)));
+  if (ilvl > 20) return 1;
+  return 0.5 + ((ilvl - 1) / 19) * 0.5;
+}
+
+/**
+ * 词缀 / 条件随装等：炼气档从弱爬到满额。
+ */
+export function affixLevelScale(itemLevel: number): number {
+  const ilvl = Math.max(1, Math.min(100, Math.round(itemLevel)));
+  if (ilvl <= 20) {
+    return 0.32 + ((ilvl - 1) / 19) * 0.55;
+  }
+  return Math.min(1.35, itemLevelScale(ilvl) / itemLevelScale(21));
 }
 
 export function wearTierForItemLevel(itemLevel: number): number {

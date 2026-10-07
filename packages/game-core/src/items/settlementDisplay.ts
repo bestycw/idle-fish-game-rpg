@@ -24,7 +24,11 @@ export function settlementGrantRows(settlement: BattleSettlement): SettlementGra
       amount: settlement.enhanceStones,
     });
   }
-  if (settlement.characterExpPerMember > 0) {
+  // 有上阵经验明细时不重复塞「经验」资源格（避免和队伍历练条叠成一坨）
+  if (
+    settlement.characterExpPerMember > 0 &&
+    !(settlement.partyExpRows?.length)
+  ) {
     rows.push({
       itemId: SETTLEMENT_FIELD_TO_ITEM_ID.characterExp,
       amount: settlement.characterExpPerMember,

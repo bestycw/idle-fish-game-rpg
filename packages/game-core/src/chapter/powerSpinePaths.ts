@@ -3,7 +3,7 @@
  */
 import { grantCharacterExp, tryLevelUp } from '../character/growth.js';
 import { deployedPartyPower } from '../equipment/power.js';
-import { DEFAULT_DEPLOYED_IDS, defaultFormation } from '../formation/formation.js';
+import { deployedOrStarterIds, defaultFormation } from '../formation/formation.js';
 import { grantStarterEquipmentKit } from '../equipment/starterKit.js';
 import { createInitialPlayer } from '../save/player.js';
 import type { PlayerState } from '../shared/types.js';
@@ -50,7 +50,7 @@ function applyPathPowerBonus(state: PlayerState, bonus: number): PlayerState {
   if (bonus <= 0) return state;
   const perChar = Math.max(40, Math.floor(bonus / 4));
   let s = state;
-  for (const id of DEFAULT_DEPLOYED_IDS) {
+  for (const id of deployedOrStarterIds(s)) {
     s = grantExpWithLevelUps(s, id, perChar);
   }
   return s;
@@ -59,7 +59,7 @@ function applyPathPowerBonus(state: PlayerState, bonus: number): PlayerState {
 function simulateRosterExp(state: PlayerState, chaptersCleared: number): PlayerState {
   const total = estimateMainlineExpThroughChapter(chaptersCleared);
   let s = state;
-  for (const id of DEFAULT_DEPLOYED_IDS) {
+  for (const id of deployedOrStarterIds(s)) {
     s = grantExpWithLevelUps(s, id, total);
   }
   return s;
@@ -70,7 +70,11 @@ function powerForPath(
   chaptersCleared: number,
 ): number {
   let s = grantStarterEquipmentKit(createInitialPlayer(42));
-  s = { ...s, formation: defaultFormation(), chapterCleared: chaptersCleared };
+  s = {
+    ...s,
+    formation: defaultFormation(s.starterCompanionId),
+    chapterCleared: chaptersCleared,
+  };
   s = simulateRosterExp(s, chaptersCleared);
   if (pathId === 'mainline_plus_gear') {
     s = applyPathPowerBonus(s, GEAR_POWER_PER_CHAPTER * chaptersCleared);

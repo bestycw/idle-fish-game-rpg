@@ -12,14 +12,18 @@ export type GearLootRarityMixEntry = {
 };
 
 /**
- * 猎装品级池（按难度递进，禁止普通本出绝品）。
- * 与 gear-dungeon-redesign §2.2：普通白绿蓝、困难紫、地狱紫金。
+ * 猎装品级池（按难度递进）。
+ * 普通封顶绿 → 困难封顶蓝 → 地狱封顶紫 → 秘境才开金。
  */
 export const GEAR_TIER_RARITY_WEIGHTS: Record<GearDungeonTier, Partial<Record<Rarity, number>>> = {
-  normal: { common: 45, uncommon: 42, rare: 13 },
-  hard: { uncommon: 8, rare: 52, epic: 40 },
-  hell: { rare: 28, epic: 50, legendary: 12 },
-  rift: { rare: 16, epic: 46, legendary: 18 },
+  /** 普通：凡+精，不出蓝 */
+  normal: { common: 62, uncommon: 38 },
+  /** 困难：精+良，不出紫/金 */
+  hard: { uncommon: 42, rare: 58 },
+  /** 地狱：良+珍，不出金 */
+  hell: { rare: 45, epic: 55 },
+  /** 秘境：珍为主，绝品（金）从此档起 */
+  rift: { rare: 18, epic: 50, legendary: 32 },
 };
 
 export function maxRarityInWeights(weights: Partial<Record<Rarity, number>>): Rarity {
@@ -34,14 +38,22 @@ export function maxRarityForGearTier(tier: GearDungeonTier): Rarity {
   return maxRarityInWeights(GEAR_TIER_RARITY_WEIGHTS[tier]);
 }
 
-/** 实例可微调比例，但未写时严格用档位默认池（不用全局 DROPTABLE） */
+/** 实例可微调比例，但不得突破档位封顶（不用全局 DROPTABLE） */
 export function resolveGearRarityWeights(
   def: Pick<GearDungeonDef, 'tier' | 'rarityWeights'>,
 ): Partial<Record<Rarity, number>> {
-  if (def.rarityWeights && Object.keys(def.rarityWeights).length > 0) {
-    return def.rarityWeights;
+  const raw =
+    def.rarityWeights && Object.keys(def.rarityWeights).length > 0
+      ? { ...def.rarityWeights }
+      : { ...GEAR_TIER_RARITY_WEIGHTS[def.tier] };
+  const maxIdx = RARITY_ORDER.indexOf(maxRarityForGearTier(def.tier));
+  const clipped: Partial<Record<Rarity, number>> = {};
+  for (const r of RARITY_ORDER) {
+    if (RARITY_ORDER.indexOf(r) > maxIdx) continue;
+    const w = raw[r] ?? 0;
+    if (w > 0) clipped[r] = w;
   }
-  return { ...GEAR_TIER_RARITY_WEIGHTS[def.tier] };
+  return Object.keys(clipped).length > 0 ? clipped : { ...GEAR_TIER_RARITY_WEIGHTS[def.tier] };
 }
 
 /** 猎装 UI：品级名 + 占比（与 roll 权重一致） */

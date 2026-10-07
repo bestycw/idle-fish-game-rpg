@@ -13,7 +13,7 @@ type GearDungeonLocaleTable = Record<string, GearDungeonLocaleEntry>;
 const NEUTRAL: GearDungeonLocaleTable = {
   gear_break_wall: {
     name: '不动关·盾鸣廊',
-    blurb: '盾阵碾过驿道，试你破甲与磨盾的节奏。主线同款盾墙，专掉「破盾」向器纹。',
+    blurb: '关隘盾廊精锐巡逻，试你破甲与磨盾的节奏。第一本不打满配首领；专掉「破盾」向器纹。',
     lootLine: '器纹倾向：破甲、破盾',
   },
   gear_arrow_lane: {
@@ -28,7 +28,7 @@ const NEUTRAL: GearDungeonLocaleTable = {
   },
   gear_spirit_array: {
     name: '灵障重阙',
-    blurb: '困难：灵防叠厚，力队易吃瘪。紫装率抬升，器纹偏深破甲与净盾。',
+    blurb: '困难：灵防叠厚，力队易吃瘪。蓝装率抬升，器纹偏深破甲与净盾。',
     lootLine: '困难 · 深破甲、净盾',
   },
   gear_chaos_shrine: {
@@ -151,7 +151,7 @@ const LINE_PRESETS: Record<WorldPreset, Record<string, string>> = {
 const XIANXIA: GearDungeonLocaleTable = {
   gear_break_wall: {
     name: '青石关·盾鸣廊',
-    blurb: '关隘盾阵轰鸣，试你破甲诀与磨盾招。与主线盾墙同脉，专淬破盾器纹。',
+    blurb: '关隘盾廊精锐巡逻，试你破甲诀与磨盾招。第一本不打满配首领；专淬破盾器纹。',
     lootLine: '器纹：破甲、破盾类（配破甲诀）',
   },
   gear_arrow_lane: {
@@ -166,7 +166,7 @@ const XIANXIA: GearDungeonLocaleTable = {
   },
   gear_spirit_array: {
     name: '铁壁灵阵·重阙',
-    blurb: '困难：灵障叠厚，力修易碰壁。紫装率升，器纹偏深破甲与净盾。',
+    blurb: '困难：灵障叠厚，力修易碰壁。蓝装率升，器纹偏深破甲与净盾。',
     lootLine: '困难 · 深破甲、净盾器纹',
   },
   gear_chaos_shrine: {
@@ -254,7 +254,7 @@ const WUXIA: GearDungeonLocaleTable = {
   },
   gear_spirit_array: {
     name: '内劲障·三重阁',
-    blurb: '困难：内劲护体叠厚。紫装率升，深破甲与震盾兵纹。',
+    blurb: '困难：内劲护体叠厚。蓝装率升，深破甲与震盾兵纹。',
     lootLine: '困难 · 深破甲、震盾',
   },
   gear_chaos_shrine: {
@@ -287,7 +287,7 @@ const CYBER: GearDungeonLocaleTable = {
   },
   gear_spirit_array: {
     name: '叠阵防火墙',
-    blurb: '困难：多层灵防协议。紫装率升，深破甲与净盾模组。',
+    blurb: '困难：多层灵防协议。蓝装率升，深破甲与净盾模组。',
     lootLine: '困难 · 深破甲、净盾',
   },
   gear_chaos_shrine: {
@@ -309,23 +309,23 @@ const PRESET_TABLES: Record<WorldPreset, GearDungeonLocaleTable> = {
 };
 
 export const GEAR_DUNGEON_UNLOCK_HINT: Record<string, string> = {
-  gear_break_wall: '已开放',
-  gear_arrow_lane: '已开放',
-  gear_arrow_hard: '通关第二章',
-  gear_raider_trail: '通关第一章',
-  gear_raider_hard: '通关第二章',
-  gear_wall_hard: '通关第二章',
-  gear_wall_hell: '通关第二章',
+  gear_break_wall: '通关第一章',
+  gear_arrow_lane: '通关第二章',
+  gear_raider_trail: '通关第二章',
+  gear_oil_well: '通关第二章',
   gear_spirit_gate: '通关第二章',
-  gear_spirit_array: '通关第二章',
-  gear_oil_well: '通关第一章',
-  gear_oil_furnace: '通关第二章',
   gear_shield_vault: '通关第二章',
-  gear_shield_bastion: '通关第二章',
-  gear_chaos_shrine: '通关第二章',
-  gear_chaos_hell: '通关第二章',
-  gear_warden_trial: '通关第二章',
-  gear_warden_rift: '通关第三章',
+  gear_wall_hard: '通关第三章',
+  gear_arrow_hard: '通关第三章',
+  gear_raider_hard: '通关第三章',
+  gear_oil_furnace: '通关第四章',
+  gear_shield_bastion: '通关第四章',
+  gear_spirit_array: '通关第四章',
+  gear_chaos_shrine: '通关第四章',
+  gear_wall_hell: '通关第五章',
+  gear_chaos_hell: '通关第五章',
+  gear_warden_trial: '通关第六章',
+  gear_warden_rift: '通关第七章',
 };
 
 function entry(id: string, preset: WorldPreset): GearDungeonLocaleEntry {

@@ -27,8 +27,10 @@ export interface ChapterBand {
  */
 /** 原始章档战力 × `COMBAT_POWER_SCALE`（与 `powerFromBonuses` 同倍率） */
 export const CHAPTER_BANDS: ChapterBand[] = [
-  { index: 0, label: '第一章', enemyMult: 1, floorPower: bandPower(2600), recommendedPower: bandPower(3800), crushPower: bandPower(5400) },
-  { index: 1, label: '第二章', enemyMult: 1.25, floorPower: bandPower(3400), recommendedPower: bandPower(4800), crushPower: bandPower(5800) },
+  /** 第一章按「主角+1 紫」小队标定；后续靠抽卡扩编再爬档 */
+  { index: 0, label: '第一章', enemyMult: 0.88, floorPower: bandPower(1550), recommendedPower: bandPower(2100), crushPower: bandPower(3100) },
+  /** 第二章：清章+蓝伴后仍有压力；一件绿改善手感，刷几趟猎装才稳清，勿一件秒人 */
+  { index: 1, label: '第二章', enemyMult: 1.28, floorPower: bandPower(2600), recommendedPower: bandPower(3600), crushPower: bandPower(4800) },
   { index: 2, label: '第三章', enemyMult: 1.55, floorPower: bandPower(5000), recommendedPower: bandPower(7200), crushPower: bandPower(8600) },
   { index: 3, label: '第四章', enemyMult: 1.9, floorPower: bandPower(7400), recommendedPower: bandPower(10600), crushPower: bandPower(12700) },
   { index: 4, label: '第五章', enemyMult: 2.3, floorPower: bandPower(10500), recommendedPower: bandPower(15000), crushPower: bandPower(18000) },

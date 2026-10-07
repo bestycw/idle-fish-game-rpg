@@ -1,5 +1,8 @@
 import {
   EMPTY_SETTLEMENT,
+  hasOwnedRareCompanion,
+  markCh1EliteDialogueSeen,
+  markCh2GearGuideSeen,
   resolveWorldPreset,
   wearLoot,
   type BattleSettlement,
@@ -14,6 +17,8 @@ import {
   BattleSettlementPanel,
   settlementShowsRewardBlock,
 } from './BattleSettlementPanel';
+import { Ch2GearGuideDialogue } from './Ch2GearGuideDialogue';
+import { TeachGateDialogue } from './TeachGateDialogue';
 
 type ResultScreenProps = {
   player: PlayerState;
@@ -25,6 +30,8 @@ type ResultScreenProps = {
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   onRestartBattle: () => void;
   onBackToHub: () => void;
+  onGoGacha?: () => void;
+  onGoGear?: () => void;
   pushNotice: (msg: string) => void;
 };
 
@@ -38,10 +45,34 @@ export function ResultScreen({
   setPlayer,
   onRestartBattle,
   onBackToHub,
+  onGoGacha,
+  onGoGear,
   pushNotice,
 }: ResultScreenProps) {
   const won = battle.status === 'won';
   const [logOpen, setLogOpen] = useState(false);
+  const [teachDialogueOpen, setTeachDialogueOpen] = useState(
+    () => !won && Boolean(player.tutorialFlags?.ch1EliteDialoguePending),
+  );
+  const [gearGuideOpen, setGearGuideOpen] = useState(
+    () =>
+      !won &&
+      !player.tutorialFlags?.ch1EliteDialoguePending &&
+      Boolean(player.tutorialFlags?.ch2GearGuidePending),
+  );
+  const showTeachGacha =
+    !won &&
+    !teachDialogueOpen &&
+    !gearGuideOpen &&
+    Boolean(player.tutorialFlags?.ch1EliteTicketGranted) &&
+    !hasOwnedRareCompanion(player) &&
+    Boolean(onGoGacha);
+  const showGearCta =
+    !won &&
+    !teachDialogueOpen &&
+    !gearGuideOpen &&
+    Boolean(player.tutorialFlags?.ch2GearGuideSeen) &&
+    Boolean(onGoGear);
   const chapterMidWave =
     battleSource === 'chapter' && won && Boolean(chapterNextBattleHint);
   const dungeonCleared = battleSource === 'dungeon' && won;
@@ -51,10 +82,24 @@ export function ResultScreen({
       ? '再刷一把'
       : won
         ? '继续冒险'
-        : '重整再战';
+        : battleSource === 'chapter'
+          ? '重打本场'
+          : '重整再战';
 
   const showRewardBlock = won && settlementShowsRewardBlock(settlement);
   const worldPreset = resolveWorldPreset(player);
+
+  const closeTeachDialogue = (goGacha: boolean) => {
+    setTeachDialogueOpen(false);
+    setPlayer((p) => markCh1EliteDialogueSeen(p));
+    if (goGacha) onGoGacha?.();
+  };
+
+  const closeGearGuide = (goGear: boolean) => {
+    setGearGuideOpen(false);
+    setPlayer((p) => markCh2GearGuideSeen(p));
+    if (goGear) onGoGear?.();
+  };
 
   useEffect(() => {
     if (!logOpen) return;
@@ -80,6 +125,18 @@ export function ResultScreen({
 
   return (
     <div className="result-stage relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+      {teachDialogueOpen && onGoGacha ? (
+        <TeachGateDialogue
+          onGoGacha={() => closeTeachDialogue(true)}
+          onDismiss={() => closeTeachDialogue(false)}
+        />
+      ) : null}
+      {gearGuideOpen && onGoGear ? (
+        <Ch2GearGuideDialogue
+          onGoGear={() => closeGearGuide(true)}
+          onDismiss={() => closeGearGuide(false)}
+        />
+      ) : null}
       <div
         className="pointer-events-none absolute inset-0 result-stage-vignette"
         aria-hidden
@@ -114,8 +171,15 @@ export function ResultScreen({
                 <p className="text-center font-display text-5xl tracking-[0.28em] text-foreground/90 sm:text-6xl">
                   战败
                 </p>
-                <p className="mt-8 max-w-xs text-center text-sm leading-relaxed text-muted-foreground">
-                  阵脚已散。需要时可翻开战报，自己琢磨下一手。
+                <p className="mt-8 max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
+                  {teachDialogueOpen || gearGuideOpen
+                    ? '系统正在接入……'
+                    : player.tutorialFlags?.ch1EliteTicketGranted &&
+                        !hasOwnedRareCompanion(player)
+                      ? '券已到账。去召唤补蓝，再回来破这一阵精锐。'
+                      : player.tutorialFlags?.ch2GearGuideSeen
+                        ? '装没跟上。去猎装刷两件破甲，再回来推主线。'
+                        : '阵脚已散。需要时可翻开战报，自己琢磨下一手。'}
                 </p>
               </>
             )}
@@ -152,6 +216,24 @@ export function ResultScreen({
         </div>
 
         <footer className="shrink-0 space-y-4 px-4 pb-6 pt-2 sm:px-6 sm:pb-8">
+          {showTeachGacha ? (
+            <button
+              type="button"
+              onClick={onGoGacha}
+              className="w-full rounded-2xl bg-teal-600/90 py-4 text-sm font-medium text-white shadow-[0_8px_28px_rgba(13,148,136,0.28)] transition hover:brightness-110"
+            >
+              去召唤（教学券已到账）
+            </button>
+          ) : null}
+          {showGearCta ? (
+            <button
+              type="button"
+              onClick={onGoGear}
+              className="w-full rounded-2xl bg-amber-600/90 py-4 text-sm font-medium text-white shadow-[0_8px_28px_rgba(217,119,6,0.28)] transition hover:brightness-110"
+            >
+              去猎装试炼
+            </button>
+          ) : null}
           <div
             className={cn(
               'grid gap-3',

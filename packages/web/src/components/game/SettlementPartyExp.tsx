@@ -1,6 +1,9 @@
 import { getTemplate, type BattleSettlement } from '@moyu/game-core';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { rarityFrame, rarityNameTone } from '@/lib/tones';
+
+const SETTLE_EXP_TIP_KEY = 'moyu_settle_exp_tip_v1';
 
 type SettlementPartyExpProps = {
   settlement: BattleSettlement;
@@ -49,53 +52,71 @@ function ExpBar({
 /** 结算底部：上阵方块（品级色）+ 经验条 + LV UP 冒泡 */
 export function SettlementPartyExp({ settlement, className }: SettlementPartyExpProps) {
   const rows = settlement.partyExpRows ?? [];
+  const [showTip, setShowTip] = useState(false);
+
+  useEffect(() => {
+    if (rows.length === 0) return;
+    try {
+      if (!localStorage.getItem(SETTLE_EXP_TIP_KEY)) {
+        setShowTip(true);
+        localStorage.setItem(SETTLE_EXP_TIP_KEY, '1');
+      }
+    } catch {
+      /* private mode */
+    }
+  }, [rows.length]);
+
   if (rows.length === 0) return null;
 
   return (
-    <div
-      className={cn('mt-3 flex w-full flex-wrap items-end justify-center gap-2', className)}
-      aria-label="上阵经验"
-    >
-      {rows.map((row) => {
-        const rarity = getTemplate(row.templateId)?.rarity ?? 'common';
-        return (
-          <div key={row.templateId} className="relative flex w-12 flex-col items-center gap-1">
-            <div
-              className={cn(
-                'relative flex aspect-square w-12 flex-col items-center justify-center overflow-visible rounded-[3px] border',
-                'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
-                rarityFrame(rarity),
-              )}
-            >
-              <span
+    <div className={cn('flex w-full flex-col items-center gap-2', className)}>
+      {showTip ? (
+        <p className="max-w-sm text-center text-[10px] leading-relaxed text-muted-foreground/90">
+          经验进上阵。未上阵的去伙伴页喂经验丹。
+        </p>
+      ) : null}
+      <div className="flex w-full flex-wrap items-end justify-center gap-2.5">
+        {rows.map((row) => {
+          const rarity = getTemplate(row.templateId)?.rarity ?? 'common';
+          return (
+            <div key={row.templateId} className="relative flex w-12 flex-col items-center gap-1">
+              <div
                 className={cn(
-                  'max-w-full truncate px-0.5 font-display text-[11px]',
-                  rarityNameTone(rarity),
+                  'relative flex aspect-square w-12 flex-col items-center justify-center overflow-visible rounded-[3px] border',
+                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                  rarityFrame(rarity),
                 )}
               >
-                {row.name.slice(0, 2)}
-              </span>
-              <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
-                Lv{row.levelAfter}
-              </span>
-              {row.leveledUp ? (
                 <span
-                  className="pointer-events-none absolute -top-2 left-1/2 z-10 -translate-x-1/2 animate-[lvUpPop_1.1s_ease-out_forwards] rounded bg-amber-500/95 px-1 py-0.5 font-mono text-[9px] font-bold leading-none text-black shadow"
-                  aria-hidden
+                  className={cn(
+                    'max-w-full truncate px-0.5 font-display text-[11px]',
+                    rarityNameTone(rarity),
+                  )}
                 >
-                  LV UP
+                  {row.name.slice(0, 2)}
                 </span>
-              ) : null}
+                <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+                  Lv{row.levelAfter}
+                </span>
+                {row.leveledUp ? (
+                  <span
+                    className="pointer-events-none absolute -top-2 left-1/2 z-10 -translate-x-1/2 animate-[lvUpPop_1.1s_ease-out_forwards] rounded bg-amber-500/95 px-1 py-0.5 font-mono text-[9px] font-bold leading-none text-black shadow"
+                    aria-hidden
+                  >
+                    LV UP
+                  </span>
+                ) : null}
+              </div>
+              <ExpBar
+                current={row.expAfter}
+                need={row.expToNext}
+                gained={row.expGained}
+                rarity={rarity}
+              />
             </div>
-            <ExpBar
-              current={row.expAfter}
-              need={row.expToNext}
-              gained={row.expGained}
-              rarity={rarity}
-            />
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       <style>{`
         @keyframes lvUpPop {
           0% { opacity: 0; transform: translate(-50%, 6px) scale(0.85); }

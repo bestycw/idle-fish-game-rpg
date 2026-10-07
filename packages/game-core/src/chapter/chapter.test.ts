@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { createInitialPlayer } from '../save/player.js';
+import { grantStarterEquipmentKit } from '../equipment/starterKit.js';
 import { deployedPartyPower } from '../equipment/power.js';
 import {
   CHAPTER_BANDS,
@@ -34,11 +35,13 @@ import {
 
 describe('chapter', () => {
   it('mainline battle unit count grows with chapter order', () => {
-    assert.equal(mainlineBattleUnitCount(1), 3);
-    assert.equal(mainlineBattleUnitCount(5), 7);
+    assert.equal(mainlineBattleUnitCount(1), 1);
+    assert.equal(mainlineBattleUnitCount(5), 6);
     assert.equal(mainlineBattleUnitCount(10), 9);
     const ch1 = mainlineBattleWaves(1, 'wall', 0);
-    assert.equal(ch1.length, 3 * MAINLINE_WAVES_PER_UNIT);
+    assert.equal(ch1.length, 1 * MAINLINE_WAVES_PER_UNIT);
+    assert.equal(ch1[0]?.unitIndex, 0);
+    assert.equal(ch1[2]?.label, '精锐');
     const ch9 = mainlineBattleWaves(9, 'oil_cask', 0);
     assert.equal(ch9.length, 9 * MAINLINE_WAVES_PER_UNIT);
     const ch2 = mainlineBattleWaves(2, 'raiders', 0);
@@ -46,8 +49,12 @@ describe('chapter', () => {
     const ch6 = mainlineBattleWaves(6, 'shield_stack', 0);
     assert.equal(ch6[2]!.encounterId, 'mainline_blend_shield_stack');
     assert.equal(ch6[ch6.length - 1]!.encounterId, 'boss_shield_stack');
-    const ch1n4 = mainlineBattleWaves(1, 'archers', 1);
+    const ch1n4 = mainlineBattleWaves(1, 'archers', 1, { chapterFinale: true });
     assert.notEqual(ch1n4[0]!.encounterId, ch1[0]!.encounterId);
+    assert.equal(ch1n4[2]!.encounterId, 'boss_archers');
+    assert.equal(ch1n4[2]!.label, '首领');
+    // 章内非末战仍是精锐（教学门）
+    assert.equal(ch1[2]!.encounterId, 'wall');
     for (const e of MAINLINE_BIOME_ENCOUNTERS) {
       assert.ok(
         assertMainlineHeadcount('skirmish', e.enemies.length),
@@ -74,12 +81,15 @@ describe('chapter', () => {
 
   it('starts with START_UNLOCKS only', () => {
     const p = createInitialPlayer(1);
-    assert.ok(p.roster.menghuo?.owned);
-    assert.ok(p.roster.zhaoyun?.owned);
-    assert.equal(Object.keys(p.formation).length, 5);
+    assert.ok(p.roster.hero?.owned);
+    assert.ok(p.starterCompanionId);
+    assert.ok(p.roster[p.starterCompanionId!]?.owned);
+    assert.equal(Object.keys(p.formation).length, 2);
+    assert.equal(p.roster.zhaoyun?.owned, false);
     assert.equal(p.chapterCleared, 0);
     assert.equal(p.chapterNodeIndex, 0);
-    assert.ok(isContentUnlocked(p, 'dungeon', 'gear_break_wall'));
+    assert.equal(isContentUnlocked(p, 'dungeon', 'gear_break_wall'), false);
+    assert.ok(isContentUnlocked(p, 'dungeon', 'tower'));
     assert.ok(isContentUnlocked(p, 'gacha_unit', 'zhangfei'));
     assert.ok(isContentUnlocked(p, 'gacha_unit', 'houyi'));
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'baigujing'), false);
@@ -137,6 +147,8 @@ describe('chapter', () => {
       } else break;
     }
     assert.equal(p.chapterCleared, 1);
+    assert.ok(isContentUnlocked(p, 'dungeon', 'gear_break_wall'));
+    assert.equal(isContentUnlocked(p, 'dungeon', 'gear_arrow_lane'), false);
     assert.ok(isContentUnlocked(p, 'encounter', 'raiders'));
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'baigujing'), true);
     assert.equal(isContentUnlocked(p, 'gacha_unit', 'nuwa'), false);
@@ -171,12 +183,12 @@ describe('chapter', () => {
 describe('chapter bands', () => {
   it('has one band per chapter and starter party sits in chapter-1 window', () => {
     assert.equal(CHAPTER_BANDS.length, CHAPTERS.length);
-    assert.equal(getChapterBand(0).enemyMult, 1);
+    assert.equal(getChapterBand(0).enemyMult, 0.88);
     assert.ok(getChapterBand(2).enemyMult > getChapterBand(0).enemyMult);
     assert.equal(getChapterBand(99).index, CHAPTER_BANDS.length - 1);
-    assert.equal(battlePressure(0, 1.3), 1.3);
+    assert.equal(battlePressure(0, 1.3), 0.88 * 1.3);
     assert.ok(battlePressure(2, 1) > 1);
-    const p = createInitialPlayer(1);
+    const p = grantStarterEquipmentKit(createInitialPlayer(1));
     const power = deployedPartyPower(p);
     const band = getChapterBand(0);
     assert.ok(power >= band.floorPower, `starter ${power} below floor ${band.floorPower}`);

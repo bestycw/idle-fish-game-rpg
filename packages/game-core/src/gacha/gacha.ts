@@ -1,3 +1,8 @@
+import {
+  autoDeployCompanion,
+  pickCh1TeachRareId,
+  shouldForceCh1TeachRare,
+} from '../chapter/ch1TeachGate.js';
 import { isContentUnlocked } from '../chapter/progress.js';
 import { ensureRoster, getProgress, isOwned } from '../character/growth.js';
 import { getTemplate, UNIT_TEMPLATES } from '../character/templates.js';
@@ -120,10 +125,15 @@ export function pullGacha(state: PlayerState, times = 1): GachaPullResult {
   const items: GachaPullItem[] = [];
   let pity = s.gachaPity;
 
+  let teachAutoDeployed: string | null = null;
   for (let i = 0; i < n; i += 1) {
     const missing = unownedIds(s);
     let pickId: string;
-    if (missing.length > 0 && pity + 1 >= GACHA_SOFT_PITY) {
+    const forceTeach = i === 0 && shouldForceCh1TeachRare(s);
+    // 第一章教学：战败发券后的抽卡，强制出池内良品（蓝）
+    if (forceTeach) {
+      pickId = pickCh1TeachRareId(s);
+    } else if (missing.length > 0 && pity + 1 >= GACHA_SOFT_PITY) {
       pickId = pickWeighted(s, missing, rng);
     } else {
       pickId = pickWeighted(s, gachaPoolIds(s), rng);
@@ -133,6 +143,13 @@ export function pullGacha(state: PlayerState, times = 1): GachaPullResult {
     items.push(applied.item);
     if (applied.item.kind === 'new') pity = 0;
     else pity += 1;
+    if (forceTeach && applied.item.kind === 'new') {
+      const before = s.formation?.[pickId];
+      s = autoDeployCompanion(s, pickId);
+      if (s.formation?.[pickId] != null && before == null) {
+        teachAutoDeployed = applied.item.name;
+      }
+    }
   }
 
   s = { ...s, gachaPity: pity };
@@ -142,5 +159,13 @@ export function pullGacha(state: PlayerState, times = 1): GachaPullResult {
       return it.kind === 'new' ? `新·${tag}${it.name}` : `重复·${tag}${it.name}+碎片`;
     })
     .join('、');
-  return { ok: true, state: s, items, message: summary };
+  const deployHint = teachAutoDeployed
+    ? `已自动上阵「${teachAutoDeployed}」，回去重打精锐即可。`
+    : '';
+  return {
+    ok: true,
+    state: s,
+    items,
+    message: deployHint ? `${summary}。${deployHint}` : summary,
+  };
 }

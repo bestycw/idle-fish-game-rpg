@@ -175,21 +175,38 @@ export const PROLOGUE_BEATS: PrologueBeat[] = [
     continueLabel: '靠近那三扇门',
     transitionOut: 'fade-void',
   },
-  {
+];
+
+/** 序章绑定：点名开局随机珍品伙伴 */
+export function companionBindingBeat(companionName: string): PrologueBeat {
+  return {
     id: 'p08',
     title: '【绑定】协作单位',
     mood: 'world',
     lines: [
       { kind: 'narration', text: '手里一沉——名册 / 玉符 / 芯片，随你选的世界自动变形。' },
-      { kind: 'system', speaker: '说明书', text: '可锚定历史投影。上阵上限：5。' },
+      {
+        kind: 'system',
+        speaker: '说明书',
+        text: `首批锚定完成：【${companionName}】·珍品投影。`,
+      },
+      {
+        kind: 'system',
+        speaker: '说明书',
+        text: '上阵上限：5。眼下只有你与这位投影——其余席位之后用抽卡补。',
+      },
       { kind: 'system', speaker: '说明书', text: '投影不享五险一金。不报销打车。' },
-      { kind: 'dialogue', speaker: '你', text: '比我现在强。' },
+      { kind: 'dialogue', speaker: '你', text: `${companionName}？比工位上那群人靠谱。` },
     ],
     continueLabel: '继续',
-  },
-  {
+  };
+}
+
+/** 序章答疑：用开局伙伴举例「你给投影派活」 */
+export function whyHistoryBeat(companionName: string): PrologueBeat {
+  return {
     id: 'p10',
-    title: '【答疑】为何是关羽？',
+    title: '【答疑】为何是历史人物？',
     mood: 'world',
     lines: [
       { kind: 'narration', text: '说明书第二页，终于说人话了：' },
@@ -203,7 +220,11 @@ export const PROLOGUE_BEATS: PrologueBeat[] = [
         speaker: '系统',
         text: '你付锚定代价（体力、券、星尘…）。他们付一刀。',
       },
-      { kind: 'dialogue', speaker: '你', text: '所以不是老板给我派活，是我给赵云派活？' },
+      {
+        kind: 'dialogue',
+        speaker: '你',
+        text: `所以不是老板给我派活，是我给${companionName}派活？`,
+      },
       { kind: 'system', speaker: '系统', text: '概念正确。' },
       {
         kind: 'system',
@@ -213,8 +234,8 @@ export const PROLOGUE_BEATS: PrologueBeat[] = [
       { kind: 'emphasis', text: '——欢迎来到：不用写周报的异世界。' },
     ],
     continueLabel: '开整',
-  },
-];
+  };
+}
 
 export const WORLD_PICK_OPTIONS: {
   preset: WorldPreset;

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { defaultProgress } from '../character/growth.js';
 import { getTemplate } from '../character/templates.js';
 import { createBattle, runAutoBattle } from '../combat/combat.js';
-import { buildPlayerParty, DEFAULT_DEPLOYED_IDS } from '../formation/formation.js';
+import { buildPlayerParty } from '../formation/formation.js';
 import { createInitialPlayer } from '../save/player.js';
 import type { CharacterProgress, PlayerState } from '../shared/types.js';
 import { ENCOUNTERS } from './encounters.js';
@@ -167,7 +167,8 @@ describe('encounter recipes', () => {
 
   it('starter hunt stays beatable with default pierce/tank', () => {
     const seeds = 20;
-    const ids = [...DEFAULT_DEPLOYED_IDS];
+    /** 教学期校准阵：主角+紫+蓝+白+赵云（开局仅 2 人时用此阵验遭遇可打） */
+    const ids = ['hero', 'machao', 'xushu', 'menghuo', 'zhaoyun'];
     const patch = { level: 1, star: 0 };
     const wall = winRate(ids, 'wall', seeds, 1, patch);
     const archers = winRate(ids, 'archers', seeds, 1, patch);

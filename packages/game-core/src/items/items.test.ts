@@ -46,4 +46,32 @@ describe('item registry', () => {
       { itemId: 'enhance_stone', amount: 2 },
     ]);
   });
+
+  it('hides character_exp grant when partyExpRows present', () => {
+    const before = createInitialPlayer(3);
+    const after = { ...before, gold: before.gold + 2 };
+    const s = buildBattleSettlement({
+      source: 'dungeon',
+      before,
+      after,
+      characterExpPerMember: 26,
+      partyExpRows: [
+        {
+          templateId: 'hero',
+          name: '主角',
+          expGained: 26,
+          levelBefore: 1,
+          levelAfter: 1,
+          expAfter: 26,
+          expToNext: 40,
+          leveledUp: false,
+        },
+      ],
+      lines: [],
+    });
+    const rows = settlementGrantRows(s);
+    assert.deepEqual(rows, [{ itemId: 'gold', amount: 2 }]);
+    assert.equal(rows.some((r) => r.itemId === 'character_exp'), false);
+  });
 });
+

@@ -51,6 +51,10 @@ import {
 import { CharacterList, CharacterSheet } from './features/character/CharacterScreens';
 import { FormationScreen } from './features/character/FormationScreen';
 import { HubScreen } from './features/hub/HubScreen';
+import {
+  markHubFormationTipDone,
+  markHubGearTipDone,
+} from './features/hub/HubOnboarding';
 import { GearDungeonScreen } from './features/hub/GearDungeonScreen';
 import { ParallelArcScreen } from './features/hub/ParallelArcScreen';
 import { PrologueScreen } from './features/hub/PrologueScreen';
@@ -291,6 +295,7 @@ export default function App() {
 
   const openGearDungeons = () => {
     stopPlayback();
+    markHubGearTipDone();
     setScreen('gear_dungeons');
   };
 
@@ -475,6 +480,7 @@ export default function App() {
   };
 
   const openFormation = (back: 'hub' | 'characters' | 'battle_prep' = 'characters') => {
+    markHubFormationTipDone();
     setFormationBack(back);
     setScreen('formation');
   };
@@ -626,10 +632,11 @@ export default function App() {
     >
       {screen === 'prologue' && (
         <PrologueScreen
+          player={player}
           setPlayer={setPlayer}
           onComplete={() => {
             setScreen('hub');
-            pushNotice('欢迎来到异世界整备区——星尘、猎装都在菜单里，慢慢摸就行。');
+            pushNotice('欢迎来到异世界整备区。先走主线；猎装通关第一章才开。');
           }}
         />
       )}
@@ -692,6 +699,8 @@ export default function App() {
           setPlayer={setPlayer}
           onRestartBattle={restartBattlePrep}
           onBackToHub={handleBackToHub}
+          onGoGacha={() => setScreen('gacha')}
+          onGoGear={openGearDungeons}
           pushNotice={pushNotice}
         />
       )}

@@ -159,12 +159,19 @@ describe('skill compose foundation', () => {
 
   it('equipment morph changes composed skill on party', () => {
     let state = createInitialPlayer(42);
-    // T4 morph is now independent; bind it to zhaoyun
+    const zyTpl = getTemplate('zhaoyun')!;
     state = {
       ...state,
       morphStones: ['morph_bleed_edge'],
+      roster: {
+        ...state.roster,
+        zhaoyun: { ...state.roster.zhaoyun!, owned: true },
+      },
+      formation: {
+        ...state.formation,
+        zhaoyun: zyTpl.preferredSlot,
+      },
     };
-    // Bind morph stone to zhaoyun
     const result = bindMorphStone(state, 'zhaoyun', 'morph_bleed_edge');
     assert.ok(result.ok);
     state = result.state;

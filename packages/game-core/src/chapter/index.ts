@@ -2,6 +2,8 @@ export * from './defs.js';
 export * from './progress.js';
 export * from './battleWaves.js';
 export * from './mainlineBattleWaves.js';
+export * from './ch1TeachGate.js';
+export * from './ch2GearGuide.js';
 export * from './volumeMapView.js';
 export * from './chapterSceneNpcs.js';
 export * from './bands.js';

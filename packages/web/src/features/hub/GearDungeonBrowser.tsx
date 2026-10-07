@@ -124,7 +124,9 @@ function DungeonDetailPanel({
         <p className="mt-3 text-sm leading-relaxed text-foreground/78">{selected.blurb}</p>
 
         <div className="mt-3">
-          <p className="text-[11px] text-muted-foreground">首领轮换</p>
+          <p className="text-[11px] text-muted-foreground">
+            {selected.encounters.some((e) => e.isBoss) ? '首领轮换' : '本场遭遇'}
+          </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {selected.encounters.map((enc) => (
               <span
@@ -213,7 +215,8 @@ export function GearDungeonBrowser({
     activeSlot.view.playerTargetPower > 0
       ? activeSlot.view.playerTargetPower
       : Math.round(recommendedPower * activeSlot.view.pressure);
-  const powerOk = deployedPower >= recPower * 0.85;
+  /** 普通第一本：739 对 694 应算够用，别按主线 85% 卡成「永远不够」 */
+  const powerOk = deployedPower >= recPower * 0.92;
 
   return (
     <div

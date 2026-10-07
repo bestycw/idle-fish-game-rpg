@@ -57,6 +57,19 @@ export interface ChapterDef {
   unlocksOnClear: ContentUnlock[];
 }
 
+/** 本章最后一个 battle 节点（章末首领落在这里） */
+export function isChapterFinaleBattleNode(
+  chapter: ChapterDef,
+  node: ChapterNodeDef,
+): boolean {
+  if (node.kind !== 'battle') return false;
+  let last: ChapterNodeDef | null = null;
+  for (const n of chapter.nodes) {
+    if (n.kind === 'battle') last = n;
+  }
+  return last?.id === node.id;
+}
+
 /**
  * 开局即解锁。调开局内容池只改这里。
  * 注意：未列入的 gacha_unit / encounter / dungeon 默认锁定，直到某章 unlocksOnClear。
@@ -65,9 +78,8 @@ function gachaUnlocks(...ids: string[]): ContentUnlock[] {
   return ids.map((id) => ({ kind: 'gacha_unit' as const, id }));
 }
 
+/** 开局无猎装；通第一章才开第一本（见 ch1.unlocksOnClear） */
 export const START_UNLOCKS: ContentUnlock[] = [
-  { kind: 'dungeon', id: 'gear_break_wall' },
-  { kind: 'dungeon', id: 'gear_arrow_lane' },
   { kind: 'dungeon', id: 'tower' },
   { kind: 'dungeon', id: 'stardust_realm' },
   { kind: 'encounter', id: 'wall' },
@@ -111,9 +123,9 @@ export const CHAPTERS: ChapterDef[] = [
       {
         id: 'ch1_n4',
         kind: 'battle',
-        title: '箭道试锋',
+        title: '箭道首领',
         place: '关外箭道',
-        blurb: '关隘侧翼弓手试射，练切后排与护阵。',
+        blurb: '关隘侧翼金弓列阵——章末首领战，先破挡箭再切后排。',
         battleCap: 'archers',
       },
       {
@@ -125,8 +137,8 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
-      { kind: 'dungeon', id: 'gear_raider_trail' },
-      { kind: 'dungeon', id: 'gear_oil_well' },
+      /** 卷一第一本猎装：通关第一章才开 */
+      { kind: 'dungeon', id: 'gear_break_wall' },
       { kind: 'encounter', id: 'raiders' },
       ...gachaUnlocks(...expandIdsByUnlock('ch1')),
     ],
@@ -184,18 +196,12 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
-      { kind: 'dungeon', id: 'gear_wall_hard' },
-      { kind: 'dungeon', id: 'gear_wall_hell' },
+      /** 第二章只开更多普通本；困难/地狱按后续章递进，避免建议战力全挤在 ~2000 */
+      { kind: 'dungeon', id: 'gear_arrow_lane' },
+      { kind: 'dungeon', id: 'gear_raider_trail' },
+      { kind: 'dungeon', id: 'gear_oil_well' },
       { kind: 'dungeon', id: 'gear_spirit_gate' },
-      { kind: 'dungeon', id: 'gear_spirit_array' },
-      { kind: 'dungeon', id: 'gear_oil_furnace' },
       { kind: 'dungeon', id: 'gear_shield_vault' },
-      { kind: 'dungeon', id: 'gear_shield_bastion' },
-      { kind: 'dungeon', id: 'gear_arrow_hard' },
-      { kind: 'dungeon', id: 'gear_raider_hard' },
-      { kind: 'dungeon', id: 'gear_chaos_shrine' },
-      { kind: 'dungeon', id: 'gear_chaos_hell' },
-      { kind: 'dungeon', id: 'gear_warden_trial' },
       { kind: 'encounter', id: 'chaos_rite' },
       { kind: 'encounter', id: 'spirit_wall' },
       { kind: 'encounter', id: 'oil_cask' },
@@ -248,7 +254,10 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
-      { kind: 'dungeon', id: 'gear_warden_rift' },
+      /** 困难档：章 3～4 */
+      { kind: 'dungeon', id: 'gear_wall_hard' },
+      { kind: 'dungeon', id: 'gear_arrow_hard' },
+      { kind: 'dungeon', id: 'gear_raider_hard' },
       { kind: 'encounter', id: 'boss_warden' },
       ...gachaUnlocks(...expandIdsByUnlock('ch3')),
     ],
@@ -298,6 +307,10 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
+      { kind: 'dungeon', id: 'gear_oil_furnace' },
+      { kind: 'dungeon', id: 'gear_shield_bastion' },
+      { kind: 'dungeon', id: 'gear_spirit_array' },
+      { kind: 'dungeon', id: 'gear_chaos_shrine' },
       ...gachaUnlocks(...expandIdsByUnlock('ch4')),
     ],
   },
@@ -346,6 +359,9 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
+      /** 地狱档：章 5～6 */
+      { kind: 'dungeon', id: 'gear_wall_hell' },
+      { kind: 'dungeon', id: 'gear_chaos_hell' },
       ...gachaUnlocks(...expandIdsByUnlock('ch5')),
     ],
   },
@@ -409,6 +425,7 @@ export const CHAPTERS: ChapterDef[] = [
       },
     ],
     unlocksOnClear: [
+      { kind: 'dungeon', id: 'gear_warden_trial' },
       ...gachaUnlocks(...expandIdsByUnlock('ch6')),
     ],
   },
@@ -456,7 +473,10 @@ export const CHAPTERS: ChapterDef[] = [
         blurb: '门线既过，暗线将在内层露头。',
       },
     ],
-    unlocksOnClear: [],
+    unlocksOnClear: [
+      /** 秘境：高章才开金装池 */
+      { kind: 'dungeon', id: 'gear_warden_rift' },
+    ],
   },
   {
     id: 'ch8',

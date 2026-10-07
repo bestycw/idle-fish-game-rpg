@@ -33,7 +33,7 @@ import {
   composeSkillFor,
   type SkillComposeContext,
 } from './skillCompose.js';
-import { STARTER_OWNED_IDS } from './starterRoster.js';
+import { resolveStarterCompanionId, STARTER_OWNED_IDS } from './starterRoster.js';
 import { getTemplate, UNIT_TEMPLATES } from './templates.js';
 
 export {
@@ -164,8 +164,15 @@ export function starShardCost(currentStar: number): number {
   return 3;
 }
 
-export function defaultProgress(templateId: string): CharacterProgress {
-  const starter = (STARTER_OWNED_IDS as readonly string[]).includes(templateId);
+function isStaticOrResolvedStarter(templateId: string, state?: PlayerState): boolean {
+  if ((STARTER_OWNED_IDS as readonly string[]).includes(templateId)) return true;
+  if (!state) return false;
+  const companionId = resolveStarterCompanionId(state.seed, state.starterCompanionId);
+  return templateId === companionId;
+}
+
+export function defaultProgress(templateId: string, state?: PlayerState): CharacterProgress {
+  const starter = isStaticOrResolvedStarter(templateId, state);
   return {
     templateId,
     level: 1,
@@ -185,7 +192,7 @@ export function defaultCurrencies(): PlayerCurrencies {
 export function isOwned(state: PlayerState, templateId: string): boolean {
   const p = state.roster?.[templateId];
   if (p?.owned != null) return p.owned;
-  return (STARTER_OWNED_IDS as readonly string[]).includes(templateId);
+  return isStaticOrResolvedStarter(templateId, state);
 }
 
 export function ensureRoster(state: PlayerState): PlayerState {
@@ -194,13 +201,13 @@ export function ensureRoster(state: PlayerState): PlayerState {
   for (const t of UNIT_TEMPLATES) {
     const existing = roster[t.id];
     if (!existing) {
-      roster[t.id] = defaultProgress(t.id);
+      roster[t.id] = defaultProgress(t.id, state);
       changed = true;
       continue;
     }
     let row = existing;
     if (row.owned == null) {
-      const starter = (STARTER_OWNED_IDS as readonly string[]).includes(t.id);
+      const starter = isStaticOrResolvedStarter(t.id, state);
       const onField = state.formation?.[t.id] != null;
       row = { ...row, owned: starter || onField || Boolean(t.isHero) };
       changed = true;

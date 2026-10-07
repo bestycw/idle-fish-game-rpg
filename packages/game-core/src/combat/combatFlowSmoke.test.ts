@@ -72,8 +72,9 @@ function runEncounters(party: ReturnType<typeof buildPlayerParty>, tag: string):
 
 describe('combat flow smoke (loop gate)', () => {
   it('default party finishes all encounters with hits and skills/attacks', () => {
-    const player = createInitialPlayer(88);
-    const party = buildPlayerParty(player);
+    const lineup = ['hero', 'zhaoyun', 'machao', 'xushu', 'menghuo'];
+    const state = withRoster(createInitialPlayer(88), lineup);
+    const party = partyOf(state, lineup);
     assert.equal(party.length, 5);
     runEncounters(party, 'default');
   });

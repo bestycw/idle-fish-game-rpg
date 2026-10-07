@@ -5,19 +5,34 @@ import { applyBonusesToUnit, sumEquipmentBonuses } from '../equipment/equipment.
 import { loadoutConditions, loadoutT3Ids } from '../equipment/loadout.js';
 import { getChainBonus, getTeamChainBonus } from '../equipment/enhance.js';
 import { listEquipmentSkillModifiers } from '../equipment/morphs.js';
-import { DEFAULT_STARTER_GIFT_IDS } from '../character/starterRoster.js';
+import {
+  DEFAULT_STARTER_GIFT_IDS,
+  resolveStarterCompanionId,
+  starterGiftIds,
+  STARTER_EPIC_POOL,
+} from '../character/starterRoster.js';
 import { MAX_PARTY_SIZE, type GridSlot, type PlayerState, type UnitRuntime } from '../shared/types.js';
 
-/** 默认上阵 = 开局赠送（见 starterRoster.ts） */
+/** 审计/旧调用用样例阵（hero + 池首）；真开局看 `starterGiftIds` / `deployedOrStarterIds` */
 export const DEFAULT_DEPLOYED_IDS = DEFAULT_STARTER_GIFT_IDS;
 
-export function defaultFormation(): Partial<Record<string, GridSlot>> {
+export function defaultFormation(
+  companionId: string = STARTER_EPIC_POOL[0]!,
+): Partial<Record<string, GridSlot>> {
   const formation: Partial<Record<string, GridSlot>> = {};
-  for (const id of DEFAULT_DEPLOYED_IDS) {
+  for (const id of starterGiftIds(companionId)) {
     const t = UNIT_TEMPLATES.find((u) => u.id === id);
     if (t) formation[t.id] = t.preferredSlot;
   }
   return normalizeFormation(formation);
+}
+
+/** 当前上阵；空阵时回落到存档开局赠送 */
+export function deployedOrStarterIds(state: PlayerState): string[] {
+  const ids = Object.keys(normalizeFormation(state.formation));
+  if (ids.length > 0) return ids;
+  const companionId = resolveStarterCompanionId(state.seed, state.starterCompanionId);
+  return [...starterGiftIds(companionId)];
 }
 
 export function normalizeFormation(

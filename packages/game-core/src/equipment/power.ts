@@ -37,7 +37,8 @@ const W: Record<keyof EquipmentBonuses, number> = {
   finalDmgBonus: 200,
 };
 
-const CONDITION_PER_PCT = 12;
+/** 条件词战斗仍按真实 %；战力读数勿再 ×12 抬成「一件顶半身」 */
+const CONDITION_PER_PCT = 4;
 const COMBAT_T3_SCORE = 80;
 
 /**

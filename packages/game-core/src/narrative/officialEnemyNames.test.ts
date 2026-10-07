@@ -35,25 +35,27 @@ describe('officialEnemyNames', () => {
     assert.match(opts.enemyDisplayNames?.[0] ?? '', /关丁/);
   });
 
-  it('gear dungeon uses line-themed titles and boss names', () => {
+  it('first gear dungeon uses elite wall (not full boss)', () => {
     const p = createInitialPlayer(42);
-    const idx = ENCOUNTERS.findIndex((e) => e.id === 'boss_wall');
+    const idx = ENCOUNTERS.findIndex((e) => e.id === 'wall');
     const opts = createBattleDisplayOpts(p, idx, {
       dungeonId: 'gear_break_wall',
       battleSeed: 99,
     });
-    assert.match(opts.encounterDisplayName ?? '', /不动关|瓮城/);
+    assert.match(opts.encounterDisplayName ?? '', /盾廊|巡阵|青石关/);
     const names = opts.enemyDisplayNames ?? [];
-    assert.ok(names.some((n) => /不动关尉/.test(n)), `expected boss in ${names.join(',')}`);
-    const add = names.find((n) => !/不动关尉/.test(n)) ?? '';
-    assert.ok(/关丁|戍卒|伕|驿卒|巡丁|盾/.test(add), `expected line pool name, got ${add}`);
+    assert.ok(names.length >= 2, `expected wall lineup, got ${names.join(',')}`);
+    assert.ok(
+      names.every((n) => /关丁|戍卒|伕|驿卒|巡丁|盾|队长/.test(n)),
+      `expected line pool names, got ${names.join(',')}`,
+    );
   });
 
-  it('gear dungeon browser chips use same boss names as battle', () => {
+  it('gear dungeon browser chips use same names as battle', () => {
     const def = getGearDungeon('gear_break_wall');
     assert.ok(def);
     const view = buildGearDungeonView(def, 'xianxia', true);
-    assert.equal(view.encounters[0]?.label, '不动关尉·石鸣');
+    assert.equal(view.encounters[0]?.label, '巡廊盾队长·石鸣');
     const multi = getGearDungeon('gear_warden_rift');
     assert.ok(multi);
     const rift = buildGearDungeonView(multi, 'xianxia', true);

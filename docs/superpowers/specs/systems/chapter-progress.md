@@ -43,7 +43,7 @@ getChapterBand / battlePressure  // 章档 × 本种压力
 
 Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此地 / 未到。按钮「进入 · 场地」。未到站点不进去。故事皮只换 `place` 与过场文案。
 
-开战：`createBattle(..., { pressure: battlePressure(chapterCleared, dungeonPressure) })`。  
+开战：主线用正在打的章；猎装用 `gearDungeonBattlePressure`（解锁上一档 × 本种 pressure；**普通档再压 0.75 遭遇**），与 Hub 建议战力同源刻度但普通本实战更宽。  
 `chapterCleared === 0` 打第一章。塔不进战斗、不乘章档。
 
 ### 战斗节点 · 多波（引擎 · 默认表）
@@ -69,7 +69,7 @@ Hub 主线是**关卡条**不是地图：读当前章 `nodes`，标已过 / 此�
 ## V1 骨架（已写入 defs）
 
 - 主线 **10 章**（卷一）；节点为 story / battle 混排。  
-- 示例门锁：开局有猎装/塔/**星尘秘境**/开局圈（蜀汉·取经凡良 + 关羽/典韦/后羿）；其后按圈解锁，见 [中土故事圈 §6](../2026-08-26-zhongtu-roster-circles-design.md)。迁完前代码仍走旧 `expandIdsByUnlock`。  
+- 示例门锁：开局有塔/**星尘秘境**/开局圈（蜀汉·取经凡良 + 关羽/典韦/后羿）；**猎装通关第一章才开第一本**（`gear_break_wall`）；其后按圈解锁，见 [中土故事圈 §6](../2026-08-26-zhongtu-roster-circles-design.md)。迁完前代码仍走旧 `expandIdsByUnlock`。  
 - 文案可整包替换；**结构与解锁表必须真实。**
 
 ### 5.5 剧情与进度（产品约束）

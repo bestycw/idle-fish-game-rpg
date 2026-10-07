@@ -16,6 +16,8 @@ import {
   RARE_AFFIX_DEFS,
   WHITE_BASE,
   droptableOf,
+  affixLevelScale,
+  earlyGearBaseSoft,
   itemLevelScale,
   listConditionsForSlot,
   listT3ForSlot,
@@ -34,6 +36,8 @@ export type GenerateEquipmentOptions = {
   rarityWeights?: Partial<Record<Rarity, number>>;
   /** T3 池内按 id 加权；仅对本槽位合法 id 生效 */
   t3IdWeights?: { id: string; weight: number }[];
+  /** 入门装已有 softenStarterItem，勿再叠 earlyGearBaseSoft */
+  skipEarlyBaseSoft?: boolean;
 };
 
 let equipSeq = 0;
@@ -172,14 +176,29 @@ function rollRares(rng: Rng, first: number, second: number, usedStats: Set<strin
   return out;
 }
 
-function scaleBase(slot: EquipSlot, rarity: Rarity, itemLevel: number) {
-  const mult = RARITY_MULTIPLIER[rarity] * itemLevelScale(itemLevel);
+function scaleBase(
+  slot: EquipSlot,
+  rarity: Rarity,
+  itemLevel: number,
+  baseSoft: number,
+) {
+  const mult = RARITY_MULTIPLIER[rarity] * itemLevelScale(itemLevel) * baseSoft;
   const raw = WHITE_BASE[slot];
   const baseStats: Partial<Record<'atk' | 'def' | 'res' | 'maxHp' | 'spd', number>> = {};
   for (const [k, v] of Object.entries(raw)) {
-    baseStats[k as 'atk' | 'def' | 'res' | 'maxHp' | 'spd'] = Math.round(v * mult);
+    baseStats[k as 'atk' | 'def' | 'res' | 'maxHp' | 'spd'] = Math.max(
+      1,
+      Math.round(v * mult),
+    );
   }
   return baseStats;
+}
+
+/** 词缀/条件随装等缩放（原先只缩白字，低装等蓝装 affix 满额会战力起飞） */
+function scaleRolledValue(value: number, itemLevel: number): number {
+  const scaled = value * affixLevelScale(itemLevel);
+  if (Number.isInteger(value)) return Math.max(1, Math.round(scaled));
+  return Math.round(scaled * 1000) / 1000;
 }
 
 export function generateEquipment(
@@ -192,19 +211,28 @@ export function generateEquipment(
   const table = droptableOf(rarity);
   const itemLevel = Math.max(1, Math.min(100, opts?.itemLevel ?? 1));
 
-  const affixes = rollRandomAffixes(rng, chosenSlot, table.guaranteedSubs, table.openRolls);
+  const affixes = rollRandomAffixes(rng, chosenSlot, table.guaranteedSubs, table.openRolls).map(
+    (a) => ({ ...a, value: scaleRolledValue(a.value, itemLevel) }),
+  );
   const used = new Set(affixes.map((a) => a.stat));
+  // 炼气档条件词出现率再压一截（条件对战力读数与实战都偏猛）
+  const condRateScale = itemLevel <= 20 ? 0.45 + 0.55 * ((itemLevel - 1) / 19) : 1;
   const conditions = rollConditions(
     rng,
     chosenSlot,
-    table.conditionFirst,
-    table.conditionSecond,
+    table.conditionFirst * condRateScale,
+    table.conditionSecond * condRateScale,
     table.extremeCondition,
-  );
-  const rares = rollRares(rng, table.rareFirst, table.rareSecond, used);
+  ).map((c) => ({ ...c, value: scaleRolledValue(c.value, itemLevel) }));
+  const rares = rollRares(rng, table.rareFirst, table.rareSecond, used).map((a) => ({
+    ...a,
+    value: scaleRolledValue(a.value, itemLevel),
+  }));
 
   let effectAffixId: string | undefined;
-  if (table.t3 > 0 && rng.next() < table.t3) {
+  // 挂了解法权重的猎装（地狱/秘境）：蓝装本身 t3=0，抬底以免「不出金就几乎没器纹」
+  const t3Chance = opts?.t3IdWeights?.length ? Math.max(table.t3, 0.48) : table.t3;
+  if (t3Chance > 0 && rng.next() < t3Chance) {
     if (opts?.t3IdWeights?.length) {
       effectAffixId = pickWeightedT3(rng, chosenSlot, opts.t3IdWeights);
     } else {
@@ -223,13 +251,15 @@ export function generateEquipment(
   ];
   const setId = rng.next() < setIdChance ? pickWeightedSetId(rng, setIdWeights) : undefined;
 
+  const baseSoft = opts?.skipEarlyBaseSoft ? 1 : earlyGearBaseSoft(itemLevel);
+
   return {
     id: createEquipmentId(rng),
     name: composeEquipmentName({ rarity, slot: chosenSlot, setId, effectAffixId, enhanceLevel: 0 }),
     slot: chosenSlot,
     rarity,
     itemLevel,
-    baseStats: scaleBase(chosenSlot, rarity, itemLevel),
+    baseStats: scaleBase(chosenSlot, rarity, itemLevel, baseSoft),
     affixes,
     conditions: conditions.length > 0 ? conditions : undefined,
     rareAffixes: rares.length > 0 ? rares : undefined,

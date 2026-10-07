@@ -426,7 +426,16 @@ describe('dead units', () => {
 
 describe('combat enrichment', () => {
   it('finishes auto battle with party of five', () => {
-    const player = createInitialPlayer(42);
+    const ids = ['hero', 'zhaoyun', 'machao', 'xushu', 'menghuo'];
+    let player = createInitialPlayer(42);
+    const roster = { ...player.roster };
+    const formation: typeof player.formation = {};
+    for (const id of ids) {
+      roster[id] = { ...roster[id]!, owned: true };
+      const t = getTemplate(id);
+      if (t) formation[id] = t.preferredSlot;
+    }
+    player = { ...player, roster, formation };
     const party = buildPlayerParty(player);
     assert.equal(party.length, 5);
     assert.ok(party.some((u) => u.templateId === 'zhaoyun'));

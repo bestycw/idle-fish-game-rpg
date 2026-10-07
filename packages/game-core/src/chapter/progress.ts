@@ -29,6 +29,8 @@ import {
   type BattleSettlement,
 } from '../reward/battleSettlement.js';
 import { grantMainlineBattleWaveReward } from '../reward/mainlineBattleScrap.js';
+import { applyCh1EliteDefeatReward } from './ch1TeachGate.js';
+import { applyCh2GearGuideOnDefeat } from './ch2GearGuide.js';
 
 export type RouteStopStatus = 'cleared' | 'current' | 'ahead';
 
@@ -272,7 +274,7 @@ export function resolveChapterBattleAfterWin(
   if (!ctx) {
     return { ok: false, message: '无法解析当前遭遇。' };
   }
-  const waves = battleWavesForNode(view.node, chapter.order);
+  const waves = battleWavesForNode(view.node, chapter.order, chapter);
   const nextWave = ctx.waveIndex + 1;
   if (nextWave < ctx.waveTotal) {
     const nextDef = waves[nextWave];
@@ -337,11 +339,18 @@ export function resolveChapterBattleAfterWin(
   return { ok: true, ...done, hasNextWave: false, settlement };
 }
 
-/** 主线战斗败北：波次从头再来 + 平行原世界小幅反噬 */
+/**
+ * 主线战斗败北：停在当前波重打（不清零进度）+ 平行原世界小幅反噬；
+ * 第一章第一阵精锐首次发教学券；第二章首次碰壁引导猎装。
+ */
 export function chapterBattleAfterDefeat(state: PlayerState): PlayerState {
   const ctx = currentChapterBattleContext(state);
-  const reset = resetChapterBattleWave(state);
-  return applyParallelWorldAfterMainlineDefeat(reset, ctx);
+  let next = applyCh1EliteDefeatReward(state).state;
+  // 教学门对话优先；未触发教学门时再挂猎装引导
+  if (!next.tutorialFlags?.ch1EliteDialoguePending) {
+    next = applyCh2GearGuideOnDefeat(next).state;
+  }
+  return applyParallelWorldAfterMainlineDefeat(next, ctx);
 }
 
 /** 当前章节战斗对应 ENCOUNTERS 下标；非战斗节点返回 null */

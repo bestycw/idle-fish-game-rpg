@@ -282,9 +282,9 @@ export function loadOrCreatePlayer(adapter: SaveAdapter): PlayerState {
       migrated.narrative = migrated.narrative ?? migratedMainlineNarrative();
     }
     migrated.roster = pruneRoster(migrated.roster);
-    // 迁移后若阵容被剔空，回默认
+    // 迁移后若阵容被剔空，回默认（主角 + 开局紫）
     if (Object.keys(normalizeFormation(migrated.formation)).length === 0) {
-      migrated.formation = defaultFormation();
+      migrated.formation = defaultFormation(migrated.starterCompanionId);
     }
     migrated.equipped = {};
     let ready = withStaminaDefaults(ensureRoster(migrated), now);

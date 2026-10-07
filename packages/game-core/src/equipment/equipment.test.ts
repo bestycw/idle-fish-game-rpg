@@ -384,7 +384,10 @@ describe('wear / reroll / seal / disassemble', () => {
 
   it('grantStarterEquipmentKit equips six slots per deployed member', () => {
     const p = grantStarterEquipmentKit(createInitialPlayer(7));
-    for (const charId of ['hero', 'zhaoyun', 'machao', 'xushu', 'menghuo']) {
+    const deployed = Object.keys(p.formation);
+    assert.ok(deployed.includes('hero'));
+    assert.equal(deployed.length, 2);
+    for (const charId of deployed) {
       for (const slot of STARTER_KIT_SLOTS) {
         assert.equal(p.characterEquip?.[charId]?.[slot], `kit_${charId}_${slot}`);
       }

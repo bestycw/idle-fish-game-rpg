@@ -4,14 +4,14 @@ import { defaultProgress } from '../character/growth.js';
 import { getTemplate } from '../character/templates.js';
 import { createBattle, runAutoBattle } from '../combat/combat.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
-import { STARTER_TRIAL_LINEUP } from '../character/starterRoster.js';
 import { buildPlayerParty } from '../formation/formation.js';
 import { createInitialPlayer } from '../save/player.js';
 import type { ConditionId, Equipment, PlayerState } from '../shared/types.js';
 import { equipItem } from './equipment.js';
 import { listEquipmentSkillModifiers } from './morphs.js';
 
-const PARTY = STARTER_TRIAL_LINEUP;
+/** 验 T3/形态：固定五人（含赵云），与开局两人小队无关 */
+const PARTY = ['hero', 'zhaoyun', 'machao', 'xushu', 'menghuo'] as const;
 
 function encIndex(id: string): number {
   const i = ENCOUNTERS.findIndex((e) => e.id === id);

@@ -1,8 +1,11 @@
 import {
   ENCOUNTERS,
   battlePressure,
-  getChapterView,
-  mainlineStoryPressure,
+  chapterBattlePressure,
+  ch1EliteGateActive,
+  gearDungeonBattlePressure,
+  hasOwnedRareCompanion,
+  hasRareCompanionOnField,
   buildPlayerParty,
   createBattle,
   createBattleDisplayOpts,
@@ -55,8 +58,10 @@ function battlePressureFor(
 ): number {
   const chapter = player.chapterCleared ?? 0;
   if (kind === 'chapter') {
-    const order = getChapterView(player).playing?.order ?? chapter + 1;
-    return mainlineStoryPressure(chapter, order);
+    return chapterBattlePressure(player);
+  }
+  if (isGearDungeonId(dungeonId)) {
+    return gearDungeonBattlePressure(dungeonId);
   }
   return battlePressure(chapter, pressureForDungeon(dungeonId));
 }
@@ -137,9 +142,22 @@ export function BattlePrepScreen({
           }`
       : '';
 
-  const canStart = Boolean(preview && partyCount > 0);
+  const teachNeedDeploy =
+    config.kind === 'chapter' &&
+    Boolean(player.tutorialFlags?.ch1EliteTicketGranted) &&
+    hasOwnedRareCompanion(player) &&
+    !hasRareCompanionOnField(player) &&
+    chapterWave?.unitIndex === 0 &&
+    chapterWave.waveInUnit === 2;
+  const teachGateHard =
+    config.kind === 'chapter' && ch1EliteGateActive(player);
+  const canStart = Boolean(preview && partyCount > 0 && !teachNeedDeploy);
 
   const handleStart = () => {
+    if (teachNeedDeploy) {
+      pushNotice('蓝卡还在替补席——点席下伙伴上阵后再开。');
+      return;
+    }
     const fresh = buildPreview(player, config, config.encounterIndex);
     if (fresh) onConfirmStart(fresh);
   };
@@ -173,6 +191,17 @@ export function BattlePrepScreen({
             resonanceLabels={resonanceNames}
             prepHint={encounter.prepHint}
           />
+
+          {teachGateHard ? (
+            <p className="rounded-lg border border-rose-400/40 bg-rose-950/30 px-3 py-2 font-mono text-[11px] leading-relaxed text-rose-100/90">
+              本场精锐是教学门：两人打不过。去召唤补蓝卡再回来。
+            </p>
+          ) : null}
+          {teachNeedDeploy ? (
+            <p className="rounded-lg border border-amber-400/40 bg-amber-950/30 px-3 py-2 font-mono text-[11px] leading-relaxed text-amber-100/90">
+              蓝卡已入手但未上阵——点下方席位把良品拖进九宫，再开战。
+            </p>
+          ) : null}
 
           {preview ? (
             <section>
@@ -225,9 +254,11 @@ export function BattlePrepScreen({
         >
           {partyCount === 0
             ? '请先上阵至少一人'
-            : staminaCost > 0
-              ? `开始战斗 · 体力 ${staminaCost}`
-              : '开始战斗'}
+            : teachNeedDeploy
+              ? '请先把蓝卡上阵'
+              : staminaCost > 0
+                ? `开始战斗 · 体力 ${staminaCost}`
+                : '开始战斗'}
         </button>
       </div>
     </div>

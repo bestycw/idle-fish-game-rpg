@@ -7,8 +7,9 @@
  *    - 来自养成假设（主线 + 适量猎装），不是全服统计。
  * 2. **敌人章档** `CHAPTER_BANDS`：「这一章的怪乘多少、Hub 建议战力多少」
  *    - 实战：`battlePressure(chapterCleared) × 遭遇底稿`。
- * 3. **猎装本** `gearDungeonCombatReadout`：「解锁时面向哪档玩家；当前进度下建议多少战力、遭遇威胁读数」
- *    - 解锁章看 `unlockAtChapterCleared`；开战仍用**当前** `chapterCleared` 乘 pressure。
+ * 3. **猎装本** `gearDungeonCombatReadout`：「该实例面向哪档玩家；建议战力与开战压力」
+ *    - 解锁门槛看 `unlockAtChapterCleared`；**开战按刚解锁的上一档**（`gearDungeonScaleChapterCleared`），不跟当前章抬怪。
+ *    - 通关 ch1 才开的第一本，必须用第一章档，否则卡在第二章去刷装会刷不过。
  *
  * ## 调表顺序（策划）
  *
@@ -113,6 +114,31 @@ export function unlockAtChapterCleared(
   return unlockChapterCache.get(unlockKey(kind, id));
 }
 
+/**
+ * 猎装实例的章档下标：刚达到解锁门槛时，用「刚打过的那一章」而不是正在卡的下一章。
+ * `unlockAt === 0`（开局本）→ 0；通关第 N 章才开 → N-1。
+ */
+export function gearDungeonScaleChapterCleared(dungeonId: string): number {
+  const unlockAt = unlockAtChapterCleared('dungeon', dungeonId) ?? 0;
+  return Math.max(0, unlockAt - 1);
+}
+
+/** 普通猎装轻压（清章升两级后队伍更强，不必压到 0.7 以下） */
+const GEAR_NORMAL_TIER_BATTLE_SOFTEN = 0.75;
+
+/**
+ * 猎装开战压力（单一入口：Web 战前、工具、文档须与此一致）。
+ * 按解锁章档 × 本种 pressure；普通档再乘 `GEAR_NORMAL_TIER_BATTLE_SOFTEN`。
+ */
+export function gearDungeonBattlePressure(dungeonId: string): number {
+  const def = getGearDungeon(dungeonId);
+  const scale = gearDungeonScaleChapterCleared(dungeonId);
+  const dungeonPressure = def?.pressure ?? 1;
+  let p = battlePressure(scale, dungeonPressure);
+  if (def?.tier === 'normal') p *= GEAR_NORMAL_TIER_BATTLE_SOFTEN;
+  return p;
+}
+
 /** 0～1：在 recommended 与 crush 之间插值 */
 export function tierPowerFraction(tier: GearDungeonTier): number {
   switch (tier) {
@@ -137,16 +163,23 @@ function bandPowerBetween(band: ChapterBand, fraction: number): number {
 }
 
 /**
- * 猎装 Hub / 战前：当前进度下建议队伍战力。
- * tier 插在章档 recommended～crush；`def.pressure` 略抬高建议（与高压本一致）。
+ * 猎装 Hub / 战前：该实例建议队伍战力（按解锁档，不跟当前章漂移）。
+ * - **普通**：对齐「刚打完解锁章」的 `powerEnterTarget`（第一本约 694，不是章档 798）。
+ * - 困难+：插在章档 recommended～crush。
  */
 export function gearDungeonPlayerTarget(
   dungeonId: string,
-  chapterCleared: number,
+  _chapterCleared?: number,
 ): number {
   const def = getGearDungeon(dungeonId);
-  if (!def) return getChapterBand(chapterCleared).recommendedPower;
-  const band = getChapterBand(chapterCleared);
+  const scale = gearDungeonScaleChapterCleared(dungeonId);
+  if (!def) return getChapterBand(scale).recommendedPower;
+  if (def.tier === 'normal') {
+    const chapterOrder = Math.min(CHAPTER_BANDS.length, scale + 1);
+    const enter = milestoneForChapterOrder(chapterOrder).powerEnterTarget;
+    return Math.round(enter * def.pressure);
+  }
+  const band = getChapterBand(scale);
   const spine = bandPowerBetween(band, tierPowerFraction(def.tier));
   return Math.round(spine * def.pressure);
 }
@@ -172,10 +205,11 @@ export function gearDungeonCombatReadout(
   const def = getGearDungeon(dungeonId);
   if (!def) return null;
   const unlockAt = unlockAtChapterCleared('dungeon', dungeonId) ?? 0;
-  const unlockBand = getChapterBand(unlockAt);
-  const playerTargetAtUnlock = gearDungeonPlayerTarget(dungeonId, unlockAt);
-  const playerTargetNow = gearDungeonPlayerTarget(dungeonId, chapterCleared);
-  const battlePressureNow = battlePressure(chapterCleared, def.pressure);
+  const scaleAt = gearDungeonScaleChapterCleared(dungeonId);
+  const unlockBand = getChapterBand(scaleAt);
+  const playerTargetAtUnlock = gearDungeonPlayerTarget(dungeonId, scaleAt);
+  const playerTargetNow = playerTargetAtUnlock;
+  const battlePressureNow = gearDungeonBattlePressure(dungeonId);
   const bossId = def.encounterPool.find((id) => id.startsWith('boss_')) ?? def.encounterPool[0];
   const enc = bossId ? ENCOUNTERS.find((e) => e.id === bossId) : undefined;
   const bossThreatNow = enc

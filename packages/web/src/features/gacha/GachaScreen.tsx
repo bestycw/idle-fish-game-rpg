@@ -2,6 +2,7 @@ import {
   GACHA_TICKET_COST,
   RARITY_LABELS,
   pullGacha,
+  shouldForceCh1TeachRare,
   type GachaPullItem,
   type PlayerState,
 } from '@moyu/game-core';
@@ -21,6 +22,7 @@ export function GachaScreen({ player, setPlayer, onBack: _onBack, pushNotice }: 
   void _onBack;
   const [lastItems, setLastItems] = useState<GachaPullItem[]>([]);
   const tickets = player.currencies?.ticket ?? 0;
+  const teachPull = shouldForceCh1TeachRare(player);
 
   const doPull = (times: number) => {
     const result = pullGacha(player, times);
@@ -42,8 +44,10 @@ export function GachaScreen({ player, setPlayer, onBack: _onBack, pushNotice }: 
         <p className="font-mono text-[11px] tracking-[0.2em] text-primary/80">常驻池</p>
         <h2 className="font-display mt-1 text-3xl tracking-wide">召唤伙伴</h2>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          新人补解法，重复变碎片。缺职能加权；软保底。手中券{' '}
-          <span className="font-mono text-primary">{tickets}</span>
+          {teachPull
+            ? '教学抽：本次单抽必出良品（蓝）。抽完记得上阵，再回去破精锐。'
+            : '新人补解法，重复变碎片。缺职能加权；软保底。'}{' '}
+          手中券 <span className="font-mono text-primary">{tickets}</span>
         </p>
       </div>
 
@@ -52,9 +56,14 @@ export function GachaScreen({ player, setPlayer, onBack: _onBack, pushNotice }: 
           type="button"
           disabled={tickets < 1}
           onClick={() => doPull(1)}
-          className="rounded-xl border border-border/80 bg-card/70 py-4 transition hover:border-primary/50 disabled:opacity-40"
+          className={cn(
+            'rounded-xl border py-4 transition disabled:opacity-40',
+            teachPull
+              ? 'border-teal-400/55 bg-teal-950/40 hover:brightness-110'
+              : 'border-border/80 bg-card/70 hover:border-primary/50',
+          )}
         >
-          <div className="font-display text-lg">召唤 ×1</div>
+          <div className="font-display text-lg">{teachPull ? '教学召唤 ×1' : '召唤 ×1'}</div>
           <div className="mt-1 font-mono text-xs text-muted-foreground">{GACHA_TICKET_COST} 券</div>
         </button>
         <button

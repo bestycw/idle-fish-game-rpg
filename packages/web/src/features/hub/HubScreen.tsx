@@ -397,7 +397,7 @@ export function HubScreen({
   return (
     <>
     <div className="mx-auto w-full max-w-6xl space-y-3 pb-3 sm:space-y-3">
-      <HubOnboarding />
+      <HubOnboarding player={player} />
       {storyPanel}
       {onOpenParallelRealWorld ? (
         <ParallelRealWorldCard player={player} onOpen={onOpenParallelRealWorld} />

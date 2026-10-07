@@ -1,19 +1,25 @@
 import { defaultProgress, ensureRoster } from '../character/growth.js';
-import { DEFAULT_STARTER_GIFT_IDS } from '../character/starterRoster.js';
+import {
+  resolveStarterCompanionId,
+  starterGiftIds,
+} from '../character/starterRoster.js';
 import type { PlayerState } from '../shared/types.js';
 import { defaultFormation } from './formation.js';
 
-/** 试玩 / 序章进 Hub / 新档：默认阵 + 赠送伙伴 owned */
+/** 试玩 / 序章进 Hub / 新档：默认阵（主角 + 开局紫）+ 赠送 owned */
 export function ensureStarterTrialRoster(state: PlayerState): PlayerState {
+  const companionId = resolveStarterCompanionId(state.seed, state.starterCompanionId);
+  const gifts = starterGiftIds(companionId);
   const s = ensureRoster({
     ...state,
-    formation: defaultFormation(),
+    starterCompanionId: companionId,
+    formation: defaultFormation(companionId),
     heroManual: false,
   });
   const roster = { ...s.roster };
-  for (const id of DEFAULT_STARTER_GIFT_IDS) {
+  for (const id of gifts) {
     const row = roster[id] ?? defaultProgress(id);
     roster[id] = { ...row, owned: true };
   }
-  return { ...s, roster };
+  return { ...s, roster, starterCompanionId: companionId };
 }

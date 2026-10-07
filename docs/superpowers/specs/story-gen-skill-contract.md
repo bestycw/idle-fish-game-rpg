@@ -20,9 +20,15 @@
 | `preferences.tone` | 是 | `witty` \| `earnest` → 主角台词风格 |
 | `preferences.pace` | 是 | `slow_burn` \| `fast` → 单节点对话行数倾向 |
 
-**禁止：** `seed.avoidMixing` 词；新 Spine id；改 encounter/解锁/战斗波次表。
+**禁止：** `seed.avoidMixing` 词；新 Spine id；改 encounter/解锁/战斗波次表；改开局阵容 / 教学门发券逻辑。
 
-**战斗：** 多波连战、小兵/Boss 组成由 `chapter/defs` + `encounters` **默认配置**；Skill 仅在 battle `blurb` 中间接提及 prepHint，**不生成** `battleWaves`。
+**战斗：** 多波连战、小兵/Boss 组成由 `chapter/defs` + `mainlineBattleWaves` + `encounters` **默认配置**；Skill 仅在 battle `blurb` 中间接提及 prepHint，**不生成** `battleWaves`。
+
+**卷一对齐（Skin 勿写反）：**
+
+- 开局 = 主角 + 1 随机珍品（紫），不是五人默认队。  
+- 每阵 = 两小怪 → 阵末精锐；**本章最后一个 battle 节点**收尾 = 首领（ch1 为 `ch1_n4` 箭道首领）。  
+- ch1 首战盾墙阵末精锐 = 教学门（引擎发券保蓝）；主线/支线 Skin **勿再发同一张教学券**。
 
 ---
 

@@ -6,7 +6,12 @@ import {
   chapterOrderFromNodeId,
   mainlineCapEncounterId,
 } from '../chapter/mainlineBattleWaves.js';
-import { CHAPTERS, getChapterByOrder, type ChapterNodeDef } from '../chapter/defs.js';
+import {
+  CHAPTERS,
+  getChapterByOrder,
+  isChapterFinaleBattleNode,
+  type ChapterNodeDef,
+} from '../chapter/defs.js';
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import { isOwned } from '../character/growth.js';
 import { UNIT_TEMPLATES } from '../character/templates.js';
@@ -147,7 +152,9 @@ export function prepHintForNode(node: ChapterNodeDef): string | undefined {
         : undefined);
   if (!capId && node.battleCap) {
     const order = chapterOrderFromNodeId(node.id);
-    const lastId = mainlineCapEncounterId(order, node.battleCap);
+    const chapter = getChapterByOrder(order);
+    const chapterFinale = chapter ? isChapterFinaleBattleNode(chapter, node) : false;
+    const lastId = mainlineCapEncounterId(order, node.battleCap, { chapterFinale });
     return ENCOUNTERS.find((e) => e.id === lastId)?.prepHint;
   }
   if (!capId) return undefined;

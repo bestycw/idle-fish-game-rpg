@@ -99,7 +99,9 @@
 
 实现：`gearEquipRolls.ts` → `grantDungeonReward`；结算 `bonusEquipment[]`；猎装页预览格标「必掉 / XX%」（边框色=池内**最高**品级）。
 
-**品级权重：** 每件单独 `rollRarity`；猎装**不用**全局 `DROPTABLE`，按难度档 `GEAR_TIER_RARITY_WEIGHTS`（`gearRarityByTier.ts`）：普通 **凡~良**（封顶良）、困难 **精~珍**（封顶珍、无绝）、地狱/秘境 **良~绝**。预览格边框色 = 该本池内最高档。地狱实例可 `rarityWeights` 微调比例，不得突破档位上限（实例表仅地狱）。装等按章 + tier，与品级独立。
+**品级权重：** 每件单独 `rollRarity`；猎装**不用**全局 `DROPTABLE`，按难度档 `GEAR_TIER_RARITY_WEIGHTS`（`gearRarityByTier.ts`）：普通 **凡~精**（封顶绿）、困难 **精~良**（封顶蓝、不出紫）、地狱 **良~珍**（封顶紫、不出金）、秘境 **良~绝**（金从此档起）。预览格边框色 = 该本池内最高档。实例可 `rarityWeights` 微调比例，**不得突破档位封顶**。装等按章 + tier，与品级独立。
+
+**解锁节奏（建议战力跟解锁章档走）：** 通 ch1 开第一本普通；通 ch2 开更多普通；困难 ch3～4；地狱 ch5～6；秘境 ch7。避免「第二章一口气开到地狱、建议战力全挤在两千出头」。
 
 ---
 

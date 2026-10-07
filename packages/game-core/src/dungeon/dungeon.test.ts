@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { createInitialPlayer } from '../save/player.js';
 import { createRng } from '../shared/rng.js';
 import { generateEquipment } from '../equipment/equipment.js';
+import { canWearEquipment } from '../equipment/wear.js';
 import {
   getDungeon,
   listBattleDungeons,
@@ -23,7 +24,8 @@ describe('dungeon defs', () => {
     assert.equal(getDungeon('gear_break_wall').runMode, 'battle');
     assert.equal(getDungeon('tower').runMode, 'instant');
     assert.ok(listBattleDungeons().length >= 14);
-    assert.ok(getDungeon('gear_break_wall').encounterPool.includes('boss_wall'));
+    assert.ok(getDungeon('gear_break_wall').encounterPool.includes('wall'));
+    assert.equal(getDungeon('gear_break_wall').encounterPool.includes('boss_wall'), false);
     assert.ok(getDungeon('gear_warden_trial').encounterPool.includes('boss_warden'));
   });
 
@@ -50,20 +52,77 @@ describe('dungeon loot', () => {
     assert.equal(state.encounterIndex, before + 1);
   });
 
+  it('same gear dungeon grants fixed character exp', () => {
+    const a = grantDungeonReward(
+      { ...createInitialPlayer(1), chapterCleared: 1 },
+      'gear_break_wall',
+    );
+    const b = grantDungeonReward(
+      { ...createInitialPlayer(2), chapterCleared: 1, wins: 3 },
+      'gear_break_wall',
+    );
+    assert.equal(a.characterExpPerMember, 24);
+    assert.equal(b.characterExpPerMember, 24);
+  });
+
+  it('first gear dungeon drops wear-tier 0 gear after ch1 clear', () => {
+    const player = { ...createInitialPlayer(7), chapterCleared: 1, chapterNodeIndex: 4 };
+    for (let i = 0; i < 12; i++) {
+      const { loot, bonusLoot, state } = grantDungeonReward(
+        { ...player, wins: i, seed: player.seed + i },
+        'gear_break_wall',
+      );
+      const drops = [loot, ...bonusLoot].filter(Boolean);
+      assert.ok(drops.length > 0);
+      for (const item of drops) {
+        assert.ok((item!.itemLevel ?? 1) <= 20, `ilvl ${item!.itemLevel} should be 炼气档`);
+        assert.ok(
+          canWearEquipment(item!, 0),
+          `炼气应能穿装等 ${item!.itemLevel}`,
+        );
+      }
+      void state;
+    }
+  });
+
   it('gear tier rarity pools are progressive', () => {
     const normal = getGearDungeon('gear_break_wall')!;
     const hard = getGearDungeon('gear_arrow_hard')!;
-    assert.equal(maxRarityForGearTier('normal'), 'rare');
-    assert.equal(maxRarityForGearTier('hard'), 'epic');
-    assert.equal(maxRarityForGearTier('hell'), 'legendary');
-    assert.equal(maxRarityInWeights(resolveGearRarityWeights(normal)), 'rare');
-    assert.equal(maxRarityInWeights(resolveGearRarityWeights(hard)), 'epic');
+    const hell = getGearDungeon('gear_wall_hell')!;
+    const rift = getGearDungeon('gear_warden_rift')!;
+    assert.equal(maxRarityForGearTier('normal'), 'uncommon');
+    assert.equal(maxRarityForGearTier('hard'), 'rare');
+    assert.equal(maxRarityForGearTier('hell'), 'epic');
+    assert.equal(maxRarityForGearTier('rift'), 'legendary');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(normal)), 'uncommon');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(hard)), 'rare');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(hell)), 'epic');
+    assert.equal(maxRarityInWeights(resolveGearRarityWeights(rift)), 'legendary');
     const normalWeights = resolveGearRarityWeights(normal);
+    assert.equal(normalWeights.rare ?? 0, 0);
+    assert.equal(normalWeights.epic ?? 0, 0);
     assert.equal(normalWeights.legendary ?? 0, 0);
-    assert.equal((normalWeights.epic ?? 0), 0);
+    assert.equal(resolveGearRarityWeights(hard).epic ?? 0, 0);
+    assert.equal(resolveGearRarityWeights(hell).legendary ?? 0, 0);
     const mix = gearLootRarityMix(normal, 'xianxia');
     assert.equal(mix.reduce((s, r) => s + r.pct, 0), 100);
-    assert.equal(mix.find((r) => r.rarity === 'common')?.pct, 45);
+    assert.equal(mix.find((r) => r.rarity === 'common')?.pct, 62);
+    assert.equal(mix.find((r) => r.rarity === 'uncommon')?.pct, 38);
+  });
+
+  it('first normal gear dungeon never drops blue+', () => {
+    for (let i = 0; i < 120; i++) {
+      const { loot, bonusLoot } = grantDungeonReward(
+        { ...createInitialPlayer(5000 + i), chapterCleared: 1, wins: i },
+        'gear_break_wall',
+      );
+      for (const item of [loot, ...bonusLoot].filter(Boolean)) {
+        assert.ok(
+          item!.rarity === 'common' || item!.rarity === 'uncommon',
+          `unexpected rarity ${item!.rarity}`,
+        );
+      }
+    }
   });
 
   it('gear normal can roll bonus equipment with decaying chances', () => {

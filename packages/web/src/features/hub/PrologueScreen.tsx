@@ -1,9 +1,13 @@
 import {
   ARRIVAL_BY_PRESET,
+  companionBindingBeat,
   completeNarrativeOnboarding,
   PROLOGUE_BEATS,
   PROLOGUE_SKIP_DEFAULT_PRESET,
+  resolveStarterCompanionId,
   skipPrologueToMainline,
+  starterCompanionDisplayName,
+  whyHistoryBeat,
   WORLD_PICK_OPTIONS,
   type PlayerState,
   type PrologueBeat,
@@ -43,11 +47,14 @@ const STEP_DONE = 13;
 const PLOT_GEN_MS = 1100;
 
 type PrologueScreenProps = {
+  player: PlayerState;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   onComplete: () => void;
 };
 
-export function PrologueScreen({ setPlayer, onComplete }: PrologueScreenProps) {
+export function PrologueScreen({ player, setPlayer, onComplete }: PrologueScreenProps) {
+  const companionId = resolveStarterCompanionId(player.seed, player.starterCompanionId);
+  const companionName = starterCompanionDisplayName(companionId);
   const [step, setStep] = useState(0);
   const [preset, setPreset] = useState<WorldPreset | null>(null);
   const [heroName, setHeroName] = useState('');
@@ -174,12 +181,12 @@ export function PrologueScreen({ setPlayer, onComplete }: PrologueScreenProps) {
   const world = preset ?? PROLOGUE_SKIP_DEFAULT_PRESET;
 
   if (step === STEP_WORLD + 1) {
-    const beat = PROLOGUE_BEATS[6];
+    const beat = companionBindingBeat(companionName);
     return (
       <ScriptBeat
         progressLabel={progressLabel}
         beat={beat}
-        stepKey={`beat-${beat.id}-${world}`}
+        stepKey={`beat-${beat.id}-${world}-${companionId}`}
         onSkip={skipAll}
         continueLabel={beat.continueLabel ?? '继续'}
         onContinue={advancePlain}
@@ -208,12 +215,12 @@ export function PrologueScreen({ setPlayer, onComplete }: PrologueScreenProps) {
   }
 
   if (step === STEP_ARRIVAL + 1) {
-    const beat = PROLOGUE_BEATS[7];
+    const beat = whyHistoryBeat(companionName);
     return (
       <ScriptBeat
         progressLabel={progressLabel}
         beat={beat}
-        stepKey={`beat-${beat.id}-final`}
+        stepKey={`beat-${beat.id}-final-${companionId}`}
         onSkip={skipAll}
         continueLabel={beat.continueLabel ?? '创建角色'}
         onContinue={advancePlain}

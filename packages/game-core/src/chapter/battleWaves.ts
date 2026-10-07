@@ -4,8 +4,12 @@
 
 import { ENCOUNTERS } from '../dungeon/encounters.js';
 import type { PlayerState } from '../shared/types.js';
-import type { BattleWaveDef, ChapterNodeDef } from './defs.js';
-import { getChapterByOrder, maxChapterOrder } from './defs.js';
+import type { BattleWaveDef, ChapterDef, ChapterNodeDef } from './defs.js';
+import {
+  getChapterByOrder,
+  isChapterFinaleBattleNode,
+  maxChapterOrder,
+} from './defs.js';
 import {
   chapterOrderFromNodeId,
   mainlineBattleWaves,
@@ -24,13 +28,16 @@ export function encounterIndexFromId(encounterId: string): number {
 export function battleWavesForNode(
   node: ChapterNodeDef,
   chapterOrder?: number,
+  chapter?: ChapterDef | null,
 ): BattleWaveDef[] {
   if (node.kind !== 'battle') return [];
   if (node.battleWaves?.length) return node.battleWaves;
   if (node.battleCap) {
     const order = chapterOrder ?? chapterOrderFromNodeId(node.id);
     const offset = mainlinePlanOffsetFromNodeId(node.id);
-    return mainlineBattleWaves(order, node.battleCap, offset);
+    const ch = chapter ?? getChapterByOrder(order);
+    const chapterFinale = ch ? isChapterFinaleBattleNode(ch, node) : false;
+    return mainlineBattleWaves(order, node.battleCap, offset, { chapterFinale });
   }
   if (node.encounterId) return [{ encounterId: node.encounterId }];
   return [];
@@ -70,7 +77,8 @@ function chapterOrderForState(state: PlayerState): number {
 export function currentChapterBattleContext(state: PlayerState): ChapterBattleContext | null {
   const node = currentBattleNode(state);
   if (!node || node.kind !== 'battle') return null;
-  const waves = battleWavesForNode(node, chapterOrderForState(state));
+  const playing = getChapterByOrder(chapterOrderForState(state));
+  const waves = battleWavesForNode(node, chapterOrderForState(state), playing);
   if (waves.length === 0) return null;
   const waveIndex = Math.min(chapterBattleWaveIndex(state), waves.length - 1);
   const wave = waves[waveIndex]!;
@@ -129,8 +137,10 @@ export function formatMainlineBattleNodeCommitment(
   chapterOrder: number,
 ): string | null {
   if (node.kind !== 'battle') return null;
-  const waves = battleWavesForNode(node, chapterOrder);
+  const chapter = getChapterByOrder(chapterOrder);
+  const waves = battleWavesForNode(node, chapterOrder, chapter);
   if (waves.length <= 1) return null;
   const unitTotal = Math.max(1, ...waves.map((w) => (w.unitIndex ?? 0) + 1));
-  return `${unitTotal} 阵连战 · 共 ${waves.length} 场（小怪→精锐/首领）`;
+  const fin = waves[waves.length - 1]?.label === '首领' ? '首领' : '精锐';
+  return `${unitTotal} 阵连战 · 共 ${waves.length} 场（小怪→${fin}）`;
 }

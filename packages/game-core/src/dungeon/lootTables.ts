@@ -3,6 +3,7 @@ import {
   type GenerateEquipmentOptions,
 } from '../equipment/equipment.js';
 
+import { gearDungeonScaleChapterCleared } from '../chapter/powerSpine.js';
 import { getGearDungeon, itemLevelForGearTier, SOLUTION_T3_WEIGHTS } from './gearDungeons.js';
 import { resolveGearRarityWeights } from './gearRarityByTier.js';
 import { resolveEquipmentRollChances, rollEquipmentDropCount } from './gearEquipRolls.js';
@@ -11,19 +12,19 @@ import { resolveEquipmentRollChances, rollEquipmentDropCount } from './gearEquip
 export const ABYSS_SOLUTION_T3_WEIGHTS = SOLUTION_T3_WEIGHTS;
 
 function buildGearEquipOptions(
-  state: PlayerState,
+  _state: PlayerState,
   dungeonId: DungeonId,
 ): GenerateEquipmentOptions | null {
   const gear = getGearDungeon(dungeonId);
   if (!gear) return null;
   const table = LOOT_TABLES[gear.lootTableId];
   if (!table) throw new Error(`Unknown loot table: ${gear.lootTableId}`);
-  const cleared = state.chapterCleared ?? 0;
-  const nodeIndex = state.chapterNodeIndex ?? 0;
+  // 装等跟「解锁档」走，不跟当前章/主线节点——通关 ch1 开第一本时仍是炼气可穿（≤20）
+  const scaleCleared = gearDungeonScaleChapterCleared(dungeonId);
   const opts: GenerateEquipmentOptions = {
     setIdChance: table.setIdChance,
     setIdWeights: table.setIdWeights,
-    itemLevel: itemLevelForGearTier(cleared, nodeIndex, gear.tier),
+    itemLevel: itemLevelForGearTier(scaleCleared, 0, gear.tier),
   };
   opts.rarityWeights = resolveGearRarityWeights(gear);
   if (gear.t3IdWeights) opts.t3IdWeights = gear.t3IdWeights;
@@ -77,7 +78,8 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [5, 15],
     xiuwei: [0, 0],
     stardust: [0, 0],
-    characterExp: [18, 32],
+    /** 同本固定经验（灵石仍可浮动） */
+    characterExp: [24, 24],
   },
   loot_gear_hard: {
     id: 'loot_gear_hard',
@@ -91,7 +93,7 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [7, 16],
     xiuwei: [0, 0],
     stardust: [0, 0],
-    characterExp: [26, 42],
+    characterExp: [34, 34],
   },
   loot_gear_hell: {
     id: 'loot_gear_hell',
@@ -105,7 +107,7 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [8, 18],
     xiuwei: [0, 0],
     stardust: [0, 0],
-    characterExp: [36, 55],
+    characterExp: [45, 45],
   },
   loot_gear_rift: {
     id: 'loot_gear_rift',
@@ -119,7 +121,7 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [10, 22],
     xiuwei: [0, 0],
     stardust: [0, 1],
-    characterExp: [42, 64],
+    characterExp: [52, 52],
   },
   /** 兼容旧 id；逻辑同 loot_gear_normal */
   loot_gear_trial: {
@@ -134,7 +136,7 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [5, 15],
     xiuwei: [0, 0],
     stardust: [0, 0],
-    characterExp: [18, 32],
+    characterExp: [24, 24],
   },
   /** 兼容旧 id；逻辑同 loot_gear_hell */
   loot_abyss_mirror: {
@@ -149,7 +151,7 @@ export const LOOT_TABLES: Record<string, LootTable> = {
     gold: [8, 18],
     xiuwei: [0, 0],
     stardust: [0, 0],
-    characterExp: [36, 55],
+    characterExp: [45, 45],
   },
   /** 塔奖励由 climbTower 结算；表仅占位说明 */
   loot_tower: {
